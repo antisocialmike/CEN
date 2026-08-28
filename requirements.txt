@@ -1,0 +1,10 @@
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.6.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+psycopg2-binary>=2.9.9
+pytest>=8.0.0
+pytest-cov>=4.1.0
+flake8>=7.0.0
+bandit>=1.7.8
