@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: cen_postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: cen_payroll_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    container_name: cen_payroll_api
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_NAME: cen_payroll_db
+      DB_USER: postgres
+      DB_PASSWORD: postgrespassword
+      DB_PORT: 5432
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
