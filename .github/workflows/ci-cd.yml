@@ -1,0 +1,35 @@
+name: CEN CI/CD Pipeline
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Linting with Flake8
+        run: flake8 server/src/ --max-line-length=100
+      - name: Pytest and Coverage Gate
+        run: pytest --cov=server/src server/tests/ --cov-fail-under=80
+
+  security-scan:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Bandit (SAST)
+        run: |
+          pip install bandit
+          bandit -r server/src/ -ll
