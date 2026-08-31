@@ -17,8 +17,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security_bearer)) -> dict:
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        role: str = payload.get("role")
+        username = payload.get("sub")
+        role = payload.get("role")
         if username is None or role is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         return {"username": username, "role": role}

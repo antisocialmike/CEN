@@ -37,14 +37,14 @@ class PayrollRepository:
                         receipt_data["net_salary"]
                     )
                 )
-                
+
                 row = cur.fetchone()
                 if not row:
                     raise RuntimeError("No se pudo obtener el ID del recibo.")
-                
+
                 row_dict = dict(row)
                 receipt_id = int(row_dict["id"])
-                
+
                 conn.commit()
                 return receipt_id
         finally:
