@@ -18,7 +18,11 @@ class IMSSStrategy(TaxCalculationStrategy):
 
 
 class PayrollService:
-    def __init__(self, isr: TaxCalculationStrategy = ISRStrategy(), imss: TaxCalculationStrategy = IMSSStrategy()):
+    def __init__(
+        self,
+        isr: TaxCalculationStrategy = ISRStrategy(),
+        imss: TaxCalculationStrategy = IMSSStrategy()
+    ):
         self.isr_calc = isr
         self.imss_calc = imss
 
@@ -30,7 +34,7 @@ class PayrollService:
         net = round(gross_salary - (isr + imss), 2)
         return {
             "gross_salary": gross_salary,
-            "isr": isr,
-            "imss": imss,
+            "isr_deduction": isr,
+            "imss_deduction": imss,
             "net_salary": net
         }
