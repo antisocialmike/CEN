@@ -1,5 +1,5 @@
 import pytest
-from ..src.controllers.payroll_controller import PayrollService
+from server.src.controllers.payroll_controller import PayrollService
 
 @pytest.fixture
 def service():
@@ -8,8 +8,8 @@ def service():
 def test_salary_calculation(service):
     res = service.process_salary(10000.0)
     assert res["gross_salary"] == 10000.0
-    assert res["isr"] == 1600.0
-    assert res["imss"] == 275.0
+    assert res["isr_deduction"] == 1600.0
+    assert res["imss_deduction"] == 275.0
     assert res["net_salary"] == 8125.0
 
 def test_zero_salary(service):
