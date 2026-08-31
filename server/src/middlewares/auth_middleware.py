@@ -22,11 +22,11 @@ def get_current_user(
     try:
         token = credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        
+
         # Garantizamos que Pylance reciba un string, incluso si el token viene vacío
         username: str = str(payload.get("sub") or "")
         role: str = str(payload.get("role") or "")
-        
+
         if not username or not role:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -38,6 +38,7 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token no valido"
         )
+
 
 def require_role(required_role: str):
     def role_checker(user: dict = Security(get_current_user)):
