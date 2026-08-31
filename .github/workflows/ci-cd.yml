@@ -10,25 +10,30 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Install Dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+          pip install flake8 pytest pytest-cov psycopg2-binary
       - name: Linting with Flake8
         run: flake8 server/src/ --max-line-length=100
       - name: Pytest and Coverage Gate
-        run: pytest --cov=server/src server/tests/ --cov-fail-under=80
+        run: python -m pytest server/tests/ --cov=server/src/ --cov-fail-under=80
 
   security-scan:
     needs: lint-and-test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
       - name: Run Bandit (SAST)
         run: |
           pip install bandit
