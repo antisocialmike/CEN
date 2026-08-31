@@ -1,9 +1,11 @@
 from pydantic import BaseModel
 from typing import Optional
 
+
 class PayrollCalculationRequest(BaseModel):
     employee_id: int
     gross_salary: float
+
 
 class PayrollReceipt(BaseModel):
     receipt_id: Optional[int] = None

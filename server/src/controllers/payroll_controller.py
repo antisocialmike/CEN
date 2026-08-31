@@ -1,17 +1,21 @@
 from abc import ABC, abstractmethod
 
+
 class TaxCalculationStrategy(ABC):
     @abstractmethod
     def calculate(self, base_salary: float) -> float:
         pass
 
+
 class ISRStrategy(TaxCalculationStrategy):
     def calculate(self, base_salary: float) -> float:
         return round(base_salary * 0.16, 2)
 
+
 class IMSSStrategy(TaxCalculationStrategy):
     def calculate(self, base_salary: float) -> float:
         return round(base_salary * 0.0275, 2)
+
 
 class PayrollService:
     def __init__(self, isr: TaxCalculationStrategy = ISRStrategy(), imss: TaxCalculationStrategy = IMSSStrategy()):

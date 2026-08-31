@@ -8,6 +8,7 @@ DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
+
 def get_connection():
     return psycopg2.connect(
         host=DB_HOST,

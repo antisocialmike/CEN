@@ -1,12 +1,14 @@
 from psycopg2.extras import RealDictCursor
 from ..config.database import get_connection
 
+
 class PayrollRepository:
     def get_employee_by_id(self, employee_id: int) -> dict:
         conn = get_connection()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT id, name, email, role, base_salary FROM employees WHERE id = %s;", (employee_id,))
+                cur.execute(
+                    "SELECT id, name, email, role, base_salary FROM employees WHERE id = %s;", (employee_id,))
                 result = cur.fetchone()
                 if result is None:
                     return {}

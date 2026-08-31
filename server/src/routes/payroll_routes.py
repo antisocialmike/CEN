@@ -6,6 +6,7 @@ from ..middlewares.auth_middleware import require_role
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
 payroll_service = PayrollService()
 
+
 @router.post("/calculate")
 def calculate_payroll(request: PayrollCalculationRequest, user: dict = Depends(require_role("admin"))):
     try:
