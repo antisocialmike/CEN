@@ -2,6 +2,14 @@ from pydantic import BaseModel
 from typing import Optional
 
 
+class Employee(BaseModel):
+    id: Optional[int] = None
+    name: str
+    email: str
+    role: str
+    base_salary: float
+
+
 class PayrollCalculationRequest(BaseModel):
     employee_id: int
     gross_salary: float
