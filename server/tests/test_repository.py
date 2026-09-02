@@ -36,6 +36,40 @@ def test_get_employee_by_id_not_found(mock_get_connection):
 
 
 @patch('server.src.repositories.payroll_repository.get_connection')
+def test_get_employee_by_email_found(mock_get_connection):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_get_connection.return_value = mock_conn
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_cursor.fetchone.return_value = {
+        "id": 1, "name": "Juan", "email": "juan@cen.com",
+        "role": "admin", "base_salary": 10000, "password_hash": "hashed"
+    }
+
+    repo = PayrollRepository()
+    result = repo.get_employee_by_email("juan@cen.com")
+
+    assert result is not None
+    assert result["email"] == "juan@cen.com"
+    mock_conn.close.assert_called_once()
+
+
+@patch('server.src.repositories.payroll_repository.get_connection')
+def test_get_employee_by_email_not_found(mock_get_connection):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_get_connection.return_value = mock_conn
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_cursor.fetchone.return_value = None
+
+    repo = PayrollRepository()
+    result = repo.get_employee_by_email("nadie@cen.com")
+
+    assert result is None
+    mock_conn.close.assert_called_once()
+
+
+@patch('server.src.repositories.payroll_repository.get_connection')
 def test_save_payroll_receipt_success(mock_get_connection):
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
