@@ -17,6 +17,20 @@ class PayrollRepository:
         finally:
             conn.close()
 
+    def get_employee_by_email(self, email: str) -> Optional[dict]:
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                query = (
+                    "SELECT id, name, email, role, base_salary, password_hash "
+                    "FROM employees WHERE email = %s;"
+                )
+                cur.execute(query, (email,))
+                row = cur.fetchone()
+                return dict(row) if row else None
+        finally:
+            conn.close()
+
     def save_payroll_receipt(self, receipt_data: dict) -> int:
         conn = get_connection()
         try:
