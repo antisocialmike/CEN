@@ -11,8 +11,6 @@ from server.src.middlewares.auth_middleware import (
 
 
 def _make_credentials(token: str) -> HTTPAuthorizationCredentials:
-    """Crea un objeto de credenciales como el que FastAPI inyectaría
-    a partir del header 'Authorization: Bearer <token>'."""
     return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
 
@@ -24,7 +22,6 @@ def test_get_current_user_invalid_or_expired_token():
 
 
 def test_get_current_user_token_missing_claims():
-    # Token válido pero sin 'sub' ni 'role' en el payload
     token = create_access_token(data={})
     credentials = _make_credentials(token)
     with pytest.raises(HTTPException) as exc_info:
@@ -45,7 +42,6 @@ def test_get_current_user_valid_token():
 def test_require_role_allows_matching_role():
     role_checker = require_role("admin")
     user = {"username": "juan.perez", "role": "admin"}
-    # role_checker recibe el usuario ya resuelto por get_current_user
     result = role_checker(user=user)
     assert result == user
 
