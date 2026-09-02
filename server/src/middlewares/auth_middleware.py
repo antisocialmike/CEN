@@ -1,10 +1,11 @@
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-SECRET_KEY = "cen-secret-payroll-key-for-jwt-tokens"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "cen-secret-payroll-key-for-jwt-tokens")
 ALGORITHM = "HS256"
 security_bearer = HTTPBearer()
 
@@ -23,7 +24,6 @@ def get_current_user(
         token = credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
-        # Garantizamos que Pylance reciba un string, incluso si el token viene vacío
         username: str = str(payload.get("sub") or "")
         role: str = str(payload.get("role") or "")
 
