@@ -13,9 +13,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: server/Dockerfile
     container_name: cen_payroll_api
     restart: always
     environment:
@@ -24,6 +27,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgrespassword
       DB_PORT: 5432
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-cen-secret-payroll-key-for-jwt-tokens}
     ports:
       - "8000:8000"
     depends_on:
