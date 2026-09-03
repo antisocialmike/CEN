@@ -31,6 +31,38 @@ class PayrollRepository:
         finally:
             conn.close()
 
+    def create_employee(self, employee_data: dict) -> int:
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                insert_query = (
+                    "INSERT INTO employees ("
+                    "name, email, role, base_salary, password_hash) "
+                    "VALUES (%s, %s, %s, %s, %s) RETURNING id;"
+                )
+                cur.execute(
+                    insert_query,
+                    (
+                        employee_data["name"],
+                        employee_data["email"],
+                        employee_data["role"],
+                        employee_data["base_salary"],
+                        employee_data["password_hash"]
+                    )
+                )
+
+                row = cur.fetchone()
+                if not row:
+                    raise RuntimeError("No se pudo obtener el ID del empleado.")
+
+                row_dict = dict(row)
+                employee_id = int(row_dict["id"])
+
+                conn.commit()
+                return employee_id
+        finally:
+            conn.close()
+
     def save_payroll_receipt(self, receipt_data: dict) -> int:
         conn = get_connection()
         try:
