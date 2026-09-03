@@ -63,6 +63,22 @@ class PayrollRepository:
         finally:
             conn.close()
 
+    def get_receipts_by_employee_id(self, employee_id: int) -> list:
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                query = (
+                    "SELECT id, employee_id, gross_salary, isr_deduction, "
+                    "imss_deduction, net_salary, created_at "
+                    "FROM payroll_receipts WHERE employee_id = %s "
+                    "ORDER BY created_at DESC;"
+                )
+                cur.execute(query, (employee_id,))
+                rows = cur.fetchall()
+                return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
     def save_payroll_receipt(self, receipt_data: dict) -> int:
         conn = get_connection()
         try:
