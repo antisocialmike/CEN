@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from server.src.models.payroll_model import PayrollCalculationRequest
 from server.src.controllers.payroll_controller import PayrollService
-from server.src.middlewares.auth_middleware import require_role
+from server.src.middlewares.auth_middleware import require_role, get_current_user
 from server.src.repositories.payroll_repository import PayrollRepository
 
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
@@ -37,3 +37,13 @@ def calculate_payroll(
         "data": breakdown,
         "processed_by": user["username"]
     }
+
+
+@router.get("/my-receipts")
+def get_my_receipts(user: dict = Depends(get_current_user)):
+    employee_id = user.get("employee_id")
+    if employee_id is None:
+        raise HTTPException(status_code=403, detail="Token sin empleado asociado")
+
+    receipts = payroll_repository.get_receipts_by_employee_id(employee_id)
+    return {"employee_id": employee_id, "receipts": receipts}
