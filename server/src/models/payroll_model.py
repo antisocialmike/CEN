@@ -10,6 +10,14 @@ class Employee(BaseModel):
     base_salary: float
 
 
+class EmployeeCreateRequest(BaseModel):
+    name: str
+    email: str
+    role: str
+    base_salary: float
+    password: str
+
+
 class PayrollCalculationRequest(BaseModel):
     employee_id: int
     gross_salary: float
