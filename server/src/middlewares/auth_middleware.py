@@ -36,13 +36,14 @@ def get_current_user(
 
         username: str = str(payload.get("sub") or "")
         role: str = str(payload.get("role") or "")
+        employee_id = payload.get("employee_id")
 
         if not username or not role:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token no valido"
             )
-        return {"username": username, "role": role}
+        return {"username": username, "role": role, "employee_id": employee_id}
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

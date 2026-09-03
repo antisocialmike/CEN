@@ -16,6 +16,10 @@ def login(request: LoginRequest):
         raise HTTPException(status_code=401, detail="Credenciales invalidas")
 
     token = create_access_token(
-        data={"sub": employee["email"], "role": employee["role"]}
+        data={
+            "sub": employee["email"],
+            "role": employee["role"],
+            "employee_id": employee["id"]
+        }
     )
     return TokenResponse(access_token=token, role=employee["role"])
