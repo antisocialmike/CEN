@@ -70,6 +70,29 @@ def test_get_employee_by_email_not_found(mock_get_connection):
 
 
 @patch('server.src.repositories.payroll_repository.get_connection')
+def test_create_employee_success(mock_get_connection):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_get_connection.return_value = mock_conn
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_cursor.fetchone.return_value = {"id": 10}
+
+    repo = PayrollRepository()
+    employee_data = {
+        "name": "Juan Perez",
+        "email": "juan@cen.com",
+        "role": "employee",
+        "base_salary": 12000,
+        "password_hash": "hashed"
+    }
+    result = repo.create_employee(employee_data)
+
+    assert result == 10
+    mock_conn.commit.assert_called_once()
+    mock_conn.close.assert_called_once()
+
+
+@patch('server.src.repositories.payroll_repository.get_connection')
 def test_save_payroll_receipt_success(mock_get_connection):
     mock_conn = MagicMock()
     mock_cursor = MagicMock()

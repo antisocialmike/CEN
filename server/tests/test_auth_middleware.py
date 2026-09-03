@@ -7,6 +7,8 @@ from server.src.middlewares.auth_middleware import (
     get_current_user,
     create_access_token,
     require_role,
+    hash_password,
+    verify_password,
 )
 
 
@@ -52,3 +54,10 @@ def test_require_role_rejects_non_matching_role():
     with pytest.raises(HTTPException) as exc_info:
         role_checker(user=user)
     assert exc_info.value.status_code == 403
+
+
+def test_hash_password_and_verify_password():
+    password_hash = hash_password("clave123")
+    assert password_hash != "clave123"
+    assert verify_password("clave123", password_hash)
+    assert not verify_password("otra_clave", password_hash)
