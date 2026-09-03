@@ -33,12 +33,12 @@ def test_get_current_user_token_missing_claims():
 
 def test_get_current_user_valid_token():
     token = create_access_token(
-        data={"sub": "juan.perez", "role": "admin"},
+        data={"sub": "juan.perez", "role": "admin", "employee_id": 1},
         expires_delta=timedelta(hours=1),
     )
     credentials = _make_credentials(token)
     user = get_current_user(credentials)
-    assert user == {"username": "juan.perez", "role": "admin"}
+    assert user == {"username": "juan.perez", "role": "admin", "employee_id": 1}
 
 
 def test_require_role_allows_matching_role():

@@ -93,6 +93,28 @@ def test_create_employee_success(mock_get_connection):
 
 
 @patch('server.src.repositories.payroll_repository.get_connection')
+def test_get_receipts_by_employee_id(mock_get_connection):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_get_connection.return_value = mock_conn
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_cursor.fetchall.return_value = [
+        {
+            "id": 1, "employee_id": 5, "gross_salary": 10000,
+            "isr_deduction": 1600, "imss_deduction": 275,
+            "net_salary": 8125, "created_at": "2026-09-01T10:00:00"
+        }
+    ]
+
+    repo = PayrollRepository()
+    result = repo.get_receipts_by_employee_id(5)
+
+    assert len(result) == 1
+    assert result[0]["employee_id"] == 5
+    mock_conn.close.assert_called_once()
+
+
+@patch('server.src.repositories.payroll_repository.get_connection')
 def test_save_payroll_receipt_success(mock_get_connection):
     mock_conn = MagicMock()
     mock_cursor = MagicMock()

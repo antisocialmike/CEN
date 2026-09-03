@@ -11,8 +11,11 @@ def _admin_token():
     return create_access_token(data={"sub": "admin1", "role": "admin"})
 
 
-def _employee_token():
-    return create_access_token(data={"sub": "empleado1", "role": "employee"})
+def _employee_token(employee_id=None):
+    data = {"sub": "empleado1", "role": "employee"}
+    if employee_id is not None:
+        data["employee_id"] = employee_id
+    return create_access_token(data=data)
 
 
 @patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
@@ -77,6 +80,43 @@ def test_calculate_payroll_requires_authentication():
         "/payroll/calculate",
         json={"employee_id": 1, "gross_salary": 10000}
     )
+
+    assert response.status_code == 401
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_receipts_by_employee_id")
+def test_get_my_receipts_success(mock_get_receipts):
+    mock_get_receipts.return_value = [
+        {
+            "id": 1, "employee_id": 7, "gross_salary": 10000.0,
+            "isr_deduction": 1600.0, "imss_deduction": 275.0,
+            "net_salary": 8125.0, "created_at": "2026-09-01T10:00:00"
+        }
+    ]
+
+    response = client.get(
+        "/payroll/my-receipts",
+        headers={"Authorization": f"Bearer {_employee_token(employee_id=7)}"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["employee_id"] == 7
+    assert len(body["receipts"]) == 1
+    mock_get_receipts.assert_called_once_with(7)
+
+
+def test_get_my_receipts_token_without_employee_id():
+    response = client.get(
+        "/payroll/my-receipts",
+        headers={"Authorization": f"Bearer {_employee_token()}"}
+    )
+
+    assert response.status_code == 403
+
+
+def test_get_my_receipts_requires_authentication():
+    response = client.get("/payroll/my-receipts")
 
     assert response.status_code == 401
 
