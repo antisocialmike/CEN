@@ -63,6 +63,20 @@ class PayrollRepository:
         finally:
             conn.close()
 
+    def list_employees(self) -> list:
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                query = (
+                    "SELECT id, name, email, role, base_salary "
+                    "FROM employees ORDER BY name ASC;"
+                )
+                cur.execute(query)
+                rows = cur.fetchall()
+                return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
     def get_receipts_by_employee_id(self, employee_id: int) -> list:
         conn = get_connection()
         try:
