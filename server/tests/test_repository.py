@@ -93,6 +93,46 @@ def test_create_employee_success(mock_get_connection):
 
 
 @patch('server.src.repositories.payroll_repository.get_connection')
+def test_list_employees(mock_get_connection):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_get_connection.return_value = mock_conn
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_cursor.fetchall.return_value = [
+        {
+            "id": 1, "name": "Ana Lopez", "email": "ana@cen.com",
+            "role": "employee", "base_salary": 9000
+        },
+        {
+            "id": 2, "name": "Luis Diaz", "email": "luis@cen.com",
+            "role": "admin", "base_salary": 15000
+        }
+    ]
+
+    repo = PayrollRepository()
+    result = repo.list_employees()
+
+    assert len(result) == 2
+    assert result[0]["name"] == "Ana Lopez"
+    mock_conn.close.assert_called_once()
+
+
+@patch('server.src.repositories.payroll_repository.get_connection')
+def test_list_employees_empty(mock_get_connection):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_get_connection.return_value = mock_conn
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_cursor.fetchall.return_value = []
+
+    repo = PayrollRepository()
+    result = repo.list_employees()
+
+    assert result == []
+    mock_conn.close.assert_called_once()
+
+
+@patch('server.src.repositories.payroll_repository.get_connection')
 def test_get_receipts_by_employee_id(mock_get_connection):
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
