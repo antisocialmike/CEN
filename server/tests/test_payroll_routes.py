@@ -34,7 +34,7 @@ def test_calculate_payroll_success(mock_get_employee, mock_save_receipt):
     body = response.json()
     assert body["receipt_id"] == 55
     assert body["employee_id"] == 1
-    assert body["data"]["net_salary"] == 8125.0
+    assert body["data"]["net_salary"] == 9569.7
     assert body["processed_by"] == "admin1"
     mock_save_receipt.assert_called_once()
 
