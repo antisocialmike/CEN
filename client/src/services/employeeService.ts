@@ -27,3 +27,8 @@ export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeC
   });
   return response.data;
 }
+
+export async function listEmployees(): Promise<EmployeeCreated[]> {
+  const response = await httpClient.get<EmployeeCreated[]>("/employees");
+  return response.data;
+}
