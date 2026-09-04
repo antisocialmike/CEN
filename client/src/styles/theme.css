@@ -336,37 +336,111 @@ body {
   font-size: 18px;
 }
 
-.dashboard-body {
+.dashboard-content {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 24px;
-  text-align: center;
+  padding: 32px 24px;
 }
 
-.dashboard-body h1 {
+.dashboard-panel {
+  width: 100%;
+  max-width: 480px;
+}
+
+.dashboard-panel h1 {
   font-family: var(--serif);
   color: var(--accent-deep);
-  margin: 0;
+  margin: 0 0 20px;
+  font-size: 22px;
 }
 
-.dashboard-body p {
-  color: var(--muted);
-  margin: 0;
-}
-
-.dashboard-actions {
+.dashboard-panel-header {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  margin-top: 8px;
+  margin-bottom: 20px;
 }
 
-.dashboard-actions .secondary-button {
+.dashboard-panel-header h1 {
+  margin: 0;
+}
+
+.dashboard-panel-header .secondary-button {
   width: auto;
-  padding: 10px 18px;
+  padding: 10px 16px;
+  white-space: nowrap;
+}
+
+.payroll-form {
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.payroll-result {
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-top: 16px;
+}
+
+.payroll-result-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.payroll-result-row.deduction {
+  color: var(--stamp);
+}
+
+.payroll-result-row.total {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 12px;
+  font-weight: 700;
+  color: var(--accent-deep);
+  font-size: 16px;
+}
+
+.receipt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.receipt-card {
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.receipt-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.receipt-card-date {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.receipt-card-net {
+  font-family: var(--serif);
+  font-weight: 700;
+  color: var(--accent-deep);
+  font-size: 17px;
 }
 
 .logout-link {
