@@ -38,3 +38,11 @@ jobs:
         run: |
           pip install bandit
           bandit -r server/src/ -ll
+
+  deploy:
+    needs: security-scan
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Trigger Render Deploy
+        run: curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
