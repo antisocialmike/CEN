@@ -26,6 +26,7 @@ services:
       DB_PASSWORD: postgrespassword
       DB_PORT: 5432
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-cen-secret-payroll-key-for-jwt-tokens}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
     ports:
       - "8000:8000"
     depends_on:
