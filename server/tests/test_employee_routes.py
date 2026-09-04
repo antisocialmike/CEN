@@ -16,6 +16,45 @@ def _employee_token():
     return create_access_token(data={"sub": "empleado1", "role": "employee"})
 
 
+@patch("server.src.routes.employee_routes.payroll_repository.list_employees")
+def test_list_employees_success(mock_list_employees):
+    mock_list_employees.return_value = [
+        {
+            "id": 1, "name": "Ana Lopez", "email": "ana@cen.com",
+            "role": "employee", "base_salary": 9000
+        },
+        {
+            "id": 2, "name": "Luis Diaz", "email": "luis@cen.com",
+            "role": "admin", "base_salary": 15000
+        }
+    ]
+
+    response = client.get(
+        "/employees",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 2
+    assert body[0]["name"] == "Ana Lopez"
+
+
+def test_list_employees_requires_admin_role():
+    response = client.get(
+        "/employees",
+        headers={"Authorization": f"Bearer {_employee_token()}"}
+    )
+
+    assert response.status_code == 403
+
+
+def test_list_employees_requires_authentication():
+    response = client.get("/employees")
+
+    assert response.status_code == 401
+
+
 @patch("server.src.routes.employee_routes.payroll_repository.create_employee")
 def test_create_employee_success(mock_create_employee):
     mock_create_employee.return_value = 10
