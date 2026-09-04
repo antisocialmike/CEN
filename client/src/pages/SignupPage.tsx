@@ -10,17 +10,7 @@ import PageTransition from "../components/PageTransition";
 import { UsersIcon, MailIcon, LockIcon } from "../components/icons";
 import { createEmployee } from "../services/employeeService";
 import { UserRole } from "../services/authSession";
-
-interface AxiosLikeError {
-  response?: {
-    status: number;
-    data?: { detail?: string };
-  };
-}
-
-function isAxiosLikeError(error: unknown): error is AxiosLikeError {
-  return typeof error === "object" && error !== null && "response" in error;
-}
+import { getStatusCode } from "../services/apiError";
 
 const emptyForm = {
   name: "",
@@ -58,7 +48,7 @@ export default function SignupPage() {
       setSuccessMessage(`Empleado ${created.name} dado de alta correctamente`);
       setForm(emptyForm);
     } catch (error) {
-      if (isAxiosLikeError(error) && error.response?.status === 409) {
+      if (getStatusCode(error) === 409) {
         setErrorMessage("El correo ya está registrado");
       } else {
         setErrorMessage("No se pudo dar de alta al empleado, intenta de nuevo");
