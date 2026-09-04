@@ -1,0 +1,159 @@
+:root {
+  --paper: #F1F5F9;
+  --paper-card: #FBFDFE;
+  --ink: #122236;
+  --ink-soft: #3F5266;
+  --muted: #647389;
+  --accent: #2A5F8F;
+  --accent-deep: #1B3E5E;
+  --stamp: #8B3A3A;
+  --border: #D9E2EC;
+  --tint-bg: #EAF1F8;
+  --pill-red-bg: #F6EAEA;
+  --pill-red-fg: #8B3A3A;
+  --serif: 'Source Serif 4', Georgia, serif;
+  --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+.app-shell {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--paper-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(18, 34, 54, 0.08);
+}
+
+.auth-brand {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-deep);
+  margin: 0 0 4px;
+}
+
+.auth-subtitle {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 24px;
+}
+
+.form-field {
+  margin-bottom: 16px;
+}
+
+.form-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.form-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: #fff;
+}
+
+.form-field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.submit-button {
+  width: 100%;
+  padding: 11px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.submit-button:hover {
+  background: var(--accent-deep);
+}
+
+.submit-button:disabled {
+  background: var(--muted);
+  cursor: not-allowed;
+}
+
+.error-banner {
+  background: var(--pill-red-bg);
+  color: var(--pill-red-fg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.loading-text {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.placeholder-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.placeholder-shell h1 {
+  font-family: var(--serif);
+  color: var(--accent-deep);
+}
+
+.placeholder-shell p {
+  color: var(--muted);
+}
+
+.logout-link {
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 0;
+}
