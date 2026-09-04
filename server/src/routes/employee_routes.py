@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from psycopg2 import errors as psycopg2_errors
 from server.src.models.payroll_model import Employee, EmployeeCreateRequest
@@ -6,6 +7,11 @@ from server.src.repositories.payroll_repository import PayrollRepository
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 payroll_repository = PayrollRepository()
+
+
+@router.get("", response_model=List[Employee])
+def list_employees(user: dict = Depends(require_role("admin"))):
+    return payroll_repository.list_employees()
 
 
 @router.post("", response_model=Employee)
