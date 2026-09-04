@@ -16,3 +16,13 @@ CREATE TABLE IF NOT EXISTS payroll_receipts (
     net_salary NUMERIC(12, 2) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+INSERT INTO employees (name, email, role, base_salary, password_hash)
+VALUES (
+    'Admin',
+    'admin',
+    'admin',
+    20000.00,
+    '$2b$12$y1Iy2U7kAyyl9kbZYBaeGe/Bs0xOMWhiF252PXmYbdfpVZsWGDXpy'
+)
+ON CONFLICT (email) DO NOTHING;
