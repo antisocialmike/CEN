@@ -4,8 +4,17 @@ import { motion } from "motion/react";
 import PageTransition from "../components/PageTransition";
 import ErrorMessage from "../components/ErrorMessage";
 import ReceiptCard from "../components/ReceiptCard";
+import { LogoMark, LogoutIcon, ReceiptIcon, WalletIcon } from "../components/icons";
 import { logout } from "../services/authService";
 import { getMyReceipts, PayrollReceipt } from "../services/payrollService";
+
+function formatCurrency(value: number): string {
+  return value.toLocaleString("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 2
+  });
+}
 
 export default function EmployeeDashboardPage() {
   const [receipts, setReceipts] = useState<PayrollReceipt[] | null>(null);
@@ -41,10 +50,23 @@ export default function EmployeeDashboardPage() {
     <PageTransition>
       <div className="dashboard-shell">
         <div className="dashboard-topbar">
-          <span className="dashboard-topbar-brand">CEN Payroll</span>
-          <button className="logout-link" onClick={handleLogout}>
-            Cerrar sesión
-          </button>
+          <div className="brand-logo sm">
+            <LogoMark />
+            <div className="brand-logo-text">
+              <span>CEN Payroll</span>
+              <small>Portal del empleado</small>
+            </div>
+          </div>
+          <div className="dashboard-topbar-right">
+            <span className="user-chip">
+              <span className="user-chip-avatar">E</span>
+              <span className="user-chip-role">Empleado</span>
+            </span>
+            <button className="logout-link" onClick={handleLogout}>
+              <LogoutIcon />
+              Cerrar sesión
+            </button>
+          </div>
         </div>
 
         <motion.div
@@ -54,7 +76,46 @@ export default function EmployeeDashboardPage() {
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
           <div className="dashboard-panel">
-            <h1>Mis recibos de nómina</h1>
+            <div className="dashboard-panel-header">
+              <div className="dashboard-panel-heading">
+                <span className="panel-icon-badge">
+                  <ReceiptIcon />
+                </span>
+                <div>
+                  <p className="dashboard-panel-eyebrow">Historial</p>
+                  <h1>Mis recibos de nómina</h1>
+                </div>
+              </div>
+            </div>
+
+            {receipts !== null && receipts.length > 0 && (
+              <div className="stat-row">
+                <div className="stat-card">
+                  <span className="stat-card-icon">
+                    <ReceiptIcon />
+                  </span>
+                  <div>
+                    <p className="stat-card-label">Recibos generados</p>
+                    <p className="stat-card-value">{receipts.length}</p>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-card-icon">
+                    <WalletIcon />
+                  </span>
+                  <div>
+                    <p className="stat-card-label">Último neto recibido</p>
+                    <p className="stat-card-value">
+                      {formatCurrency(
+                        receipts.reduce((latest, receipt) =>
+                          new Date(receipt.created_at) > new Date(latest.created_at) ? receipt : latest
+                        ).net_salary
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {errorMessage && <ErrorMessage message={errorMessage} />}
 
@@ -63,7 +124,12 @@ export default function EmployeeDashboardPage() {
             )}
 
             {receipts !== null && receipts.length === 0 && (
-              <p className="loading-text">Todavía no tienes recibos generados.</p>
+              <div className="empty-state">
+                <span className="empty-state-icon">
+                  <ReceiptIcon />
+                </span>
+                <p>Todavía no tienes recibos generados. Aparecerán aquí en cuanto tu nómina sea calculada.</p>
+              </div>
             )}
 
             {receipts !== null && receipts.length > 0 && (
