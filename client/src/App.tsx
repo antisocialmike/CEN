@@ -4,6 +4,7 @@ import { AnimatePresence } from "motion/react";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLoader from "./components/AppLoader";
 
+const LandingPage = lazy(() => import("./pages/LandingPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SignupPage = lazy(() => import("./pages/SignupPage"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
@@ -16,6 +17,7 @@ export default function App() {
     <Suspense fallback={<AppLoader />}>
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
 
           <Route element={<ProtectedRoute allowedRole="admin" />}>
@@ -27,7 +29,7 @@ export default function App() {
             <Route path="/empleado" element={<EmployeeDashboardPage />} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>
     </Suspense>
