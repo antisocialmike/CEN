@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { ReceiptIcon } from "./icons";
 import { PayrollReceipt } from "../services/payrollService";
 
 interface ReceiptCardProps {
@@ -32,7 +33,12 @@ export default function ReceiptCard({ receipt, index }: ReceiptCardProps) {
       transition={{ duration: 0.3, delay: index * 0.05, ease: "easeOut" }}
     >
       <div className="receipt-card-header">
-        <span className="receipt-card-date">{formatDate(receipt.created_at)}</span>
+        <span className="receipt-card-date-group">
+          <span className="receipt-card-icon">
+            <ReceiptIcon />
+          </span>
+          <span className="receipt-card-date">{formatDate(receipt.created_at)}</span>
+        </span>
         <span className="receipt-card-net">{formatCurrency(receipt.net_salary)}</span>
       </div>
       <div className="payroll-result-row">
