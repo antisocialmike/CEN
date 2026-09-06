@@ -7,7 +7,7 @@ import SelectField from "../components/SelectField";
 import ErrorMessage from "../components/ErrorMessage";
 import SubmitButton from "../components/SubmitButton";
 import PayrollResultCard from "../components/PayrollResultCard";
-import { UsersIcon } from "../components/icons";
+import { LogoMark, LogoutIcon, UsersIcon, WalletIcon } from "../components/icons";
 import { logout } from "../services/authService";
 import { calculatePayroll, PayrollBreakdown } from "../services/payrollService";
 import { listEmployees, EmployeeCreated } from "../services/employeeService";
@@ -71,10 +71,23 @@ export default function AdminDashboardPage() {
     <PageTransition>
       <div className="dashboard-shell">
         <div className="dashboard-topbar">
-          <span className="dashboard-topbar-brand">CEN Payroll</span>
-          <button className="logout-link" onClick={handleLogout}>
-            Cerrar sesión
-          </button>
+          <div className="brand-logo sm">
+            <LogoMark />
+            <div className="brand-logo-text">
+              <span>CEN Payroll</span>
+              <small>Panel de administración</small>
+            </div>
+          </div>
+          <div className="dashboard-topbar-right">
+            <span className="user-chip">
+              <span className="user-chip-avatar">A</span>
+              <span className="user-chip-role">Administrador</span>
+            </span>
+            <button className="logout-link" onClick={handleLogout}>
+              <LogoutIcon />
+              Cerrar sesión
+            </button>
+          </div>
         </div>
 
         <motion.div
@@ -85,7 +98,15 @@ export default function AdminDashboardPage() {
         >
           <div className="dashboard-panel">
             <div className="dashboard-panel-header">
-              <h1>Calcular nómina</h1>
+              <div className="dashboard-panel-heading">
+                <span className="panel-icon-badge">
+                  <WalletIcon />
+                </span>
+                <div>
+                  <p className="dashboard-panel-eyebrow">Nómina</p>
+                  <h1>Calcular nómina</h1>
+                </div>
+              </div>
               <button
                 className="secondary-button"
                 onClick={() => navigate("/admin/nuevo-empleado")}
@@ -95,6 +116,20 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
+            {employees !== null && employees.length > 0 && (
+              <div className="stat-row">
+                <div className="stat-card">
+                  <span className="stat-card-icon">
+                    <UsersIcon />
+                  </span>
+                  <div>
+                    <p className="stat-card-label">Empleados registrados</p>
+                    <p className="stat-card-value">{employees.length}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <AnimatePresence mode="wait">
               {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
             </AnimatePresence>
@@ -102,42 +137,56 @@ export default function AdminDashboardPage() {
             {employees === null && <p className="loading-text">Cargando empleados...</p>}
 
             {employees !== null && employees.length === 0 && (
-              <p className="loading-text">Aún no hay empleados registrados</p>
+              <div className="empty-state">
+                <span className="empty-state-icon">
+                  <UsersIcon />
+                </span>
+                <p>Aún no hay empleados registrados. Da de alta al primero para calcular su nómina.</p>
+              </div>
             )}
 
             {employees !== null && employees.length > 0 && (
-              <form className="payroll-form" onSubmit={handleSubmit}>
-                <SelectField
-                  id="employeeId"
-                  label="Empleado"
-                  value={employeeId}
-                  onChange={setEmployeeId}
-                  options={employees.map((employee) => ({
-                    value: String(employee.id),
-                    label: `${employee.name} (#${employee.id})`
-                  }))}
-                />
-                <FormField
-                  id="grossSalary"
-                  label="Salario bruto mensual"
-                  type="number"
-                  value={grossSalary}
-                  onChange={setGrossSalary}
-                  min={0}
-                  step={0.01}
-                  required
-                />
-                <SubmitButton
-                  label="Calcular"
-                  loadingLabel="Calculando..."
-                  isLoading={isCalculating}
-                />
-              </form>
-            )}
+              <div className="dashboard-grid">
+                <form className="payroll-form" onSubmit={handleSubmit}>
+                  <SelectField
+                    id="employeeId"
+                    label="Empleado"
+                    value={employeeId}
+                    onChange={setEmployeeId}
+                    options={employees.map((employee) => ({
+                      value: String(employee.id),
+                      label: `${employee.name} (#${employee.id})`
+                    }))}
+                  />
+                  <FormField
+                    id="grossSalary"
+                    label="Salario bruto mensual"
+                    type="number"
+                    value={grossSalary}
+                    onChange={setGrossSalary}
+                    min={0}
+                    step={0.01}
+                    required
+                  />
+                  <SubmitButton
+                    label="Calcular"
+                    loadingLabel="Calculando..."
+                    isLoading={isCalculating}
+                  />
+                </form>
 
-            <AnimatePresence mode="wait">
-              {breakdown && <PayrollResultCard key="result" breakdown={breakdown} />}
-            </AnimatePresence>
+                <AnimatePresence mode="wait">
+                  {breakdown ? (
+                    <PayrollResultCard key="result" breakdown={breakdown} />
+                  ) : (
+                    <div className="payroll-result-placeholder" key="placeholder">
+                      <WalletIcon />
+                      <p>El desglose de ISR, IMSS y neto a pagar aparecerá aquí en cuanto calcules la nómina.</p>
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
