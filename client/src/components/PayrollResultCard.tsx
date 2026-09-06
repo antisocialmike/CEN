@@ -22,6 +22,7 @@ export default function PayrollResultCard({ breakdown }: PayrollResultCardProps)
       exit={{ opacity: 0, y: -12 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
     >
+      <p className="payroll-result-heading">Desglose de nómina</p>
       <div className="payroll-result-row">
         <span>Salario bruto</span>
         <span>{formatCurrency(breakdown.gross_salary)}</span>
