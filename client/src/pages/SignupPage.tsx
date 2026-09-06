@@ -70,8 +70,19 @@ export default function SignupPage() {
           <button className="signup-back-link" onClick={() => navigate("/admin")}>
             ← Volver al panel
           </button>
-          <p className="auth-brand">Dar de alta empleado</p>
-          <p className="auth-subtitle">Crea una cuenta nueva para tu equipo</p>
+          <div className="dashboard-panel-heading" style={{ marginBottom: 22 }}>
+            <span className="panel-icon-badge">
+              <UsersIcon />
+            </span>
+            <div>
+              <p className="auth-brand" style={{ marginBottom: 2 }}>
+                Dar de alta empleado
+              </p>
+              <p className="auth-subtitle" style={{ margin: 0 }}>
+                Crea una cuenta nueva para tu equipo
+              </p>
+            </div>
+          </div>
 
           <AnimatePresence mode="wait">
             {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
