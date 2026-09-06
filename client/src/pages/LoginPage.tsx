@@ -5,8 +5,14 @@ import FormField from "../components/FormField";
 import ErrorMessage from "../components/ErrorMessage";
 import SubmitButton from "../components/SubmitButton";
 import PageTransition from "../components/PageTransition";
-import { MailIcon, LockIcon } from "../components/icons";
+import { BoltIcon, LockIcon, LogoMark, MailIcon, ReceiptIcon, ShieldIcon } from "../components/icons";
 import { login } from "../services/authService";
+
+const features = [
+  { icon: <BoltIcon />, label: "Cálculo automático de ISR e IMSS" },
+  { icon: <ShieldIcon />, label: "Roles y permisos por tipo de usuario" },
+  { icon: <ReceiptIcon />, label: "Recibos auditables en todo momento" }
+];
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -51,11 +57,36 @@ export default function LoginPage() {
             animate={{ scale: [1, 1.12, 1] }}
             transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
           />
-          <p className="auth-branding-title">Nómina clara, segura y a tiempo para tu equipo</p>
-          <p className="auth-branding-subtitle">
-            Calcula ISR e IMSS conforme a la ley, controla el acceso por rol y entrega recibos
-            auditables desde un solo lugar.
-          </p>
+
+          <div className="auth-branding-content">
+            <div className="brand-logo" style={{ marginBottom: 28 }}>
+              <LogoMark />
+              <div className="brand-logo-text">
+                <span>CEN Payroll</span>
+                <small>Sistema de nómina</small>
+              </div>
+            </div>
+
+            <span className="auth-branding-badge">
+              <span className="auth-branding-badge-dot" />
+              Plataforma de nómina en tiempo real
+            </span>
+
+            <p className="auth-branding-title">Nómina clara, segura y a tiempo para tu equipo</p>
+            <p className="auth-branding-subtitle">
+              Calcula ISR e IMSS conforme a la ley, controla el acceso por rol y entrega recibos
+              auditables desde un solo lugar.
+            </p>
+
+            <ul className="auth-features">
+              {features.map((feature) => (
+                <li className="auth-feature-item" key={feature.label}>
+                  <span className="auth-feature-icon">{feature.icon}</span>
+                  {feature.label}
+                </li>
+              ))}
+            </ul>
+          </div>
         </motion.div>
 
         <div className="auth-form-panel">
