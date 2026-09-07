@@ -9,14 +9,30 @@ interface SelectFieldProps {
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
+  hint?: string;
 }
 
-export default function SelectField({ id, label, value, onChange, options }: SelectFieldProps) {
+export default function SelectField({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  hint
+}: SelectFieldProps) {
+  const hintId = hint ? `${id}-hint` : undefined;
+
   return (
     <div className="form-field">
       <label htmlFor={id}>{label}</label>
       <div className="form-field-control">
-        <select id={id} name={id} value={value} onChange={(event) => onChange(event.target.value)}>
+        <select
+          id={id}
+          name={id}
+          value={value}
+          aria-describedby={hintId}
+          onChange={(event) => onChange(event.target.value)}
+        >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -24,6 +40,11 @@ export default function SelectField({ id, label, value, onChange, options }: Sel
           ))}
         </select>
       </div>
+      {hint && (
+        <p className="form-field-hint" id={hintId}>
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
