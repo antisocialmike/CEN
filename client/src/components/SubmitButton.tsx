@@ -1,5 +1,3 @@
-import { motion } from "motion/react";
-
 interface SubmitButtonProps {
   label: string;
   loadingLabel: string;
@@ -8,21 +6,14 @@ interface SubmitButtonProps {
 
 export default function SubmitButton({ label, loadingLabel, isLoading }: SubmitButtonProps) {
   return (
-    <motion.button
-      className="submit-button"
+    <button
+      className="btn btn-rosa btn-block"
       type="submit"
       disabled={isLoading}
-      whileHover={isLoading ? undefined : { scale: 1.02 }}
-      whileTap={isLoading ? undefined : { scale: 0.97 }}
+      aria-busy={isLoading}
     >
-      {isLoading ? (
-        <span className="submit-button-loading">
-          <span className="submit-button-spinner" />
-          {loadingLabel}
-        </span>
-      ) : (
-        label
-      )}
-    </motion.button>
+      {isLoading && <span className="btn-spinner" aria-hidden="true" />}
+      {isLoading ? loadingLabel : label}
+    </button>
   );
 }
