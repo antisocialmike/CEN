@@ -34,9 +34,15 @@ def calculate_payroll(
     return {
         "receipt_id": receipt_id,
         "employee_id": request.employee_id,
+        "employee_name": employee.get("name", ""),
         "data": breakdown,
         "processed_by": user["username"]
     }
+
+
+@router.get("/receipts")
+def list_recent_receipts(user: dict = Depends(require_role("admin"))):
+    return {"receipts": payroll_repository.list_recent_receipts(limit=20)}
 
 
 @router.get("/my-receipts")
