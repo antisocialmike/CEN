@@ -1,24 +1,20 @@
 import { ReactNode } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 
 interface PageTransitionProps {
   children: ReactNode;
 }
 
-const variants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -16 }
-};
-
 export default function PageTransition({ children }: PageTransitionProps) {
+  const reduceMotion = useReducedMotion();
+  const shift = reduceMotion ? 0 : 12;
+
   return (
     <motion.div
-      variants={variants}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
-      transition={{ duration: 0.35, ease: "easeOut" }}
+      initial={{ opacity: 0, y: shift }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -shift }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
     </motion.div>
