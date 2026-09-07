@@ -1,18 +1,15 @@
 import { FormEvent, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion } from "motion/react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { AnimatePresence } from "motion/react";
+import { EnvelopeSimple, Lock } from "@phosphor-icons/react";
 import FormField from "../components/FormField";
 import ErrorMessage from "../components/ErrorMessage";
 import SubmitButton from "../components/SubmitButton";
-import PageTransition from "../components/PageTransition";
-import { BoltIcon, LockIcon, LogoMark, MailIcon, ReceiptIcon, ShieldIcon } from "../components/icons";
+import { LogoMark } from "../components/icons";
+import ThemeToggle from "../components/ThemeToggle";
 import { login } from "../services/authService";
 
-const features = [
-  { icon: <BoltIcon />, label: "Cálculo automático de ISR e IMSS" },
-  { icon: <ShieldIcon />, label: "Roles y permisos por tipo de usuario" },
-  { icon: <ReceiptIcon />, label: "Recibos auditables en todo momento" }
-];
+const PHOTO_MURO = "https://picsum.photos/seed/cen-muro-luz-dura/1200/1600";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -33,112 +30,91 @@ export default function LoginPage() {
       const role = await login(email, password);
       navigate(role === "admin" ? "/admin" : "/empleado", { replace: true });
     } catch {
-      setErrorMessage("Correo o contraseña incorrectos");
+      setErrorMessage("Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo.");
       setIsSubmitting(false);
     }
   }
 
   return (
-    <PageTransition>
-      <div className="auth-page">
-        <motion.div
-          className="auth-branding"
-          initial={{ opacity: 0, x: -24 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        >
-          <motion.span
-            className="auth-branding-shape one"
-            animate={{ scale: [1, 1.08, 1] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.span
-            className="auth-branding-shape two"
-            animate={{ scale: [1, 1.12, 1] }}
-            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-          />
+    <div className="auth-page">
+      <aside className="auth-side">
+        <span className="auth-side-photo" aria-hidden="true">
+          <img src={PHOTO_MURO} alt="" width={1200} height={1600} />
+        </span>
 
-          <div className="auth-branding-content">
-            <div className="brand-logo" style={{ marginBottom: 28 }}>
-              <LogoMark />
-              <div className="brand-logo-text">
-                <span>CEN Payroll</span>
-                <small>Sistema de nómina</small>
-              </div>
-            </div>
-
-            <span className="auth-branding-badge">
-              <span className="auth-branding-badge-dot" />
-              Plataforma de nómina en tiempo real
-            </span>
-
-            <p className="auth-branding-title">Nómina clara, segura y a tiempo para tu equipo</p>
-            <p className="auth-branding-subtitle">
-              Calcula ISR e IMSS conforme a la ley, controla el acceso por rol y entrega recibos
-              auditables desde un solo lugar.
-            </p>
-
-            <ul className="auth-features">
-              {features.map((feature) => (
-                <li className="auth-feature-item" key={feature.label}>
-                  <span className="auth-feature-icon">{feature.icon}</span>
-                  {feature.label}
-                </li>
-              ))}
-            </ul>
+        <Link className="brand-logo on-color" to="/">
+          <LogoMark />
+          <div className="brand-logo-text">
+            <span>CEN Payroll</span>
+            <small>Sistema de nómina</small>
           </div>
-        </motion.div>
+        </Link>
 
-        <div className="auth-form-panel">
-          <motion.div
-            className="auth-card"
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }}
-          >
-            <p className="auth-brand">CEN Payroll</p>
-            <p className="auth-subtitle">Inicia sesión con tu cuenta</p>
-
-            <AnimatePresence mode="wait">
-              {sessionExpired && !errorMessage && (
-                <ErrorMessage
-                  key="expirada"
-                  message="Tu sesión expiró, inicia sesión de nuevo"
-                />
-              )}
-              {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
-            </AnimatePresence>
-
-            <form onSubmit={handleSubmit}>
-              <FormField
-                id="email"
-                label="Correo"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                autoComplete="username"
-                icon={<MailIcon />}
-                required
-              />
-              <FormField
-                id="password"
-                label="Contraseña"
-                type="password"
-                value={password}
-                onChange={setPassword}
-                autoComplete="current-password"
-                icon={<LockIcon />}
-                required
-              />
-              <SubmitButton
-                label="Ingresar"
-                loadingLabel="Ingresando..."
-                isLoading={isSubmitting}
-              />
-            </form>
-          </motion.div>
+        <div>
+          <p className="auth-side-title">Nómina que cuadra.</p>
+          <p className="auth-side-note">
+            El ISR y el IMSS calculados conforme a la ley, y un recibo guardado por cada periodo.
+          </p>
         </div>
-      </div>
-    </PageTransition>
+      </aside>
+
+      <main className="auth-panel">
+        <Link className="brand-logo auth-mobile-brand" to="/">
+          <LogoMark />
+          <div className="brand-logo-text">
+            <span>CEN Payroll</span>
+            <small>Sistema de nómina</small>
+          </div>
+        </Link>
+
+        <div className="auth-card">
+          <h1 className="auth-card-title">Inicia sesión</h1>
+          <p className="auth-card-subtitle">Entra con la cuenta que te dio tu administrador.</p>
+
+          <AnimatePresence mode="wait">
+            {sessionExpired && !errorMessage && (
+              <ErrorMessage
+                key="expirada"
+                message="Tu sesión expiró por inactividad. Inicia sesión de nuevo para continuar."
+              />
+            )}
+            {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
+          </AnimatePresence>
+
+          <form onSubmit={handleSubmit}>
+            <FormField
+              id="email"
+              label="Correo"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              autoComplete="username"
+              inputMode="email"
+              placeholder="nombre@empresa.mx"
+              icon={<EnvelopeSimple weight="bold" />}
+              required
+            />
+            <FormField
+              id="password"
+              label="Contraseña"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              autoComplete="current-password"
+              placeholder="Tu contraseña"
+              icon={<Lock weight="bold" />}
+              required
+            />
+            <SubmitButton label="Ingresar" loadingLabel="Ingresando…" isLoading={isSubmitting} />
+          </form>
+        </div>
+
+        <ThemeToggle />
+
+        <p className="auth-panel-foot">
+          ¿No tienes cuenta? Tu administrador de nómina la crea por ti.
+        </p>
+      </main>
+    </div>
   );
 }
