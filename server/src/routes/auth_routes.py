@@ -19,7 +19,13 @@ def login(request: LoginRequest):
         data={
             "sub": employee["email"],
             "role": employee["role"],
-            "employee_id": employee["id"]
+            "employee_id": employee["id"],
+            "name": employee.get("name", "")
         }
     )
-    return TokenResponse(access_token=token, role=employee["role"])
+    return TokenResponse(
+        access_token=token,
+        role=employee["role"],
+        name=employee.get("name", ""),
+        employee_id=employee["id"]
+    )
