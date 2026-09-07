@@ -93,6 +93,24 @@ class PayrollRepository:
         finally:
             conn.close()
 
+    def list_recent_receipts(self, limit: int = 20) -> list:
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                query = (
+                    "SELECT r.id, r.employee_id, e.name AS employee_name, "
+                    "r.gross_salary, r.isr_deduction, r.imss_deduction, "
+                    "r.net_salary, r.created_at "
+                    "FROM payroll_receipts r "
+                    "JOIN employees e ON e.id = r.employee_id "
+                    "ORDER BY r.created_at DESC LIMIT %s;"
+                )
+                cur.execute(query, (limit,))
+                rows = cur.fetchall()
+                return [dict(row) for row in rows]
+        finally:
+            conn.close()
+
     def save_payroll_receipt(self, receipt_data: dict) -> int:
         conn = get_connection()
         try:
