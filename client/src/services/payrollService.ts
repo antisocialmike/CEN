@@ -55,3 +55,29 @@ export async function getRecentReceipts(): Promise<PayrollReceipt[]> {
   const response = await httpClient.get<{ receipts: PayrollReceipt[] }>("/payroll/receipts");
   return response.data.receipts;
 }
+
+function filenameFromHeaders(disposition: unknown, fallback: string): string {
+  if (typeof disposition !== "string") return fallback;
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  return match ? match[1] : fallback;
+}
+
+export async function downloadReceipt(receiptId: number): Promise<void> {
+  const response = await httpClient.get<Blob>(
+    `/payroll/receipts/${receiptId}/pdf`,
+    { responseType: "blob" }
+  );
+
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filenameFromHeaders(
+    response.headers["content-disposition"],
+    `recibo-${receiptId}.pdf`
+  );
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
