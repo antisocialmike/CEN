@@ -24,8 +24,32 @@ jobs:
       - name: Pytest and Coverage Gate
         run: python -m pytest server/tests/ --cov=server/src/ --cov-fail-under=80
 
+  client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Linting with ESLint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Vitest
+        run: pnpm test
+      - name: Production Build
+        run: pnpm build
+
   security-scan:
-    needs: lint-and-test
+    needs: [lint-and-test, client]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
