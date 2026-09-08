@@ -17,12 +17,13 @@ import {
 } from "../services/payrollService";
 import { listEmployees, EmployeeCreated } from "../services/employeeService";
 import { getStatusCode } from "../services/apiError";
-import { formatCurrency, formatDateShort } from "../services/format";
+import { currentPeriod, formatCurrency, formatDateShort } from "../services/format";
 
 export default function AdminDashboardPage() {
   const [employees, setEmployees] = useState<EmployeeCreated[] | null>(null);
   const [receipts, setReceipts] = useState<PayrollReceipt[] | null>(null);
   const [employeeId, setEmployeeId] = useState("");
+  const [period, setPeriod] = useState(currentPeriod());
   const [grossSalary, setGrossSalary] = useState("");
   const [result, setResult] = useState<PayrollCalculationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -74,17 +75,24 @@ export default function AdminDashboardPage() {
     setIsCalculating(true);
 
     try {
-      const calculation = await calculatePayroll(Number(employeeId), Number(grossSalary));
+      const calculation = await calculatePayroll(
+        Number(employeeId),
+        period,
+        Number(grossSalary)
+      );
       setResult(calculation);
       setReceipts((current) => {
         const row: PayrollReceipt = {
           id: calculation.receipt_id,
           employee_id: calculation.employee_id,
           employee_name: calculation.employee_name ?? selectedEmployee?.name,
+          period: `${calculation.period}-01`,
+          processed_by: calculation.processed_by,
           created_at: new Date().toISOString(),
           ...calculation.data
         };
-        return [row, ...(current ?? [])].slice(0, 20);
+        const rest = (current ?? []).filter((item) => item.id !== row.id);
+        return [row, ...rest].slice(0, 20);
       });
     } catch (error) {
       const status = getStatusCode(error);
@@ -92,6 +100,8 @@ export default function AdminDashboardPage() {
         setErrorMessage("Ese empleado ya no existe. Recarga la página para actualizar la lista.");
       } else if (status === 400) {
         setErrorMessage("El salario bruto no puede ser negativo.");
+      } else if (status === 422) {
+        setErrorMessage("Revisa el periodo y el salario: alguno tiene un formato inválido.");
       } else {
         setErrorMessage("No se pudo calcular la nómina. Revisa tu conexión e inténtalo de nuevo.");
       }
@@ -195,6 +205,15 @@ export default function AdminDashboardPage() {
                     hint={`${employees.length} ${
                       employees.length === 1 ? "persona registrada" : "personas registradas"
                     } en la nómina.`}
+                  />
+                  <FormField
+                    id="period"
+                    label="Periodo de nómina"
+                    type="month"
+                    value={period}
+                    onChange={setPeriod}
+                    hint="Un recibo por empleado y periodo. Recalcular el mismo mes reemplaza el recibo anterior."
+                    required
                   />
                   <FormField
                     id="grossSalary"
