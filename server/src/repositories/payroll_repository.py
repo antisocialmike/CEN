@@ -14,12 +14,12 @@ SELECT_APPLIED_MIGRATIONS = "SELECT filename FROM schema_migrations;"
 INSERT_MIGRATION = "INSERT INTO schema_migrations (filename) VALUES (%s);"
 
 SELECT_EMPLOYEE_BY_ID = (
-    "SELECT id, name, email, role, base_salary "
+    "SELECT id, name, email, role, base_salary, is_active "
     "FROM employees WHERE id = %s;"
 )
 SELECT_EMPLOYEE_BY_EMAIL = (
     "SELECT id, name, email, role, base_salary, password_hash, "
-    "must_change_password FROM employees WHERE email = %s;"
+    "must_change_password, is_active FROM employees WHERE email = %s;"
 )
 SELECT_PASSWORD_HASH = (
     "SELECT password_hash FROM employees WHERE id = %s;"
@@ -29,8 +29,16 @@ UPDATE_PASSWORD = (
     "WHERE id = %s;"
 )
 SELECT_EMPLOYEES = (
-    "SELECT id, name, email, role, base_salary "
-    "FROM employees ORDER BY name ASC;"
+    "SELECT id, name, email, role, base_salary, is_active "
+    "FROM employees ORDER BY is_active DESC, name ASC;"
+)
+UPDATE_EMPLOYEE = (
+    "UPDATE employees SET name = %s, email = %s, role = %s, base_salary = %s "
+    "WHERE id = %s RETURNING id, name, email, role, base_salary, is_active;"
+)
+UPDATE_EMPLOYEE_ACTIVE = (
+    "UPDATE employees SET is_active = %s WHERE id = %s "
+    "RETURNING id, name, email, role, base_salary, is_active;"
 )
 INSERT_EMPLOYEE = (
     "INSERT INTO employees (name, email, role, base_salary, password_hash, "
@@ -84,6 +92,25 @@ class PayrollRepository:
 
     def get_employee_by_email(self, email: str) -> Optional[dict]:
         return self._fetch_one(SELECT_EMPLOYEE_BY_EMAIL, (email,))
+
+    def update_employee(
+        self, employee_id: int, employee_data: dict
+    ) -> Optional[dict]:
+        return self._fetch_one(
+            UPDATE_EMPLOYEE,
+            (
+                employee_data["name"],
+                employee_data["email"],
+                employee_data["role"],
+                employee_data["base_salary"],
+                employee_id,
+            ),
+        )
+
+    def set_employee_active(
+        self, employee_id: int, is_active: bool
+    ) -> Optional[dict]:
+        return self._fetch_one(UPDATE_EMPLOYEE_ACTIVE, (is_active, employee_id))
 
     def get_password_hash(self, employee_id: int) -> Optional[str]:
         row = self._fetch_one(SELECT_PASSWORD_HASH, (employee_id,))
