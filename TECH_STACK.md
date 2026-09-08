@@ -7,8 +7,8 @@
 - Uvicorn: servidor ASGI.
 - Pydantic: validacion de datos de entrada y salida.
 - python-jose: emision y verificacion de tokens JWT.
-- passlib con bcrypt: hash y verificacion de contrasenas.
-- psycopg2: driver de conexion a PostgreSQL.
+- bcrypt: hash y verificacion de contrasenas.
+- psycopg2: driver de PostgreSQL, con pool de conexiones compartido.
 
 ## Base de datos
 
@@ -45,7 +45,16 @@
 - Patron Strategy para el calculo de ISR e IMSS, de forma que cada
   impuesto se pueda sustituir o extender de forma independiente.
 - Patron Repository para aislar el acceso a base de datos de la logica
-  de negocio.
+  de negocio, sobre un unico gestor de contexto que abre cursor,
+  confirma o revierte la transaccion y devuelve la conexion al pool.
+- Migraciones versionadas en `sql/migrations/`, aplicadas por la propia
+  API al arrancar y registradas en `schema_migrations`. Sin ORM ni
+  herramienta externa: son archivos SQL numerados que corren una sola vez
+  dentro de una transaccion. La base queda lista en cualquier entorno y no
+  solo en un volumen de Docker recien creado.
+- Un recibo por empleado y periodo, garantizado por indice unico y
+  resuelto con `INSERT ... ON CONFLICT DO UPDATE`, de forma que corregir
+  una nomina reemplaza el recibo en vez de duplicarlo.
 - Autenticacion sin estado basada en JWT, con control de acceso por rol
   (RBAC) para separar operaciones de administrador y empleado.
 - pnpm en lugar de npm: almacen direccionable por contenido, arbol de
