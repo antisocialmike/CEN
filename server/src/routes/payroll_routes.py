@@ -23,6 +23,12 @@ def calculate_payroll(
             detail="Empleado no encontrado",
         )
 
+    if not employee.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede calcular nomina de una cuenta desactivada",
+        )
+
     try:
         breakdown = payroll_service.process_salary(request.gross_salary)
     except ValueError as error:

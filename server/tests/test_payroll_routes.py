@@ -229,3 +229,19 @@ def test_lifespan_prepares_the_database_and_closes_the_pool():
 
     mock_bootstrap.assert_called_once()
     mock_close_pool.assert_called_once()
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_calculate_payroll_rejects_a_deactivated_employee(mock_get_employee, mock_save):
+    mock_get_employee.return_value = {"id": 3, "name": "Ana", "is_active": False}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={"employee_id": 3, "period": "2026-09", "gross_salary": 10000},
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 400
+    assert "desactivada" in response.json()["detail"]
+    mock_save.assert_not_called()

@@ -237,3 +237,53 @@ def test_create_employee_forces_the_first_password_change(repository, cursor):
     })
 
     assert "must_change_password) VALUES" in cursor.execute.call_args[0][0]
+
+
+def test_update_employee_returns_the_saved_row(repository, cursor):
+    cursor.fetchone.return_value = {
+        "id": 3, "name": "Ana", "email": "ana@cen.com",
+        "role": "employee", "base_salary": 19000, "is_active": True
+    }
+
+    result = repository.update_employee(3, {
+        "name": "Ana", "email": "ana@cen.com",
+        "role": "employee", "base_salary": 19000
+    })
+
+    assert result is not None
+    assert result["base_salary"] == 19000
+    assert cursor.execute.call_args[0][1] == (
+        "Ana", "ana@cen.com", "employee", 19000, 3
+    )
+
+
+def test_update_employee_for_a_missing_row(repository, cursor):
+    cursor.fetchone.return_value = None
+
+    result = repository.update_employee(999, {
+        "name": "Ana", "email": "ana@cen.com",
+        "role": "employee", "base_salary": 19000
+    })
+
+    assert result is None
+
+
+def test_set_employee_active(repository, cursor):
+    cursor.fetchone.return_value = {
+        "id": 3, "name": "Ana", "email": "ana@cen.com",
+        "role": "employee", "base_salary": 19000, "is_active": False
+    }
+
+    result = repository.set_employee_active(3, False)
+
+    assert result is not None
+    assert result["is_active"] is False
+    assert cursor.execute.call_args[0][1] == (False, 3)
+
+
+def test_list_employees_puts_the_active_ones_first(repository, cursor):
+    cursor.fetchall.return_value = []
+
+    repository.list_employees()
+
+    assert "ORDER BY is_active DESC" in cursor.execute.call_args[0][0]

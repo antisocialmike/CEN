@@ -12,6 +12,7 @@ class Employee(BaseModel):
     email: str
     role: EmployeeRole
     base_salary: float
+    is_active: bool = True
 
 
 class EmployeeCreateRequest(BaseModel):
@@ -20,6 +21,13 @@ class EmployeeCreateRequest(BaseModel):
     role: EmployeeRole
     base_salary: float = Field(ge=0)
     password: str = Field(min_length=8, max_length=72)
+
+
+class EmployeeUpdateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=150)
+    email: str = Field(min_length=3, max_length=150)
+    role: EmployeeRole
+    base_salary: float = Field(ge=0)
 
 
 class PayrollCalculationRequest(BaseModel):
