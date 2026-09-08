@@ -125,6 +125,20 @@ detecta y retira practicamente todo paquete comprometido. Ese archivo se
 copia dentro de la imagen, asi que la misma politica rige en el build del
 contenedor y no solo en tu maquina.
 
+## Comprobante de nomina
+
+Cada recibo se puede descargar en PDF, generado en el servidor con los
+datos que estan en la base y no con los que trae el navegador.
+
+Es un **comprobante interno**: lleva impreso que no es un CFDI y que no
+tiene validez fiscal ante el SAT. Emitir un CFDI de nomina exige un RFC
+activo, e.firma, un Certificado de Sello Digital y un contrato con un PAC,
+ademas de datos que este sistema no captura (RFC y CURP del empleado, NSS,
+regimen fiscal, tipo de contrato y jornada, y el desglose por claves de
+catalogo del SAT). El folio y el periodo de cada recibo son unicos, que es
+lo que permitiria amarrarlos a un UUID fiscal si algun dia se agrega esa
+capa.
+
 ## Endpoints principales
 
 - `POST /auth/login`: recibe `email` y `password`, devuelve un token JWT
@@ -148,6 +162,8 @@ contenedor y no solo en tu maquina.
 - `GET /payroll/receipts`: ultimos 20 recibos emitidos por todo el equipo,
   con el nombre del empleado. Requiere rol `admin`.
 - `GET /payroll/my-receipts`: recibos del empleado dueno del token.
+- `GET /payroll/receipts/{id}/pdf`: descarga el comprobante en PDF. Un
+  administrador puede bajar cualquiera; un empleado, solo los suyos.
 - `GET /health`: verificacion de disponibilidad del servicio.
 
 ## Pruebas

@@ -9,6 +9,8 @@
 - python-jose: emision y verificacion de tokens JWT.
 - bcrypt: hash y verificacion de contrasenas.
 - psycopg2: driver de PostgreSQL, con pool de conexiones compartido.
+- fpdf2: generacion del comprobante de nomina en PDF. Es Python puro,
+  sin dependencias del sistema, para no engordar la imagen del backend.
 
 ## Base de datos
 
