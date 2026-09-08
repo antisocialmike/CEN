@@ -57,6 +57,13 @@ SELECT_RECENT_RECEIPTS = (
     "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
     "ORDER BY r.period DESC, r.updated_at DESC LIMIT %s;"
 )
+SELECT_RECEIPT_BY_ID = (
+    "SELECT r.id, r.employee_id, e.name AS employee_name, "
+    "e.email AS employee_email, r.period, r.gross_salary, r.isr_deduction, "
+    "r.imss_deduction, r.net_salary, r.processed_by, r.created_at "
+    "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
+    "WHERE r.id = %s;"
+)
 UPSERT_RECEIPT = (
     "INSERT INTO payroll_receipts (employee_id, period, gross_salary, "
     "isr_deduction, imss_deduction, net_salary, processed_by) "
@@ -138,6 +145,9 @@ class PayrollRepository:
 
     def get_receipts_by_employee_id(self, employee_id: int) -> list:
         return self._fetch_all(SELECT_RECEIPTS_BY_EMPLOYEE, (employee_id,))
+
+    def get_receipt_by_id(self, receipt_id: int) -> Optional[dict]:
+        return self._fetch_one(SELECT_RECEIPT_BY_ID, (receipt_id,))
 
     def list_recent_receipts(self, limit: int = 20) -> list:
         return self._fetch_all(SELECT_RECENT_RECEIPTS, (limit,))
