@@ -36,8 +36,9 @@ export default function AdminDashboardPage() {
     let isMounted = true;
 
     listEmployees()
-      .then((result) => {
+      .then((all) => {
         if (!isMounted) return;
+        const result = all.filter((employee) => employee.is_active);
         setEmployees(result);
         if (result.length > 0) {
           setEmployeeId(String(result[0].id));
@@ -134,13 +135,21 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
             </div>
-            <button
-              className="btn btn-line"
-              onClick={() => navigate("/admin/nuevo-empleado")}
-            >
-              <UsersThree weight="bold" />
-              Dar de alta empleado
-            </button>
+            <div className="dashboard-panel-actions">
+              <button
+                className="btn btn-line"
+                onClick={() => navigate("/admin/empleados")}
+              >
+                <UsersThree weight="bold" />
+                Empleados
+              </button>
+              <button
+                className="btn btn-line"
+                onClick={() => navigate("/admin/nuevo-empleado")}
+              >
+                Dar de alta empleado
+              </button>
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
