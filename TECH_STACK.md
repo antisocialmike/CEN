@@ -61,6 +61,9 @@
   una nomina reemplaza el recibo en vez de duplicarlo.
 - Autenticacion sin estado basada en JWT, con control de acceso por rol
   (RBAC) para separar operaciones de administrador y empleado.
+- Baja logica en vez de borrado: los empleados se desactivan y la clave
+  foranea de los recibos es `ON DELETE RESTRICT`, de modo que el
+  historico de nomina no se puede perder ni por accidente.
 - Contrasenas temporales de un solo uso: toda cuenta creada por un
   administrador nace marcada en `must_change_password`, y el cliente
   bloquea la navegacion hasta que la persona define la suya. Asi nadie

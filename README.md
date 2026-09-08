@@ -139,6 +139,12 @@ contenedor y no solo en tu maquina.
   indica en `created`. Cada recibo guarda quien lo proceso.
 - `GET /employees` y `POST /employees`: lista y da de alta empleados.
   Requieren rol `admin`.
+- `PUT /employees/{id}`: corrige nombre, correo, rol y salario base.
+- `POST /employees/{id}/deactivate` y `.../activate`: baja y alta logica.
+  Dar de baja conserva los recibos, impide iniciar sesion y bloquea el
+  calculo de nomina de esa persona. Un administrador no puede quitarse a
+  si mismo el rol ni desactivar su propia cuenta, para que nadie se quede
+  fuera del sistema.
 - `GET /payroll/receipts`: ultimos 20 recibos emitidos por todo el equipo,
   con el nombre del empleado. Requiere rol `admin`.
 - `GET /payroll/my-receipts`: recibos del empleado dueno del token.
