@@ -1,12 +1,12 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from psycopg2 import errors as psycopg2_errors
-from server.src.models.payroll_model import Employee, EmployeeCreateRequest
-from server.src.middlewares.auth_middleware import require_role, hash_password
-from server.src.repositories.payroll_repository import PayrollRepository
+
+from fastapi import APIRouter, Depends
+
+from ..middlewares.auth_middleware import hash_password, require_role
+from ..models.payroll_model import Employee, EmployeeCreateRequest
+from ..repositories.payroll_repository import payroll_repository
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
-payroll_repository = PayrollRepository()
 
 
 @router.get("", response_model=List[Employee])
@@ -17,23 +17,19 @@ def list_employees(user: dict = Depends(require_role("admin"))):
 @router.post("", response_model=Employee)
 def create_employee(
     request: EmployeeCreateRequest,
-    user: dict = Depends(require_role("admin"))
+    user: dict = Depends(require_role("admin")),
 ):
-    try:
-        employee_id = payroll_repository.create_employee({
-            "name": request.name,
-            "email": request.email,
-            "role": request.role,
-            "base_salary": request.base_salary,
-            "password_hash": hash_password(request.password)
-        })
-    except psycopg2_errors.UniqueViolation:
-        raise HTTPException(status_code=409, detail="El correo ya esta registrado")
-
+    employee_id = payroll_repository.create_employee({
+        "name": request.name,
+        "email": request.email,
+        "role": request.role,
+        "base_salary": request.base_salary,
+        "password_hash": hash_password(request.password),
+    })
     return Employee(
         id=employee_id,
         name=request.name,
         email=request.email,
         role=request.role,
-        base_salary=request.base_salary
+        base_salary=request.base_salary,
     )

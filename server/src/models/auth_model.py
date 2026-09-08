@@ -1,5 +1,8 @@
 from typing import Optional
+
 from pydantic import BaseModel
+
+from .payroll_model import EmployeeRole
 
 
 class LoginRequest(BaseModel):
@@ -10,6 +13,6 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    role: str
+    role: EmployeeRole
     name: str = ""
     employee_id: Optional[int] = None

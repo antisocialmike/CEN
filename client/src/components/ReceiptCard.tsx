@@ -16,9 +16,9 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
           </span>
 
           <span>
-            <p className="receipt-card-month">{formatMonth(receipt.created_at)}</p>
+            <p className="receipt-card-month">{formatMonth(receipt.period)}</p>
             <p className="receipt-card-date">
-              Recibo #{receipt.id} · {formatDateShort(receipt.created_at)}
+              Recibo #{receipt.id} · emitido el {formatDateShort(receipt.created_at)}
             </p>
           </span>
         </span>

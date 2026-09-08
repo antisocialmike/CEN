@@ -18,10 +18,9 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install flake8 pytest pytest-cov psycopg2-binary
+          pip install -r requirements-dev.txt
       - name: Linting with Flake8
-        run: flake8 server/src/ --max-line-length=100
+        run: flake8 server/
       - name: Pytest and Coverage Gate
         run: python -m pytest server/tests/ --cov=server/src/ --cov-fail-under=80
 

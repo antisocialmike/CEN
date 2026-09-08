@@ -4,14 +4,18 @@ services:
     container_name: cen_postgres_db
     restart: always
     environment:
-      POSTGRES_DB: cen_payroll_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: ${DB_NAME:-cen_payroll_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrespassword}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-cen_payroll_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   api:
     build:
@@ -21,16 +25,32 @@ services:
     restart: always
     environment:
       DB_HOST: db
-      DB_NAME: cen_payroll_db
-      DB_USER: postgres
-      DB_PASSWORD: postgrespassword
       DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-cen_payroll_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-cen-secret-payroll-key-for-jwt-tokens}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@cen.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin1234}
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./client
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    container_name: cen_payroll_web
+    restart: always
+    ports:
+      - "5173:8080"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:

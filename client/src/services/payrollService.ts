@@ -9,8 +9,10 @@ export interface PayrollBreakdown {
 
 export interface PayrollCalculationResult {
   receipt_id: number;
+  created: boolean;
   employee_id: number;
   employee_name?: string;
+  period: string;
   data: PayrollBreakdown;
   processed_by: string;
 }
@@ -19,19 +21,24 @@ export interface PayrollReceipt {
   id: number;
   employee_id: number;
   employee_name?: string;
+  period: string;
   gross_salary: number;
   isr_deduction: number;
   imss_deduction: number;
   net_salary: number;
+  processed_by: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export async function calculatePayroll(
   employeeId: number,
+  period: string,
   grossSalary: number
 ): Promise<PayrollCalculationResult> {
   const response = await httpClient.post<PayrollCalculationResult>("/payroll/calculate", {
     employee_id: employeeId,
+    period,
     gross_salary: grossSalary
   });
   return response.data;

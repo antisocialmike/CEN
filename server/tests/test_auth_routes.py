@@ -1,11 +1,11 @@
 from unittest.mock import patch
+
 from fastapi.testclient import TestClient
-from passlib.context import CryptContext
 
 from server.src.main import app
+from server.src.middlewares.auth_middleware import hash_password
 
 client = TestClient(app)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 @patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
@@ -14,7 +14,7 @@ def test_login_success(mock_get_employee):
         "id": 1,
         "email": "admin@cen.com",
         "role": "admin",
-        "password_hash": pwd_context.hash("clave123")
+        "password_hash": hash_password("clave123")
     }
 
     response = client.post(
@@ -35,7 +35,7 @@ def test_login_wrong_password(mock_get_employee):
         "id": 1,
         "email": "admin@cen.com",
         "role": "admin",
-        "password_hash": pwd_context.hash("clave123")
+        "password_hash": hash_password("clave123")
     }
 
     response = client.post(

@@ -12,6 +12,10 @@ const dayLong = new Intl.DateTimeFormat("es-MX", {
 });
 const dayShort = new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short" });
 
+function toLocalDate(value: string): Date {
+  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value);
+}
+
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -21,13 +25,18 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatMonth(value: string): string {
-  return capitalize(monthLong.format(new Date(value)));
+  return capitalize(monthLong.format(toLocalDate(value)));
 }
 
 export function formatDate(value: string): string {
-  return capitalize(dayLong.format(new Date(value)));
+  return capitalize(dayLong.format(toLocalDate(value)));
 }
 
 export function formatDateShort(value: string): string {
-  return dayShort.format(new Date(value)).replace(/-/g, " ").replace(/\./g, "");
+  return dayShort.format(toLocalDate(value)).replace(/-/g, " ").replace(/\./g, "");
+}
+
+export function currentPeriod(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
