@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import ReceiptDownloadButton from "./ReceiptDownloadButton";
 import { PayrollCalculationResult } from "../services/payrollService";
 import { formatCurrency, formatMonth } from "../services/format";
 
@@ -44,6 +45,10 @@ export default function PayrollResultCard({ result }: PayrollResultCardProps) {
         {result.created ? "Guardado como recibo" : "Recibo reemplazado"} #{result.receipt_id}
         {result.employee_name ? ` de ${result.employee_name}` : ""}. Ya es visible en su portal.
       </p>
+
+      <div className="receipt-card-footer">
+        <ReceiptDownloadButton receiptId={result.receipt_id} />
+      </div>
     </motion.div>
   );
 }

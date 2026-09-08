@@ -287,3 +287,22 @@ def test_list_employees_puts_the_active_ones_first(repository, cursor):
     repository.list_employees()
 
     assert "ORDER BY is_active DESC" in cursor.execute.call_args[0][0]
+
+
+def test_get_receipt_by_id_joins_the_employee(repository, cursor):
+    cursor.fetchone.return_value = {
+        "id": 42, "employee_id": 3, "employee_name": "Ana",
+        "employee_email": "ana@cen.com", "net_salary": 17804.14
+    }
+
+    result = repository.get_receipt_by_id(42)
+
+    assert result is not None
+    assert result["employee_email"] == "ana@cen.com"
+    assert "JOIN employees" in cursor.execute.call_args[0][0]
+
+
+def test_get_receipt_by_id_not_found(repository, cursor):
+    cursor.fetchone.return_value = None
+
+    assert repository.get_receipt_by_id(999) is None

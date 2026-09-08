@@ -1,6 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from ..controllers.payroll_controller import PayrollService
+from ..controllers.receipt_pdf import (
+    build_receipt_pdf,
+    build_receipt_response_headers,
+)
 from ..middlewares.auth_middleware import get_current_user, require_role
 from ..models.payroll_model import PayrollCalculationRequest
 from ..repositories.payroll_repository import payroll_repository
@@ -71,3 +75,29 @@ def get_my_receipts(user: dict = Depends(get_current_user)):
 
     receipts = payroll_repository.get_receipts_by_employee_id(employee_id)
     return {"employee_id": employee_id, "receipts": receipts}
+
+
+@router.get("/receipts/{receipt_id}/pdf")
+def download_receipt(
+    receipt_id: int,
+    user: dict = Depends(get_current_user),
+):
+    receipt = payroll_repository.get_receipt_by_id(receipt_id)
+    if receipt is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Recibo no encontrado",
+        )
+
+    is_owner = receipt["employee_id"] == user.get("employee_id")
+    if user.get("role") != "admin" and not is_owner:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Este recibo no es tuyo",
+        )
+
+    return Response(
+        content=build_receipt_pdf(receipt),
+        media_type="application/pdf",
+        headers=build_receipt_response_headers(receipt),
+    )

@@ -2103,3 +2103,22 @@ p {
     flex-direction: column;
   }
 }
+
+.receipt-card-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--cal-3);
+}
+
+.receipt-card-download {
+  font-size: 13.5px;
+}
+
+.receipt-card-download-error {
+  font-size: 13px;
+  color: var(--danger-text);
+}

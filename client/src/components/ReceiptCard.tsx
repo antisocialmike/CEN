@@ -1,4 +1,5 @@
 import { Receipt } from "@phosphor-icons/react";
+import ReceiptDownloadButton from "./ReceiptDownloadButton";
 import { PayrollReceipt } from "../services/payrollService";
 import { formatCurrency, formatDateShort, formatMonth } from "../services/format";
 
@@ -41,6 +42,10 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
         <span>IMSS retenido</span>
         <span>− {formatCurrency(receipt.imss_deduction)}</span>
       </div>
+
+      <footer className="receipt-card-footer">
+        <ReceiptDownloadButton receiptId={receipt.id} />
+      </footer>
     </article>
   );
 }

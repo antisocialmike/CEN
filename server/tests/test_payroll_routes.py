@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -245,3 +245,77 @@ def test_calculate_payroll_rejects_a_deactivated_employee(mock_get_employee, moc
     assert response.status_code == 400
     assert "desactivada" in response.json()["detail"]
     mock_save.assert_not_called()
+
+
+def _receipt_row(employee_id=7):
+    return {
+        "id": 42,
+        "employee_id": employee_id,
+        "employee_name": "Ana Lopez",
+        "employee_email": "ana@cen.com",
+        "period": date(2026, 9, 1),
+        "gross_salary": 21000,
+        "isr_deduction": 2612.86,
+        "imss_deduction": 583.0,
+        "net_salary": 17804.14,
+        "processed_by": "admin@cen.com",
+        "created_at": datetime(2026, 9, 8, 10, 30)
+    }
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_receipt_by_id")
+def test_download_receipt_as_its_owner(mock_get_receipt):
+    mock_get_receipt.return_value = _receipt_row(employee_id=7)
+
+    response = client.get(
+        "/payroll/receipts/42/pdf",
+        headers={"Authorization": f"Bearer {_employee_token(employee_id=7)}"}
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert "recibo-42-2026-09.pdf" in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF-")
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_receipt_by_id")
+def test_download_receipt_as_admin_for_anyone(mock_get_receipt):
+    mock_get_receipt.return_value = _receipt_row(employee_id=99)
+
+    response = client.get(
+        "/payroll/receipts/42/pdf",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.content.startswith(b"%PDF-")
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_receipt_by_id")
+def test_download_receipt_of_somebody_else(mock_get_receipt):
+    mock_get_receipt.return_value = _receipt_row(employee_id=99)
+
+    response = client.get(
+        "/payroll/receipts/42/pdf",
+        headers={"Authorization": f"Bearer {_employee_token(employee_id=7)}"}
+    )
+
+    assert response.status_code == 403
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_receipt_by_id")
+def test_download_receipt_that_does_not_exist(mock_get_receipt):
+    mock_get_receipt.return_value = None
+
+    response = client.get(
+        "/payroll/receipts/999/pdf",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 404
+
+
+def test_download_receipt_requires_authentication():
+    response = client.get("/payroll/receipts/42/pdf")
+
+    assert response.status_code == 401
