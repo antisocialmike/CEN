@@ -5,12 +5,26 @@ export type Theme = "light" | "dark";
 
 const KEY = "cen_theme";
 
-export function resolveTheme(): Theme {
+function readStoredTheme(): string | null {
   try {
-    const stored = localStorage.getItem(KEY);
-    if (stored === "light" || stored === "dark") return stored;
+    return localStorage.getItem(KEY);
   } catch {
+    return null;
   }
+}
+
+function storeTheme(theme: Theme): boolean {
+  try {
+    localStorage.setItem(KEY, theme);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveTheme(): Theme {
+  const stored = readStoredTheme();
+  if (stored === "light" || stored === "dark") return stored;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -21,17 +35,11 @@ export default function ThemeToggle() {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
 
     function onSystemChange(event: MediaQueryListEvent) {
-      let hasChoice = false;
-      try {
-        hasChoice = localStorage.getItem(KEY) !== null;
-      } catch {
-        hasChoice = false;
-      }
-      if (!hasChoice) {
-        const next: Theme = event.matches ? "dark" : "light";
-        setTheme(next);
-        document.documentElement.dataset.theme = next;
-      }
+      if (readStoredTheme() !== null) return;
+
+      const next: Theme = event.matches ? "dark" : "light";
+      setTheme(next);
+      document.documentElement.dataset.theme = next;
     }
 
     media.addEventListener("change", onSystemChange);
@@ -50,10 +58,7 @@ export default function ThemeToggle() {
       requestAnimationFrame(() => root.removeAttribute("data-theme-switching"));
     });
 
-    try {
-      localStorage.setItem(KEY, next);
-    } catch {
-    }
+    storeTheme(next);
   }
 
   const goingTo = theme === "dark" ? "claro" : "oscuro";

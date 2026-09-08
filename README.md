@@ -146,19 +146,45 @@ contenedor y no solo en tu maquina.
 
 ## Pruebas
 
-Las pruebas no necesitan una base de datos: la capa de acceso a datos se
-sustituye por dobles en cada caso.
+Las del servidor no necesitan una base de datos: la capa de acceso a
+datos se sustituye por dobles en cada caso.
 
 ```
 pytest server/tests/ --cov=server/src/ --cov-fail-under=80
 ```
 
+Las del cliente corren con Vitest sobre jsdom y cubren las piezas con
+logica propia: el formateo de importes y periodos, la sesion en
+`localStorage` y las redirecciones de `ProtectedRoute`.
+
+```
+pnpm --dir client test
+pnpm --dir client lint
+pnpm --dir client typecheck
+```
+
 ## Integracion continua
 
 El pipeline de GitHub Actions (`.github/workflows/ci-cd.yml`) ejecuta en
-cada push y pull request hacia `develop` y `main`:
+cada push y pull request hacia `develop` y `main` dos trabajos en
+paralelo, y solo si ambos pasan continua con el analisis de seguridad y
+el despliegue.
+
+Servidor:
 
 1. Linting con flake8, con la configuracion de `.flake8`.
 2. Pruebas unitarias e integracion con pytest, con un umbral minimo de
    cobertura del 80%.
-3. Analisis estatico de seguridad con Bandit.
+
+Cliente:
+
+1. Linting con ESLint, que falla ante cualquier advertencia.
+2. Verificacion de tipos con `tsc`.
+3. Pruebas con Vitest.
+4. Compilacion de produccion, para que un fallo de build no llegue a la
+   imagen de Docker.
+
+Y despues, sobre ambos:
+
+1. Analisis estatico de seguridad con Bandit.
+2. Despliegue, solo en `main`.

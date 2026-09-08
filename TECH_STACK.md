@@ -16,13 +16,16 @@
 
 ## Calidad y seguridad
 
-- flake8: estilo y formato de codigo (PEP 8).
-- pytest y pytest-cov: pruebas unitarias, de integracion y cobertura.
+- flake8: estilo y formato de codigo del servidor (PEP 8).
+- pytest y pytest-cov: pruebas del servidor y cobertura.
+- ESLint con typescript-eslint: estilo y errores del cliente, sin
+  tolerancia a advertencias.
+- Vitest con Testing Library sobre jsdom: pruebas del cliente.
 - Bandit: analisis estatico de seguridad (SAST).
 
 ## Frontend
 
-- React 19 con TypeScript.
+- React 19 con TypeScript 6, la version que soporta typescript-eslint.
 - Vite: servidor de desarrollo y empaquetado.
 - React Router: enrutado y proteccion de rutas por rol.
 - Motion: transiciones y revelados.
@@ -37,8 +40,9 @@
   el cliente.
 - nginx (imagen sin privilegios): sirve el cliente compilado, con historia
   de rutas para React Router y cache inmutable en los assets con hash.
-- GitHub Actions: integracion continua (lint, pruebas y analisis de
-  seguridad en cada push y pull request).
+- GitHub Actions: integracion continua sobre servidor y cliente en
+  paralelo (lint, tipos, pruebas, build y analisis de seguridad en cada
+  push y pull request).
 
 ## Decisiones tecnicas
 
