@@ -1,5 +1,8 @@
+from datetime import date
 from unittest.mock import patch
+
 from fastapi.testclient import TestClient
+from psycopg2 import OperationalError
 
 from server.src.main import app
 from server.src.middlewares.auth_middleware import create_access_token
@@ -22,21 +25,67 @@ def _employee_token(employee_id=None):
 @patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
 def test_calculate_payroll_success(mock_get_employee, mock_save_receipt):
     mock_get_employee.return_value = {"id": 1, "name": "Juan"}
-    mock_save_receipt.return_value = 55
+    mock_save_receipt.return_value = {"id": 55, "created": True}
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "gross_salary": 10000},
+        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["receipt_id"] == 55
+    assert body["created"] is True
+    assert body["period"] == "2026-09"
     assert body["employee_id"] == 1
     assert body["data"]["net_salary"] == 9569.7
     assert body["processed_by"] == "admin1"
-    mock_save_receipt.assert_called_once()
+    saved = mock_save_receipt.call_args[0][0]
+    assert saved["period"] == date(2026, 9, 1)
+    assert saved["processed_by"] == "admin1"
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_calculate_payroll_replacing_an_existing_period(mock_get_employee, mock_save):
+    mock_get_employee.return_value = {"id": 1, "name": "Juan"}
+    mock_save.return_value = {"id": 55, "created": False}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["created"] is False
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_calculate_payroll_rejects_a_malformed_period(mock_get_employee):
+    mock_get_employee.return_value = {"id": 1, "name": "Juan"}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={"employee_id": 1, "period": "septiembre", "gross_salary": 10000},
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_calculate_payroll_rejects_an_impossible_month(mock_get_employee):
+    mock_get_employee.return_value = {"id": 1, "name": "Juan"}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={"employee_id": 1, "period": "2026-13", "gross_salary": 10000},
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
 
 
 @patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
@@ -45,7 +94,7 @@ def test_calculate_payroll_employee_not_found(mock_get_employee):
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 999, "gross_salary": 10000},
+        json={"employee_id": 999, "period": "2026-09", "gross_salary": 10000},
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
@@ -58,7 +107,7 @@ def test_calculate_payroll_negative_salary(mock_get_employee):
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "gross_salary": -500},
+        json={"employee_id": 1, "period": "2026-09", "gross_salary": -500},
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
@@ -68,7 +117,7 @@ def test_calculate_payroll_negative_salary(mock_get_employee):
 def test_calculate_payroll_requires_admin_role():
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "gross_salary": 10000},
+        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
         headers={"Authorization": f"Bearer {_employee_token()}"}
     )
 
@@ -78,7 +127,7 @@ def test_calculate_payroll_requires_admin_role():
 def test_calculate_payroll_requires_authentication():
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "gross_salary": 10000}
+        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000}
     )
 
     assert response.status_code == 401
@@ -126,3 +175,57 @@ def test_health_check():
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.list_recent_receipts")
+def test_list_recent_receipts_success(mock_list_receipts):
+    mock_list_receipts.return_value = [
+        {
+            "id": 1, "employee_id": 7, "employee_name": "Ana Lopez",
+            "gross_salary": 10000.0, "isr_deduction": 192.8,
+            "imss_deduction": 237.5, "net_salary": 9569.7,
+            "created_at": "2026-09-01T10:00:00"
+        }
+    ]
+
+    response = client.get(
+        "/payroll/receipts",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()["receipts"]) == 1
+    mock_list_receipts.assert_called_once_with(20)
+
+
+def test_list_recent_receipts_requires_admin_role():
+    response = client.get(
+        "/payroll/receipts",
+        headers={"Authorization": f"Bearer {_employee_token()}"}
+    )
+
+    assert response.status_code == 403
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_unavailable_database_answers_503(mock_get_employee):
+    mock_get_employee.side_effect = OperationalError("conexion rechazada")
+
+    response = client.post(
+        "/payroll/calculate",
+        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Base de datos no disponible"
+
+
+def test_lifespan_prepares_the_database_and_closes_the_pool():
+    with patch("server.src.main.bootstrap_database") as mock_bootstrap, \
+            patch("server.src.main.close_pool") as mock_close_pool:
+        with TestClient(app):
+            pass
+
+    mock_bootstrap.assert_called_once()
+    mock_close_pool.assert_called_once()
