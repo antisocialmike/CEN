@@ -15,6 +15,14 @@ export interface EmployeeCreated {
   email: string;
   role: UserRole;
   base_salary: number;
+  is_active: boolean;
+}
+
+export interface EmployeeUpdateInput {
+  name: string;
+  email: string;
+  role: UserRole;
+  baseSalary: number;
 }
 
 export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeCreated> {
@@ -30,5 +38,28 @@ export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeC
 
 export async function listEmployees(): Promise<EmployeeCreated[]> {
   const response = await httpClient.get<EmployeeCreated[]>("/employees");
+  return response.data;
+}
+
+export async function updateEmployee(
+  id: number,
+  input: EmployeeUpdateInput
+): Promise<EmployeeCreated> {
+  const response = await httpClient.put<EmployeeCreated>(`/employees/${id}`, {
+    name: input.name,
+    email: input.email,
+    role: input.role,
+    base_salary: input.baseSalary
+  });
+  return response.data;
+}
+
+export async function deactivateEmployee(id: number): Promise<EmployeeCreated> {
+  const response = await httpClient.post<EmployeeCreated>(`/employees/${id}/deactivate`);
+  return response.data;
+}
+
+export async function activateEmployee(id: number): Promise<EmployeeCreated> {
+  const response = await httpClient.post<EmployeeCreated>(`/employees/${id}/activate`);
   return response.data;
 }
