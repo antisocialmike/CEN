@@ -156,3 +156,40 @@ def test_change_password_requires_authentication():
     )
 
     assert response.status_code == 401
+
+
+@patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
+def test_login_rejects_a_deactivated_account(mock_get_employee):
+    mock_get_employee.return_value = {
+        "id": 3,
+        "email": "ana@cen.com",
+        "role": "employee",
+        "password_hash": hash_password("clave123"),
+        "is_active": False
+    }
+
+    response = client.post(
+        "/auth/login",
+        json={"email": "ana@cen.com", "password": "clave123"}
+    )
+
+    assert response.status_code == 403
+    assert "desactivada" in response.json()["detail"]
+
+
+@patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
+def test_login_checks_the_password_before_the_account_state(mock_get_employee):
+    mock_get_employee.return_value = {
+        "id": 3,
+        "email": "ana@cen.com",
+        "role": "employee",
+        "password_hash": hash_password("clave123"),
+        "is_active": False
+    }
+
+    response = client.post(
+        "/auth/login",
+        json={"email": "ana@cen.com", "password": "equivocada"}
+    )
+
+    assert response.status_code == 401

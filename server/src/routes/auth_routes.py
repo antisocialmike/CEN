@@ -27,6 +27,12 @@ def login(request: LoginRequest):
             detail="Credenciales invalidas",
         )
 
+    if not employee.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta cuenta esta desactivada",
+        )
+
     name = employee.get("name", "")
     token = create_access_token(data={
         "sub": employee["email"],
