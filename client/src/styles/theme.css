@@ -1044,9 +1044,29 @@ p {
   background: var(--cal);
 }
 
+.auth-page.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.auth-page.is-single .auth-mobile-brand {
+  display: flex;
+}
+
 .auth-card {
   width: 100%;
   max-width: 400px;
+}
+
+.auth-card-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--s-5);
+  color: var(--ultramar);
+  background: var(--cal-2);
+  font-size: 22px;
 }
 
 .auth-card-title {

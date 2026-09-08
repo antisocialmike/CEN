@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { SignOut } from "@phosphor-icons/react";
+import { Key, SignOut } from "@phosphor-icons/react";
 import { LogoMark } from "./icons";
 import ThemeToggle from "./ThemeToggle";
 import { logout } from "../services/authService";
@@ -40,6 +40,13 @@ export default function DashboardTopbar({ context }: DashboardTopbarProps) {
           </span>
         </span>
         <ThemeToggle />
+        <button
+          className="logout-link"
+          onClick={() => navigate("/cambiar-contrasena")}
+        >
+          <Key weight="bold" />
+          <span>Contraseña</span>
+        </button>
         <button className="logout-link" onClick={handleLogout}>
           <SignOut weight="bold" />
           <span>Cerrar sesión</span>

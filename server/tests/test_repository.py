@@ -3,7 +3,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from server.src.repositories.payroll_repository import PayrollRepository
+from server.src.repositories.payroll_repository import (
+    MIGRATIONS_DIR,
+    PayrollRepository,
+)
 
 
 @pytest.fixture
@@ -21,32 +24,31 @@ def repository():
     return PayrollRepository()
 
 
+def _migration_names():
+    return sorted(path.name for path in MIGRATIONS_DIR.glob("*.sql"))
+
+
 def test_run_migrations_applies_every_pending_file(repository, cursor):
     cursor.fetchall.return_value = []
 
     applied = repository.run_migrations()
 
-    assert applied == [
-        "001_initial_schema.sql",
-        "002_receipt_period_and_audit.sql",
-    ]
+    assert applied == _migration_names()
     executed = " ".join(str(call[0][0]) for call in cursor.execute.call_args_list)
+    assert "CREATE TABLE IF NOT EXISTS schema_migrations" in executed
     assert "CREATE TABLE IF NOT EXISTS employees" in executed
-    assert "ADD COLUMN IF NOT EXISTS period DATE" in executed
 
 
 def test_run_migrations_skips_the_applied_ones(repository, cursor):
-    cursor.fetchall.return_value = [{"filename": "001_initial_schema.sql"}]
+    names = _migration_names()
+    cursor.fetchall.return_value = [{"filename": names[0]}]
 
-    applied = repository.run_migrations()
-
-    assert applied == ["002_receipt_period_and_audit.sql"]
+    assert repository.run_migrations() == names[1:]
 
 
 def test_run_migrations_does_nothing_when_up_to_date(repository, cursor):
     cursor.fetchall.return_value = [
-        {"filename": "001_initial_schema.sql"},
-        {"filename": "002_receipt_period_and_audit.sql"},
+        {"filename": name} for name in _migration_names()
     ]
 
     assert repository.run_migrations() == []
@@ -201,3 +203,37 @@ def test_save_payroll_receipt_without_returned_id(repository, cursor):
 
     with pytest.raises(RuntimeError, match="ID del recibo"):
         repository.save_payroll_receipt(_receipt())
+
+
+def test_get_password_hash_found(repository, cursor):
+    cursor.fetchone.return_value = {"password_hash": "hashed"}
+
+    assert repository.get_password_hash(7) == "hashed"
+
+
+def test_get_password_hash_for_a_missing_employee(repository, cursor):
+    cursor.fetchone.return_value = None
+
+    assert repository.get_password_hash(999) is None
+
+
+def test_update_password_clears_the_forced_change(repository, cursor):
+    repository.update_password(7, "nuevo_hash")
+
+    query, params = cursor.execute.call_args[0]
+    assert "must_change_password = FALSE" in query
+    assert params == ("nuevo_hash", 7)
+
+
+def test_create_employee_forces_the_first_password_change(repository, cursor):
+    cursor.fetchone.return_value = {"id": 10}
+
+    repository.create_employee({
+        "name": "Juan Perez",
+        "email": "juan@cen.com",
+        "role": "employee",
+        "base_salary": 12000,
+        "password_hash": "hashed"
+    })
+
+    assert "must_change_password) VALUES" in cursor.execute.call_args[0][0]

@@ -18,16 +18,23 @@ SELECT_EMPLOYEE_BY_ID = (
     "FROM employees WHERE id = %s;"
 )
 SELECT_EMPLOYEE_BY_EMAIL = (
-    "SELECT id, name, email, role, base_salary, password_hash "
-    "FROM employees WHERE email = %s;"
+    "SELECT id, name, email, role, base_salary, password_hash, "
+    "must_change_password FROM employees WHERE email = %s;"
+)
+SELECT_PASSWORD_HASH = (
+    "SELECT password_hash FROM employees WHERE id = %s;"
+)
+UPDATE_PASSWORD = (
+    "UPDATE employees SET password_hash = %s, must_change_password = FALSE "
+    "WHERE id = %s;"
 )
 SELECT_EMPLOYEES = (
     "SELECT id, name, email, role, base_salary "
     "FROM employees ORDER BY name ASC;"
 )
 INSERT_EMPLOYEE = (
-    "INSERT INTO employees (name, email, role, base_salary, password_hash) "
-    "VALUES (%s, %s, %s, %s, %s) RETURNING id;"
+    "INSERT INTO employees (name, email, role, base_salary, password_hash, "
+    "must_change_password) VALUES (%s, %s, %s, %s, %s, TRUE) RETURNING id;"
 )
 SELECT_RECEIPTS_BY_EMPLOYEE = (
     "SELECT id, employee_id, period, gross_salary, isr_deduction, "
@@ -77,6 +84,14 @@ class PayrollRepository:
 
     def get_employee_by_email(self, email: str) -> Optional[dict]:
         return self._fetch_one(SELECT_EMPLOYEE_BY_EMAIL, (email,))
+
+    def get_password_hash(self, employee_id: int) -> Optional[str]:
+        row = self._fetch_one(SELECT_PASSWORD_HASH, (employee_id,))
+        return row["password_hash"] if row else None
+
+    def update_password(self, employee_id: int, password_hash: str) -> None:
+        with db_cursor() as cursor:
+            cursor.execute(UPDATE_PASSWORD, (password_hash, employee_id))
 
     def list_employees(self) -> list:
         return self._fetch_all(SELECT_EMPLOYEES)

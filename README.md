@@ -63,7 +63,10 @@ queda a medias. Para cambiar el esquema se agrega un archivo nuevo con el
 siguiente numero; los ya aplicados no se editan.
 
 Las credenciales por defecto para el primer acceso son `admin@cen.com` y
-`admin1234`. Cambiarlas antes de exponer el sistema.
+`admin1234`. En una base nueva esa cuenta arranca marcada para cambio de
+contrasena: el primer inicio de sesion obliga a definir una propia antes
+de poder usar el sistema. Lo mismo ocurre con cada empleado que da de alta
+un administrador, que entra con una contrasena temporal y debe sustituirla.
 
 ## Ejecucion con Docker Compose
 
@@ -125,7 +128,10 @@ contenedor y no solo en tu maquina.
 ## Endpoints principales
 
 - `POST /auth/login`: recibe `email` y `password`, devuelve un token JWT
-  con el rol del empleado.
+  con el rol del empleado y `must_change_password`, que indica si la
+  cuenta sigue usando la contrasena temporal que le asignaron.
+- `POST /auth/password`: cambia la contrasena del dueno del token. Exige
+  la contrasena actual, rechaza reutilizar la misma y responde `204`.
 - `POST /payroll/calculate`: recibe `employee_id`, `period` (`AAAA-MM`) y
   `gross_salary`, calcula ISR e IMSS, persiste el recibo y lo devuelve.
   Requiere un token con rol `admin`. Solo existe un recibo por empleado y

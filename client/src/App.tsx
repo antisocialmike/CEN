@@ -9,6 +9,7 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SignupPage = lazy(() => import("./pages/SignupPage"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const EmployeeDashboardPage = lazy(() => import("./pages/EmployeeDashboardPage"));
+const ChangePasswordPage = lazy(() => import("./pages/ChangePasswordPage"));
 
 export default function App() {
   const location = useLocation();
@@ -19,6 +20,10 @@ export default function App() {
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+
+          <Route element={<ProtectedRoute />}>
+            <Route path="/cambiar-contrasena" element={<ChangePasswordPage />} />
+          </Route>
 
           <Route element={<ProtectedRoute allowedRole="admin" />}>
             <Route path="/admin" element={<AdminDashboardPage />} />

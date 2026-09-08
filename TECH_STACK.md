@@ -57,6 +57,10 @@
   una nomina reemplaza el recibo en vez de duplicarlo.
 - Autenticacion sin estado basada en JWT, con control de acceso por rol
   (RBAC) para separar operaciones de administrador y empleado.
+- Contrasenas temporales de un solo uso: toda cuenta creada por un
+  administrador nace marcada en `must_change_password`, y el cliente
+  bloquea la navegacion hasta que la persona define la suya. Asi nadie
+  opera con una contrasena que eligio otro.
 - pnpm en lugar de npm: almacen direccionable por contenido, arbol de
   `node_modules` estricto que impide dependencias fantasma, y una ventana
   minima de publicacion que bloquea versiones recien subidas al registro.
