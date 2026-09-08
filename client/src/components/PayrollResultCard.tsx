@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { PayrollCalculationResult } from "../services/payrollService";
-import { formatCurrency } from "../services/format";
+import { formatCurrency, formatMonth } from "../services/format";
 
 interface PayrollResultCardProps {
   result: PayrollCalculationResult;
@@ -19,7 +19,7 @@ export default function PayrollResultCard({ result }: PayrollResultCardProps) {
       transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
     >
       <p className="payroll-result-heading">
-        <span>Desglose de nómina</span>
+        <span>Desglose de {formatMonth(`${result.period}-01`)}</span>
         <small>Recibo #{result.receipt_id}</small>
       </p>
 
@@ -41,7 +41,7 @@ export default function PayrollResultCard({ result }: PayrollResultCardProps) {
       </div>
 
       <p className="payroll-result-footer">
-        Guardado como recibo #{result.receipt_id}
+        {result.created ? "Guardado como recibo" : "Recibo reemplazado"} #{result.receipt_id}
         {result.employee_name ? ` de ${result.employee_name}` : ""}. Ya es visible en su portal.
       </p>
     </motion.div>
