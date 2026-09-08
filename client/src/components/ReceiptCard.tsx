@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { DownloadSimple, Receipt } from "@phosphor-icons/react";
-import { downloadReceipt, PayrollReceipt } from "../services/payrollService";
+import { Receipt } from "@phosphor-icons/react";
+import ReceiptDownloadButton from "./ReceiptDownloadButton";
+import { PayrollReceipt } from "../services/payrollService";
 import { formatCurrency, formatDateShort, formatMonth } from "../services/format";
 
 interface ReceiptCardProps {
@@ -8,22 +8,6 @@ interface ReceiptCardProps {
 }
 
 export default function ReceiptCard({ receipt }: ReceiptCardProps) {
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [hasFailed, setHasFailed] = useState(false);
-
-  async function handleDownload() {
-    setHasFailed(false);
-    setIsDownloading(true);
-
-    try {
-      await downloadReceipt(receipt.id);
-    } catch {
-      setHasFailed(true);
-    } finally {
-      setIsDownloading(false);
-    }
-  }
-
   return (
     <article className="receipt-card">
       <header className="receipt-card-header">
@@ -60,19 +44,7 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
       </div>
 
       <footer className="receipt-card-footer">
-        <button
-          className="btn btn-line receipt-card-download"
-          onClick={handleDownload}
-          disabled={isDownloading}
-        >
-          <DownloadSimple weight="bold" />
-          {isDownloading ? "Preparando…" : "Descargar comprobante"}
-        </button>
-        {hasFailed && (
-          <span className="receipt-card-download-error" role="alert">
-            No se pudo descargar. Inténtalo de nuevo.
-          </span>
-        )}
+        <ReceiptDownloadButton receiptId={receipt.id} />
       </footer>
     </article>
   );
