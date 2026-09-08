@@ -1,32 +1,32 @@
-from pydantic import BaseModel
-from typing import Optional
+from datetime import date
+from typing import Literal, Optional
+
+from pydantic import BaseModel, Field
+
+EmployeeRole = Literal["admin", "employee"]
 
 
 class Employee(BaseModel):
     id: Optional[int] = None
     name: str
     email: str
-    role: str
+    role: EmployeeRole
     base_salary: float
 
 
 class EmployeeCreateRequest(BaseModel):
-    name: str
-    email: str
-    role: str
-    base_salary: float
-    password: str
+    name: str = Field(min_length=1, max_length=150)
+    email: str = Field(min_length=3, max_length=150)
+    role: EmployeeRole
+    base_salary: float = Field(ge=0)
+    password: str = Field(min_length=8, max_length=128)
 
 
 class PayrollCalculationRequest(BaseModel):
     employee_id: int
+    period: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     gross_salary: float
 
-
-class PayrollReceipt(BaseModel):
-    receipt_id: Optional[int] = None
-    employee_id: int
-    gross_salary: float
-    isr_deduction: float
-    imss_deduction: float
-    net_salary: float
+    def period_as_date(self) -> date:
+        year, month = self.period.split("-")
+        return date(int(year), int(month), 1)
