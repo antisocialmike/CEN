@@ -1,62 +1,78 @@
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+
+import bcrypt
 from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "cen-secret-payroll-key-for-jwt-tokens")
-ALGORITHM = "HS256"
+from ..config.settings import (
+    JWT_ALGORITHM,
+    JWT_EXPIRATION_HOURS,
+    JWT_SECRET_KEY,
+)
+
 security_bearer = HTTPBearer()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+BCRYPT_MAX_BYTES = 72
+
+INVALID_TOKEN = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Token no valido",
+)
+
+
+def _encode(password: str) -> bytes:
+    return password.encode("utf-8")[:BCRYPT_MAX_BYTES]
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_encode(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    return bcrypt.checkpw(_encode(password), password_hash.encode("utf-8"))
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    data: dict, expires_delta: Optional[timedelta] = None
+) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(hours=8))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    expires_in = expires_delta or timedelta(hours=JWT_EXPIRATION_HOURS)
+    to_encode.update({"exp": datetime.now(timezone.utc) + expires_in})
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security_bearer)
 ) -> dict:
     try:
-        token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
-        username: str = str(payload.get("sub") or "")
-        role: str = str(payload.get("role") or "")
-        employee_id = payload.get("employee_id")
-
-        if not username or not role:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token no valido"
-            )
-        return {"username": username, "role": role, "employee_id": employee_id}
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token no valido"
+        payload = jwt.decode(
+            credentials.credentials,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM],
         )
+    except JWTError as error:
+        raise INVALID_TOKEN from error
+
+    username = str(payload.get("sub") or "")
+    role = str(payload.get("role") or "")
+    if not username or not role:
+        raise INVALID_TOKEN
+
+    return {
+        "username": username,
+        "role": role,
+        "employee_id": payload.get("employee_id"),
+    }
 
 
 def require_role(required_role: str):
-    def role_checker(user: dict = Security(get_current_user)):
+    def role_checker(user: dict = Security(get_current_user)) -> dict:
         if user.get("role") != required_role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Permisos insuficientes"
+                detail="Permisos insuficientes",
             )
         return user
+
     return role_checker
