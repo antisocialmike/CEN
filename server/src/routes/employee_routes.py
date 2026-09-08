@@ -1,12 +1,21 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..middlewares.auth_middleware import hash_password, require_role
-from ..models.payroll_model import Employee, EmployeeCreateRequest
+from ..models.payroll_model import (
+    Employee,
+    EmployeeCreateRequest,
+    EmployeeUpdateRequest,
+)
 from ..repositories.payroll_repository import payroll_repository
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
+
+EMPLOYEE_NOT_FOUND = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="Empleado no encontrado",
+)
 
 
 @router.get("", response_model=List[Employee])
@@ -33,3 +42,57 @@ def create_employee(
         role=request.role,
         base_salary=request.base_salary,
     )
+
+
+@router.put("/{employee_id}", response_model=Employee)
+def update_employee(
+    employee_id: int,
+    request: EmployeeUpdateRequest,
+    user: dict = Depends(require_role("admin")),
+):
+    if employee_id == user.get("employee_id") and request.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No puedes quitarte a ti mismo el rol de administrador",
+        )
+
+    employee = payroll_repository.update_employee(employee_id, {
+        "name": request.name,
+        "email": request.email,
+        "role": request.role,
+        "base_salary": request.base_salary,
+    })
+    if employee is None:
+        raise EMPLOYEE_NOT_FOUND
+
+    return employee
+
+
+@router.post("/{employee_id}/deactivate", response_model=Employee)
+def deactivate_employee(
+    employee_id: int,
+    user: dict = Depends(require_role("admin")),
+):
+    if employee_id == user.get("employee_id"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No puedes desactivar tu propia cuenta",
+        )
+
+    employee = payroll_repository.set_employee_active(employee_id, False)
+    if employee is None:
+        raise EMPLOYEE_NOT_FOUND
+
+    return employee
+
+
+@router.post("/{employee_id}/activate", response_model=Employee)
+def activate_employee(
+    employee_id: int,
+    user: dict = Depends(require_role("admin")),
+):
+    employee = payroll_repository.set_employee_active(employee_id, True)
+    if employee is None:
+        raise EMPLOYEE_NOT_FOUND
+
+    return employee
