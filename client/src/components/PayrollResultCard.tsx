@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import PayrollBreakdownRows from "./PayrollBreakdownRows";
 import ReceiptDownloadButton from "./ReceiptDownloadButton";
 import { PayrollCalculationResult } from "../services/payrollService";
 import { formatCurrency, formatMonth } from "../services/format";
@@ -24,18 +25,11 @@ export default function PayrollResultCard({ result }: PayrollResultCardProps) {
         <small>Recibo #{result.receipt_id}</small>
       </p>
 
-      <div className="payroll-result-row">
-        <span>Salario bruto</span>
-        <span>{formatCurrency(breakdown.gross_salary)}</span>
-      </div>
-      <div className="payroll-result-row">
-        <span>ISR retenido</span>
-        <span>− {formatCurrency(breakdown.isr_deduction)}</span>
-      </div>
-      <div className="payroll-result-row">
-        <span>IMSS retenido</span>
-        <span>− {formatCurrency(breakdown.imss_deduction)}</span>
-      </div>
+      <PayrollBreakdownRows
+        items={breakdown.items}
+        totalPerceptions={breakdown.total_perceptions}
+        totalDeductions={breakdown.total_deductions}
+      />
       <div className="payroll-result-row total">
         <span>Neto a pagar</span>
         <span>{formatCurrency(breakdown.net_salary)}</span>
