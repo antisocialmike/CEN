@@ -139,6 +139,25 @@ detecta y retira practicamente todo paquete comprometido. Ese archivo se
 copia dentro de la imagen, asi que la misma politica rige en el build del
 contenedor y no solo en tu maquina.
 
+## Periodicidad
+
+La nomina se puede pagar mensual, quincenal o semanalmente. El periodo
+no es un mes sino un rango: se captura la periodicidad y el dia de
+inicio, y el servidor calcula el fin y los dias realmente pagados. Una
+quincena empieza el dia 1 o el 16; la segunda de un mes de 31 dias paga
+16 dias, y el salario diario se ajusta solo.
+
+**La tarifa de ISR cambia con la periodicidad**, no basta con dividir el
+resultado mensual. La tabla se escala por los dias que el SAT asigna a
+cada periodicidad (30.4 mensual, 15.2 quincenal, 7 semanal), igual que
+el subsidio, el tope de 25 UMA del IMSS y la exencion semanal de horas
+extra. El efecto es que un mismo sueldo anual paga el mismo impuesto sin
+importar cada cuando se cobre.
+
+Una restriccion de exclusion en la base impide que dos recibos del mismo
+empleado cubran dias solapados, asi que no se puede pagar dos veces el
+mismo dia ni por error ni por descuido.
+
 ## Conceptos de nomina
 
 Cada recibo se compone de partidas, guardadas en `payroll_receipt_items`
@@ -168,8 +187,10 @@ prima vacacional hasta 15 UMA y la mitad de las horas extra con tope de
 El calculo es fiel en su estructura pero no sustituye a un sistema
 fiscal certificado. En concreto:
 
+- Las tarifas por periodicidad se derivan proporcionalmente de la
+  mensual, no se transcriben del Anexo 8 de la Resolucion Miscelanea.
 - El aguinaldo y la prima vacacional se gravan sumandose a la base del
-  mes, no con el procedimiento opcional del articulo 174 del Reglamento
+  periodo, no con el procedimiento opcional del articulo 174 del Reglamento
   de la LISR.
 - El IMSS se calcula sobre el sueldo del periodo, sin el factor de
   integracion que convierte el salario diario en Salario Base de
@@ -203,12 +224,14 @@ capa.
   para esa persona, la marca para cambio obligatorio y desbloquea su
   cuenta. Devuelve la contrasena una sola vez, para que el administrador
   se la entregue por un canal seguro. Requiere rol `admin`.
-- `POST /payroll/calculate`: recibe `employee_id`, `period` (`AAAA-MM`) y
-  `gross_salary`, mas los conceptos opcionales
+- `POST /payroll/calculate`: recibe `employee_id`, `periodicity`
+  (`mensual`, `quincenal` o `semanal`), `period_start` y `gross_salary`,
+  mas los conceptos opcionales
   (`overtime_double_hours`, `overtime_triple_hours`,
   `christmas_bonus_days`, `vacation_days`, `bonus`, `loan_deduction`,
-  `housing_credit_deduction`). Calcula ISR e IMSS, persiste el recibo con
-  sus partidas y lo devuelve.
+  `housing_credit_deduction`). El servidor deduce el fin del periodo y
+  los dias pagados. Calcula ISR e IMSS, persiste el recibo con sus
+  partidas y lo devuelve.
   Requiere un token con rol `admin`. Solo existe un recibo por empleado y
   periodo: recalcular el mismo mes reemplaza el anterior y la respuesta lo
   indica en `created`. Cada recibo guarda quien lo proceso.
