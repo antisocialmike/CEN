@@ -52,6 +52,10 @@
 
 - Patron Strategy para el calculo de ISR e IMSS, de forma que cada
   impuesto se pueda sustituir o extender de forma independiente.
+- El recibo se guarda como partidas en `payroll_receipt_items`, no como
+  columnas fijas: agregar un concepto nuevo no exige migrar el esquema, y
+  cada partida lleva su importe gravado y exento por separado, que es lo
+  que pediria un CFDI de nomina si algun dia se timbra.
 - Patron Repository para aislar el acceso a base de datos de la logica
   de negocio, sobre un unico gestor de contexto que abre cursor,
   confirma o revierte la transaccion y devuelve la conexion al pool.

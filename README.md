@@ -125,6 +125,45 @@ detecta y retira practicamente todo paquete comprometido. Ese archivo se
 copia dentro de la imagen, asi que la misma politica rige en el build del
 contenedor y no solo en tu maquina.
 
+## Conceptos de nomina
+
+Cada recibo se compone de partidas, guardadas en `payroll_receipt_items`
+y separadas en percepciones y deducciones:
+
+| Percepcion | De donde sale |
+| --- | --- |
+| Sueldo del periodo | El bruto capturado |
+| Horas extra | Horas dobles y triples sobre el salario por hora (LFT) |
+| Aguinaldo | Dias por el salario diario |
+| Prima vacacional | 25% de los dias de vacaciones |
+| Bono | Importe libre |
+
+| Deduccion | De donde sale |
+| --- | --- |
+| ISR | Tarifa mensual sobre la base gravable |
+| IMSS | Cuotas obrero sobre el sueldo, topadas a 25 UMA |
+| Prestamo e Infonavit | Importes libres |
+
+El ISR no se calcula sobre el total percibido sino sobre la **base
+gravable**, que descuenta las partes exentas: aguinaldo hasta 30 UMA,
+prima vacacional hasta 15 UMA y la mitad de las horas extra con tope de
+5 UMA por semana.
+
+### Lo que este modelo simplifica
+
+El calculo es fiel en su estructura pero no sustituye a un sistema
+fiscal certificado. En concreto:
+
+- El aguinaldo y la prima vacacional se gravan sumandose a la base del
+  mes, no con el procedimiento opcional del articulo 174 del Reglamento
+  de la LISR.
+- El IMSS se calcula sobre el sueldo del periodo, sin el factor de
+  integracion que convierte el salario diario en Salario Base de
+  Cotizacion.
+- La exencion de horas extra usa cuatro semanas por mes como
+  aproximacion, y no distingue a quien percibe el salario minimo, que
+  por ley tiene la exencion completa.
+
 ## Comprobante de nomina
 
 Cada recibo se puede descargar en PDF, generado en el servidor con los
@@ -147,7 +186,11 @@ capa.
 - `POST /auth/password`: cambia la contrasena del dueno del token. Exige
   la contrasena actual, rechaza reutilizar la misma y responde `204`.
 - `POST /payroll/calculate`: recibe `employee_id`, `period` (`AAAA-MM`) y
-  `gross_salary`, calcula ISR e IMSS, persiste el recibo y lo devuelve.
+  `gross_salary`, mas los conceptos opcionales
+  (`overtime_double_hours`, `overtime_triple_hours`,
+  `christmas_bonus_days`, `vacation_days`, `bonus`, `loan_deduction`,
+  `housing_credit_deduction`). Calcula ISR e IMSS, persiste el recibo con
+  sus partidas y lo devuelve.
   Requiere un token con rol `admin`. Solo existe un recibo por empleado y
   periodo: recalcular el mismo mes reemplaza el anterior y la respuesta lo
   indica en `created`. Cada recibo guarda quien lo proceso.
