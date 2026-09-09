@@ -4,7 +4,9 @@ import {
   formatCurrency,
   formatDate,
   formatDateShort,
-  formatMonth
+  formatMonth,
+  formatRange,
+  periodStartsOf
 } from "./format";
 
 afterEach(() => {
@@ -58,5 +60,46 @@ describe("currentPeriod", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 0, 31));
     expect(currentPeriod()).toBe("2026-01");
+  });
+});
+
+describe("formatRange", () => {
+  it("no repite el mes cuando el periodo cae dentro de uno solo", () => {
+    expect(formatRange("2026-09-01", "2026-09-15")).toBe(
+      "1 al 15 de septiembre de 2026"
+    );
+  });
+
+  it("nombra los dos meses cuando el periodo los cruza", () => {
+    expect(formatRange("2026-09-28", "2026-10-04")).toBe(
+      "28 de septiembre de 2026 al 4 de octubre de 2026"
+    );
+  });
+});
+
+describe("periodStartsOf", () => {
+  it("da un solo inicio para el mensual", () => {
+    expect(periodStartsOf("mensual", "2026-09")).toEqual(["2026-09-01"]);
+  });
+
+  it("da las dos quincenas", () => {
+    expect(periodStartsOf("quincenal", "2026-09")).toEqual([
+      "2026-09-01",
+      "2026-09-16"
+    ]);
+  });
+
+  it("da las semanas del mes", () => {
+    expect(periodStartsOf("semanal", "2026-09")).toEqual([
+      "2026-09-01",
+      "2026-09-08",
+      "2026-09-15",
+      "2026-09-22",
+      "2026-09-29"
+    ]);
+  });
+
+  it("respeta un febrero mas corto", () => {
+    expect(periodStartsOf("semanal", "2026-02")).toHaveLength(4);
   });
 });

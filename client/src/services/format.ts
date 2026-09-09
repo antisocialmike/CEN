@@ -40,3 +40,33 @@ export function currentPeriod(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
+
+export function formatRange(startValue: string, endValue: string): string {
+  const start = toLocalDate(startValue);
+  const end = toLocalDate(endValue);
+  const sameMonth = start.getMonth() === end.getMonth();
+
+  return sameMonth
+    ? `${start.getDate()} al ${dayLong.format(end)}`
+    : `${dayLong.format(start)} al ${dayLong.format(end)}`;
+}
+
+export function periodStartsOf(periodicity: string, month: string): string[] {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const lastDay = new Date(year, monthNumber, 0).getDate();
+  const pad = (day: number) => String(day).padStart(2, "0");
+
+  if (periodicity === "mensual") {
+    return [`${month}-01`];
+  }
+
+  if (periodicity === "quincenal") {
+    return [`${month}-01`, `${month}-16`];
+  }
+
+  const starts: string[] = [];
+  for (let day = 1; day <= lastDay; day += 7) {
+    starts.push(`${month}-${pad(day)}`);
+  }
+  return starts;
+}

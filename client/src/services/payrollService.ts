@@ -1,5 +1,13 @@
 import httpClient from "./httpClient";
 
+export type Periodicity = "mensual" | "quincenal" | "semanal";
+
+export const PERIODICITY_LABELS: Record<Periodicity, string> = {
+  mensual: "Mensual",
+  quincenal: "Quincenal",
+  semanal: "Semanal"
+};
+
 export interface PayrollItem {
   kind: "perception" | "deduction";
   concept: string;
@@ -45,7 +53,8 @@ export interface PayrollCalculationResult {
   created: boolean;
   employee_id: number;
   employee_name?: string;
-  period: string;
+  period_start: string;
+  period_end: string;
   data: PayrollBreakdown;
   processed_by: string;
 }
@@ -54,7 +63,10 @@ export interface PayrollReceipt {
   id: number;
   employee_id: number;
   employee_name?: string;
-  period: string;
+  period_start: string;
+  period_end: string;
+  periodicity: Periodicity;
+  paid_days: number;
   gross_salary: number;
   isr_deduction: number;
   imss_deduction: number;
@@ -70,13 +82,15 @@ export interface PayrollReceipt {
 
 export async function calculatePayroll(
   employeeId: number,
-  period: string,
+  periodicity: Periodicity,
+  periodStart: string,
   grossSalary: number,
   concepts: PayrollConcepts = emptyConcepts
 ): Promise<PayrollCalculationResult> {
   const response = await httpClient.post<PayrollCalculationResult>("/payroll/calculate", {
     employee_id: employeeId,
-    period,
+    periodicity,
+    period_start: periodStart,
     gross_salary: grossSalary,
     overtime_double_hours: concepts.overtimeDoubleHours,
     overtime_triple_hours: concepts.overtimeTripleHours,
