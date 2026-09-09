@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLoader from "./components/AppLoader";
+import PageTransition from "./components/PageTransition";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
@@ -17,27 +18,32 @@ export default function App() {
 
   return (
     <Suspense fallback={<AppLoader />}>
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
+      <AnimatePresence mode="wait" initial={false}>
+        <PageTransition key={location.pathname}>
+          <Routes location={location}>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/cambiar-contrasena" element={<ChangePasswordPage />} />
-          </Route>
+            <Route element={<ProtectedRoute />}>
+              <Route
+                path="/cambiar-contrasena"
+                element={<ChangePasswordPage />}
+              />
+            </Route>
 
-          <Route element={<ProtectedRoute allowedRole="admin" />}>
-            <Route path="/admin" element={<AdminDashboardPage />} />
-            <Route path="/admin/nuevo-empleado" element={<SignupPage />} />
-            <Route path="/admin/empleados" element={<EmployeesPage />} />
-          </Route>
+            <Route element={<ProtectedRoute allowedRole="admin" />}>
+              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin/nuevo-empleado" element={<SignupPage />} />
+              <Route path="/admin/empleados" element={<EmployeesPage />} />
+            </Route>
 
-          <Route element={<ProtectedRoute allowedRole="employee" />}>
-            <Route path="/empleado" element={<EmployeeDashboardPage />} />
-          </Route>
+            <Route element={<ProtectedRoute allowedRole="employee" />}>
+              <Route path="/empleado" element={<EmployeeDashboardPage />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </PageTransition>
       </AnimatePresence>
     </Suspense>
   );
