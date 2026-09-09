@@ -2,11 +2,16 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..middlewares.auth_middleware import hash_password, require_role
+from ..middlewares.auth_middleware import (
+    generate_temporary_password,
+    hash_password,
+    require_role,
+)
 from ..models.payroll_model import (
     Employee,
     EmployeeCreateRequest,
     EmployeeUpdateRequest,
+    PasswordResetResponse,
 )
 from ..repositories.payroll_repository import payroll_repository
 
@@ -96,3 +101,23 @@ def activate_employee(
         raise EMPLOYEE_NOT_FOUND
 
     return employee
+
+
+@router.post("/{employee_id}/reset-password", response_model=PasswordResetResponse)
+def reset_employee_password(
+    employee_id: int,
+    user: dict = Depends(require_role("admin")),
+):
+    temporary_password = generate_temporary_password()
+    employee = payroll_repository.reset_password(
+        employee_id, hash_password(temporary_password)
+    )
+    if employee is None:
+        raise EMPLOYEE_NOT_FOUND
+
+    return PasswordResetResponse(
+        employee_id=employee["id"],
+        name=employee["name"],
+        email=employee["email"],
+        temporary_password=temporary_password,
+    )

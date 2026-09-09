@@ -291,3 +291,61 @@ def test_activate_employee_not_found(mock_set_active):
     )
 
     assert response.status_code == 404
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.reset_password")
+def test_reset_password_returns_a_temporary_one(mock_reset):
+    mock_reset.return_value = {
+        "id": 3, "name": "Ana Lopez", "email": "ana@cen.com",
+        "role": "employee", "base_salary": 19000, "is_active": True
+    }
+
+    response = client.post(
+        "/employees/3/reset-password",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["employee_id"] == 3
+    assert len(body["temporary_password"]) >= 8
+
+    employee_id, password_hash = mock_reset.call_args[0]
+    assert employee_id == 3
+    assert password_hash != body["temporary_password"]
+    assert password_hash.startswith("$2b$")
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.reset_password")
+def test_reset_password_gives_a_different_one_each_time(mock_reset):
+    mock_reset.return_value = {
+        "id": 3, "name": "Ana Lopez", "email": "ana@cen.com",
+        "role": "employee", "base_salary": 19000, "is_active": True
+    }
+    headers = {"Authorization": f"Bearer {_admin_token()}"}
+
+    first = client.post("/employees/3/reset-password", headers=headers).json()
+    second = client.post("/employees/3/reset-password", headers=headers).json()
+
+    assert first["temporary_password"] != second["temporary_password"]
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.reset_password")
+def test_reset_password_for_a_missing_employee(mock_reset):
+    mock_reset.return_value = None
+
+    response = client.post(
+        "/employees/999/reset-password",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 404
+
+
+def test_reset_password_requires_admin_role():
+    response = client.post(
+        "/employees/3/reset-password",
+        headers={"Authorization": f"Bearer {_employee_token()}"}
+    )
+
+    assert response.status_code == 403

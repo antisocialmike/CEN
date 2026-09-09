@@ -1,3 +1,5 @@
+import secrets
+import string
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -10,6 +12,7 @@ from ..config.settings import (
     JWT_ALGORITHM,
     JWT_EXPIRATION_HOURS,
     JWT_SECRET_KEY,
+    TEMPORARY_PASSWORD_LENGTH,
 )
 
 security_bearer = HTTPBearer()
@@ -19,6 +22,13 @@ INVALID_TOKEN = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Token no valido",
 )
+
+
+def generate_temporary_password() -> str:
+    alphabet = string.ascii_letters + string.digits
+    return "".join(
+        secrets.choice(alphabet) for _ in range(TEMPORARY_PASSWORD_LENGTH)
+    )
 
 
 def _encode(password: str) -> bytes:

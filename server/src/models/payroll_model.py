@@ -23,6 +23,13 @@ class EmployeeCreateRequest(BaseModel):
     password: str = Field(min_length=8, max_length=72)
 
 
+class PasswordResetResponse(BaseModel):
+    employee_id: int
+    name: str
+    email: str
+    temporary_password: str
+
+
 class EmployeeUpdateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=150)
     email: str = Field(min_length=3, max_length=150)
