@@ -25,6 +25,10 @@ JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "8"))
 
 ALLOWED_ORIGINS = _env_list("ALLOWED_ORIGINS", "http://localhost:5173")
 
+LOGIN_MAX_ATTEMPTS = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
+LOGIN_LOCK_MINUTES = int(os.getenv("LOGIN_LOCK_MINUTES", "15"))
+TEMPORARY_PASSWORD_LENGTH = int(os.getenv("TEMPORARY_PASSWORD_LENGTH", "12"))
+
 ADMIN_NAME = os.getenv("ADMIN_NAME", "Administrador")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@cen.com")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin1234")

@@ -19,7 +19,23 @@ SELECT_EMPLOYEE_BY_ID = (
 )
 SELECT_EMPLOYEE_BY_EMAIL = (
     "SELECT id, name, email, role, base_salary, password_hash, "
-    "must_change_password, is_active FROM employees WHERE email = %s;"
+    "must_change_password, is_active, failed_login_attempts, locked_until "
+    "FROM employees WHERE email = %s;"
+)
+REGISTER_FAILED_LOGIN = (
+    "UPDATE employees SET failed_login_attempts = failed_login_attempts + 1, "
+    "locked_until = CASE WHEN failed_login_attempts + 1 >= %s "
+    "THEN NOW() + make_interval(mins => %s) ELSE locked_until END "
+    "WHERE id = %s RETURNING failed_login_attempts, locked_until;"
+)
+CLEAR_FAILED_LOGINS = (
+    "UPDATE employees SET failed_login_attempts = 0, locked_until = NULL "
+    "WHERE id = %s;"
+)
+RESET_PASSWORD = (
+    "UPDATE employees SET password_hash = %s, must_change_password = TRUE, "
+    "failed_login_attempts = 0, locked_until = NULL WHERE id = %s "
+    "RETURNING id, name, email, role, base_salary, is_active;"
 )
 SELECT_PASSWORD_HASH = (
     "SELECT password_hash FROM employees WHERE id = %s;"
@@ -153,6 +169,22 @@ class PayrollRepository:
     def get_password_hash(self, employee_id: int) -> Optional[str]:
         row = self._fetch_one(SELECT_PASSWORD_HASH, (employee_id,))
         return row["password_hash"] if row else None
+
+    def register_failed_login(
+        self, employee_id: int, max_attempts: int, lock_minutes: int
+    ) -> Optional[dict]:
+        return self._fetch_one(
+            REGISTER_FAILED_LOGIN, (max_attempts, lock_minutes, employee_id)
+        )
+
+    def clear_failed_logins(self, employee_id: int) -> None:
+        with db_cursor() as cursor:
+            cursor.execute(CLEAR_FAILED_LOGINS, (employee_id,))
+
+    def reset_password(
+        self, employee_id: int, password_hash: str
+    ) -> Optional[dict]:
+        return self._fetch_one(RESET_PASSWORD, (password_hash, employee_id))
 
     def update_password(self, employee_id: int, password_hash: str) -> None:
         with db_cursor() as cursor:
