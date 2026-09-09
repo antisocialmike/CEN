@@ -60,8 +60,40 @@ export function clearSession(): void {
   );
 }
 
+function decodeExpiry(token: string): number | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "="
+    );
+    const claims = JSON.parse(atob(padded)) as { exp?: unknown };
+    return typeof claims.exp === "number" ? claims.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isTokenExpired(token: string): boolean {
+  const expiresAt = decodeExpiry(token);
+  return expiresAt !== null && expiresAt <= Date.now();
+}
+
 export function isAuthenticated(): boolean {
-  return getToken() !== null && getRole() !== null;
+  const token = getToken();
+  if (token === null || getRole() === null) {
+    return false;
+  }
+
+  if (isTokenExpired(token)) {
+    clearSession();
+    return false;
+  }
+
+  return true;
 }
 
 export function getInitials(): string {

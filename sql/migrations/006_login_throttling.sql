@@ -1,0 +1,3 @@
+ALTER TABLE employees
+    ADD COLUMN IF NOT EXISTS failed_login_attempts SMALLINT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ;

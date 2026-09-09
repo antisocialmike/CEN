@@ -14,6 +14,7 @@ import {
   deactivateEmployee,
   EmployeeCreated,
   listEmployees,
+  resetEmployeePassword,
   updateEmployee
 } from "../services/employeeService";
 import { UserRole } from "../services/authSession";
@@ -107,6 +108,27 @@ export default function EmployeesPage() {
       }
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleResetPassword(employee: EmployeeCreated) {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setBusyId(employee.id);
+
+    try {
+      const reset = await resetEmployeePassword(employee.id);
+      setSuccessMessage(
+        "Contraseña temporal de " +
+          reset.name +
+          ": " +
+          reset.temporary_password +
+          ". Compártela por un canal seguro; se le pedirá cambiarla al entrar."
+      );
+    } catch {
+      setErrorMessage("No se pudo restablecer la contraseña. Inténtalo de nuevo.");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -271,6 +293,13 @@ export default function EmployeesPage() {
                           disabled={busyId === employee.id}
                         >
                           Editar
+                        </button>
+                        <button
+                          className="btn btn-line"
+                          onClick={() => handleResetPassword(employee)}
+                          disabled={busyId === employee.id}
+                        >
+                          Restablecer contraseña
                         </button>
                         <button
                           className="btn btn-line"

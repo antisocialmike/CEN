@@ -72,6 +72,9 @@
 - Baja logica en vez de borrado: los empleados se desactivan y la clave
   foranea de los recibos es `ON DELETE RESTRICT`, de modo que el
   historico de nomina no se puede perder ni por accidente.
+- Bloqueo temporal del login tras varios intentos fallidos, contado en
+  la propia base y no en memoria, para que sobreviva a los reinicios y
+  funcione con varios procesos de uvicorn a la vez.
 - Contrasenas temporales de un solo uso: toda cuenta creada por un
   administrador nace marcada en `must_change_password`, y el cliente
   bloquea la navegacion hasta que la persona define la suya. Asi nadie

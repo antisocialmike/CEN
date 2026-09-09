@@ -6,6 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from server.src.middlewares.auth_middleware import (
     get_current_user,
     create_access_token,
+    generate_temporary_password,
     require_role,
     hash_password,
     verify_password,
@@ -61,3 +62,12 @@ def test_hash_password_and_verify_password():
     assert password_hash != "clave123"
     assert verify_password("clave123", password_hash)
     assert not verify_password("otra_clave", password_hash)
+
+
+def test_generate_temporary_password_is_long_and_random():
+    first = generate_temporary_password()
+    second = generate_temporary_password()
+
+    assert len(first) >= 8
+    assert first != second
+    assert first.isalnum()

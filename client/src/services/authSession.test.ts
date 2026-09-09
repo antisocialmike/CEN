@@ -10,6 +10,7 @@ import {
   getRoleLabel,
   getToken,
   isAuthenticated,
+  isTokenExpired,
   mustChangePassword,
   saveSession
 } from "./authSession";
@@ -127,5 +128,46 @@ describe("getRoleLabel y dashboardPathForRole", () => {
 
     expect(getRoleLabel()).toBe("Empleado");
     expect(dashboardPathForRole()).toBe("/empleado");
+  });
+});
+
+describe("expiracion del token", () => {
+  function tokenWithExp(secondsFromNow: number): string {
+    const claims = btoa(
+      JSON.stringify({ sub: "ana@cen.com", exp: Math.floor(Date.now() / 1000) + secondsFromNow })
+    );
+    return "encabezado." + claims + ".firma";
+  }
+
+  it("detecta un token vencido", () => {
+    expect(isTokenExpired(tokenWithExp(-60))).toBe(true);
+  });
+
+  it("acepta un token vigente", () => {
+    expect(isTokenExpired(tokenWithExp(3600))).toBe(false);
+  });
+
+  it("no bloquea si el token no trae expiracion", () => {
+    const sinExp = "encabezado." + btoa(JSON.stringify({ sub: "ana" })) + ".firma";
+
+    expect(isTokenExpired(sinExp)).toBe(false);
+  });
+
+  it("tolera un token con formato invalido", () => {
+    expect(isTokenExpired("esto-no-es-un-jwt")).toBe(false);
+  });
+
+  it("cierra la sesion cuando el token ya vencio", () => {
+    saveSession({ ...adminSession, accessToken: tokenWithExp(-60) });
+
+    expect(isAuthenticated()).toBe(false);
+    expect(getToken()).toBeNull();
+  });
+
+  it("mantiene la sesion mientras el token siga vigente", () => {
+    saveSession({ ...adminSession, accessToken: tokenWithExp(3600) });
+
+    expect(isAuthenticated()).toBe(true);
+    expect(getToken()).not.toBeNull();
   });
 });
