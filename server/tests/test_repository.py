@@ -174,6 +174,21 @@ def _receipt(**overrides):
         "isr_deduction": 1600,
         "imss_deduction": 275,
         "net_salary": 8125,
+        "total_perceptions": 10000,
+        "total_deductions": 1875,
+        "taxable_base": 10000,
+        "items": [
+            {
+                "kind": "perception", "concept": "sueldo",
+                "description": "Sueldo del periodo", "amount": 10000,
+                "taxable": 10000, "exempt": 0
+            },
+            {
+                "kind": "deduction", "concept": "isr",
+                "description": "ISR retenido", "amount": 1600,
+                "taxable": 0, "exempt": 0
+            },
+        ],
     }
     data.update(overrides)
     return data
@@ -185,8 +200,21 @@ def test_save_payroll_receipt_creates_a_new_one(repository, cursor):
     result = repository.save_payroll_receipt(_receipt())
 
     assert result == {"id": 100, "created": True}
-    assert cursor.execute.call_args[0][1][1] == date(2026, 9, 1)
-    assert cursor.execute.call_args[0][1][6] == "admin@cen.com"
+    upsert = cursor.execute.call_args_list[0][0][1]
+    assert upsert[1] == date(2026, 9, 1)
+    assert upsert[9] == "admin@cen.com"
+
+
+def test_save_payroll_receipt_replaces_the_items(repository, cursor):
+    cursor.fetchone.return_value = {"id": 100, "created": False}
+
+    repository.save_payroll_receipt(_receipt())
+
+    queries = [str(call[0][0]) for call in cursor.execute.call_args_list]
+    assert any("DELETE FROM payroll_receipt_items" in q for q in queries)
+    assert sum(
+        "INSERT INTO payroll_receipt_items" in q for q in queries
+    ) == 2
 
 
 def test_save_payroll_receipt_replaces_the_period(repository, cursor):
@@ -195,7 +223,9 @@ def test_save_payroll_receipt_replaces_the_period(repository, cursor):
     result = repository.save_payroll_receipt(_receipt())
 
     assert result == {"id": 100, "created": False}
-    assert "ON CONFLICT (employee_id, period)" in cursor.execute.call_args[0][0]
+    assert "ON CONFLICT (employee_id, period)" in str(
+        cursor.execute.call_args_list[0][0][0]
+    )
 
 
 def test_save_payroll_receipt_without_returned_id(repository, cursor):

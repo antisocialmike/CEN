@@ -1,4 +1,5 @@
 import { Receipt } from "@phosphor-icons/react";
+import PayrollBreakdownRows from "./PayrollBreakdownRows";
 import ReceiptDownloadButton from "./ReceiptDownloadButton";
 import { PayrollReceipt } from "../services/payrollService";
 import { formatCurrency, formatDateShort, formatMonth } from "../services/format";
@@ -30,18 +31,11 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
         </span>
       </header>
 
-      <div className="payroll-result-row">
-        <span>Salario bruto</span>
-        <span>{formatCurrency(receipt.gross_salary)}</span>
-      </div>
-      <div className="payroll-result-row">
-        <span>ISR retenido</span>
-        <span>− {formatCurrency(receipt.isr_deduction)}</span>
-      </div>
-      <div className="payroll-result-row">
-        <span>IMSS retenido</span>
-        <span>− {formatCurrency(receipt.imss_deduction)}</span>
-      </div>
+      <PayrollBreakdownRows
+        items={receipt.items}
+        totalPerceptions={receipt.total_perceptions}
+        totalDeductions={receipt.total_deductions}
+      />
 
       <footer className="receipt-card-footer">
         <ReceiptDownloadButton receiptId={receipt.id} />

@@ -319,3 +319,74 @@ def test_download_receipt_requires_authentication():
     response = client.get("/payroll/receipts/42/pdf")
 
     assert response.status_code == 401
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_calculate_payroll_with_every_concept(mock_get_employee, mock_save):
+    mock_get_employee.return_value = {"id": 1, "name": "Juan", "is_active": True}
+    mock_save.return_value = {"id": 55, "created": True}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={
+            "employee_id": 1, "period": "2026-12", "gross_salary": 21000,
+            "overtime_double_hours": 9, "overtime_triple_hours": 3,
+            "christmas_bonus_days": 15, "vacation_days": 12,
+            "bonus": 1500, "loan_deduction": 800,
+            "housing_credit_deduction": 1200
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    conceptos = [item["concept"] for item in data["items"]]
+    assert conceptos == [
+        "sueldo", "horas_extra", "aguinaldo", "prima_vacacional", "bono",
+        "isr", "imss", "prestamo", "infonavit"
+    ]
+    assert data["net_salary"] == round(
+        data["total_perceptions"] - data["total_deductions"], 2
+    )
+
+    saved = mock_save.call_args[0][0]
+    assert len(saved["items"]) == 9
+    assert saved["total_perceptions"] == data["total_perceptions"]
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_calculate_payroll_rejects_negative_concepts(mock_get_employee):
+    mock_get_employee.return_value = {"id": 1, "name": "Juan", "is_active": True}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={
+            "employee_id": 1, "period": "2026-12", "gross_salary": 21000,
+            "loan_deduction": -500
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_calculate_payroll_without_concepts_keeps_the_simple_shape(
+    mock_get_employee, mock_save
+):
+    mock_get_employee.return_value = {"id": 1, "name": "Juan", "is_active": True}
+    mock_save.return_value = {"id": 55, "created": True}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    data = response.json()["data"]
+    assert [item["concept"] for item in data["items"]] == [
+        "sueldo", "isr", "imss"
+    ]
+    assert data["net_salary"] == 9569.7

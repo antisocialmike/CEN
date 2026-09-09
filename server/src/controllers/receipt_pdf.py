@@ -23,6 +23,7 @@ PAGE_WIDTH = 215.9
 PAGE_HEIGHT = 279.4
 MARGIN = 24.0
 CONTENT = PAGE_WIDTH - MARGIN * 2
+SETTLEMENT_ANCHOR = PAGE_HEIGHT - 88
 
 
 def format_amount(amount) -> str:
@@ -64,7 +65,7 @@ class ReceiptPDF(FPDF):
         self.rule(RULE)
 
     def identity(self, receipt: dict) -> None:
-        self.ln(20)
+        self.ln(15)
         self.set_font("Times", "B", 34)
         self.set_text_color(*INK)
         self.cell(0, 14, format_period(receipt["period"]),
@@ -100,9 +101,9 @@ class ReceiptPDF(FPDF):
                       new_x="LMARGIN", new_y="NEXT")
 
     def settlement(self, net) -> None:
-        self.set_y(PAGE_HEIGHT - 88)
+        self.set_y(max(self.get_y() + 12, SETTLEMENT_ANCHOR))
         self.rule(RULE)
-        self.ln(12)
+        self.ln(9)
         top = self.get_y()
 
         self.set_font("Helvetica", "", 10.5)
@@ -111,10 +112,10 @@ class ReceiptPDF(FPDF):
         self.cell(0, 6, "Neto a pagar", new_x="LMARGIN", new_y="NEXT")
 
         self.ln(1)
-        self.set_font("Times", "B", 44)
+        self.set_font("Times", "B", 40)
         self.set_text_color(*INK)
         self.set_x(MARGIN + 8)
-        self.cell(0, 20, format_currency(net), new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 17, format_currency(net), new_x="LMARGIN", new_y="NEXT")
 
         self.set_draw_color(*ROSE)
         self.set_line_width(2.2)
@@ -132,14 +133,41 @@ class ReceiptPDF(FPDF):
             format_date(receipt["created_at"]), receipt["processed_by"]
         ), new_x="LMARGIN", new_y="NEXT")
 
+        base = receipt.get("taxable_base")
+        if base is not None:
+            self.cell(0, 4.5, "Base gravable de ISR {}".format(
+                format_currency(base)
+            ), new_x="LMARGIN", new_y="NEXT")
+
         self.set_text_color(*INK_FAINT)
         self.multi_cell(CONTENT * 0.78, 4.5, DISCLAIMER)
 
 
+def _group(receipt: dict, kind: str) -> list:
+    return [
+        (item["description"], item["amount"])
+        for item in receipt.get("items") or []
+        if item["kind"] == kind
+    ]
+
+
+def _fallback_groups(receipt: dict) -> tuple:
+    perceptions = [("Sueldo del periodo", receipt["gross_salary"])]
+    deductions = [
+        ("ISR retenido", receipt["isr_deduction"]),
+        ("IMSS retenido", receipt["imss_deduction"]),
+    ]
+    return perceptions, deductions
+
+
 def build_receipt_pdf(receipt: dict) -> bytes:
-    deductions = float(receipt["isr_deduction"]) + float(
-        receipt["imss_deduction"]
-    )
+    perceptions = _group(receipt, "perception")
+    deductions = _group(receipt, "deduction")
+    if not perceptions and not deductions:
+        perceptions, deductions = _fallback_groups(receipt)
+
+    total_perceptions = sum(float(amount) for _, amount in perceptions)
+    total_deductions = sum(float(amount) for _, amount in deductions)
 
     pdf = ReceiptPDF(format=PAGE_FORMAT)
     pdf.set_margins(MARGIN, MARGIN, MARGIN)
@@ -149,24 +177,13 @@ def build_receipt_pdf(receipt: dict) -> bytes:
     pdf.masthead("Comprobante {}".format(receipt["id"]))
     pdf.identity(receipt)
 
-    pdf.ln(13)
+    pdf.ln(11)
     pdf.rule(RULE)
-    pdf.ln(9)
-    pdf.ledger_group(
-        "Percepciones",
-        receipt["gross_salary"],
-        [("Salario bruto del periodo", receipt["gross_salary"])],
-    )
+    pdf.ln(8)
+    pdf.ledger_group("Percepciones", total_perceptions, perceptions)
 
-    pdf.ln(12)
-    pdf.ledger_group(
-        "Deducciones",
-        deductions,
-        [
-            ("ISR retenido", receipt["isr_deduction"]),
-            ("IMSS retenido", receipt["imss_deduction"]),
-        ],
-    )
+    pdf.ln(10)
+    pdf.ledger_group("Deducciones", total_deductions, deductions)
 
     pdf.settlement(receipt["net_salary"])
     pdf.colophon(receipt)

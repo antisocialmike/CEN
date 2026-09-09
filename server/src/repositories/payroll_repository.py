@@ -44,38 +44,69 @@ INSERT_EMPLOYEE = (
     "INSERT INTO employees (name, email, role, base_salary, password_hash, "
     "must_change_password) VALUES (%s, %s, %s, %s, %s, TRUE) RETURNING id;"
 )
+RECEIPT_ITEMS_JSON = (
+    "COALESCE(json_agg(json_build_object("
+    "'kind', i.kind, 'concept', i.concept, "
+    "'description', i.description, 'amount', i.amount, "
+    "'taxable', i.taxable, 'exempt', i.exempt) "
+    "ORDER BY i.position) FILTER (WHERE i.id IS NOT NULL), '[]') AS items "
+)
+
 SELECT_RECEIPTS_BY_EMPLOYEE = (
-    "SELECT id, employee_id, period, gross_salary, isr_deduction, "
-    "imss_deduction, net_salary, processed_by, created_at, updated_at "
-    "FROM payroll_receipts WHERE employee_id = %s "
-    "ORDER BY period DESC;"
+    "SELECT r.id, r.employee_id, r.period, r.gross_salary, r.isr_deduction, "
+    "r.imss_deduction, r.net_salary, r.total_perceptions, "
+    "r.total_deductions, r.taxable_base, r.processed_by, r.created_at, "
+    "r.updated_at, "
+    + RECEIPT_ITEMS_JSON
+    + "FROM payroll_receipts r "
+    "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
+    "WHERE r.employee_id = %s GROUP BY r.id ORDER BY r.period DESC;"
 )
 SELECT_RECENT_RECEIPTS = (
     "SELECT r.id, r.employee_id, e.name AS employee_name, r.period, "
     "r.gross_salary, r.isr_deduction, r.imss_deduction, r.net_salary, "
-    "r.processed_by, r.created_at, r.updated_at "
-    "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
+    "r.total_perceptions, r.total_deductions, r.taxable_base, "
+    "r.processed_by, r.created_at, r.updated_at, "
+    + RECEIPT_ITEMS_JSON
+    + "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
+    "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
+    "GROUP BY r.id, e.name "
     "ORDER BY r.period DESC, r.updated_at DESC LIMIT %s;"
 )
 SELECT_RECEIPT_BY_ID = (
     "SELECT r.id, r.employee_id, e.name AS employee_name, "
     "e.email AS employee_email, r.period, r.gross_salary, r.isr_deduction, "
-    "r.imss_deduction, r.net_salary, r.processed_by, r.created_at "
-    "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
-    "WHERE r.id = %s;"
+    "r.imss_deduction, r.net_salary, r.total_perceptions, "
+    "r.total_deductions, r.taxable_base, r.processed_by, r.created_at, "
+    + RECEIPT_ITEMS_JSON
+    + "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
+    "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
+    "WHERE r.id = %s GROUP BY r.id, e.name, e.email;"
 )
 UPSERT_RECEIPT = (
     "INSERT INTO payroll_receipts (employee_id, period, gross_salary, "
-    "isr_deduction, imss_deduction, net_salary, processed_by) "
-    "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+    "isr_deduction, imss_deduction, net_salary, total_perceptions, "
+    "total_deductions, taxable_base, processed_by) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
     "ON CONFLICT (employee_id, period) DO UPDATE SET "
     "gross_salary = EXCLUDED.gross_salary, "
     "isr_deduction = EXCLUDED.isr_deduction, "
     "imss_deduction = EXCLUDED.imss_deduction, "
     "net_salary = EXCLUDED.net_salary, "
+    "total_perceptions = EXCLUDED.total_perceptions, "
+    "total_deductions = EXCLUDED.total_deductions, "
+    "taxable_base = EXCLUDED.taxable_base, "
     "processed_by = EXCLUDED.processed_by, "
     "updated_at = NOW() "
     "RETURNING id, (xmax = 0) AS created;"
+)
+DELETE_RECEIPT_ITEMS = (
+    "DELETE FROM payroll_receipt_items WHERE receipt_id = %s;"
+)
+INSERT_RECEIPT_ITEM = (
+    "INSERT INTO payroll_receipt_items (receipt_id, kind, concept, "
+    "description, amount, taxable, exempt, position) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"
 )
 
 
@@ -163,6 +194,9 @@ class PayrollRepository:
                     receipt_data["isr_deduction"],
                     receipt_data["imss_deduction"],
                     receipt_data["net_salary"],
+                    receipt_data["total_perceptions"],
+                    receipt_data["total_deductions"],
+                    receipt_data["taxable_base"],
                     receipt_data["processed_by"],
                 ),
             )
@@ -171,7 +205,22 @@ class PayrollRepository:
                 raise RuntimeError("No se pudo obtener el ID del recibo.")
 
             saved = dict(row)
-            return {"id": int(saved["id"]), "created": bool(saved["created"])}
+            receipt_id = int(saved["id"])
+
+            cursor.execute(DELETE_RECEIPT_ITEMS, (receipt_id,))
+            for position, item in enumerate(receipt_data.get("items", [])):
+                cursor.execute(INSERT_RECEIPT_ITEM, (
+                    receipt_id,
+                    item["kind"],
+                    item["concept"],
+                    item["description"],
+                    item["amount"],
+                    item["taxable"],
+                    item["exempt"],
+                    position,
+                ))
+
+            return {"id": receipt_id, "created": bool(saved["created"])}
 
     def _fetch_one(self, query: str, params: tuple) -> Optional[dict]:
         with db_cursor() as cursor:

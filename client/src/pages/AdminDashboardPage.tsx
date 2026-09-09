@@ -11,8 +11,10 @@ import Skeleton from "../components/Skeleton";
 import { Receipt, UsersThree, Wallet } from "@phosphor-icons/react";
 import {
   calculatePayroll,
+  emptyConcepts,
   getRecentReceipts,
   PayrollCalculationResult,
+  PayrollConcepts,
   PayrollReceipt
 } from "../services/payrollService";
 import { listEmployees, EmployeeCreated } from "../services/employeeService";
@@ -24,6 +26,8 @@ export default function AdminDashboardPage() {
   const [receipts, setReceipts] = useState<PayrollReceipt[] | null>(null);
   const [employeeId, setEmployeeId] = useState("");
   const [period, setPeriod] = useState(currentPeriod());
+  const [concepts, setConcepts] = useState<PayrollConcepts>(emptyConcepts);
+  const [showConcepts, setShowConcepts] = useState(false);
   const [grossSalary, setGrossSalary] = useState("");
   const [result, setResult] = useState<PayrollCalculationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -79,7 +83,8 @@ export default function AdminDashboardPage() {
       const calculation = await calculatePayroll(
         Number(employeeId),
         period,
-        Number(grossSalary)
+        Number(grossSalary),
+        concepts
       );
       setResult(calculation);
       setReceipts((current) => {
@@ -242,6 +247,124 @@ export default function AdminDashboardPage() {
                     }
                     required
                   />
+                  <div className="payroll-concepts">
+                    <button
+                      type="button"
+                      className="payroll-concepts-toggle"
+                      onClick={() => setShowConcepts((current) => !current)}
+                      aria-expanded={showConcepts}
+                    >
+                      <span>Otros conceptos</span>
+                      <span className="payroll-concepts-hint">
+                        {showConcepts
+                          ? "Ocultar"
+                          : "Horas extra, aguinaldo, prima, préstamos"}
+                      </span>
+                    </button>
+
+                    {showConcepts && (
+                      <div className="payroll-concepts-grid">
+                        <p className="payroll-concepts-legend">Percepciones</p>
+                        <FormField
+                          id="overtimeDoubleHours"
+                          label="Horas extra dobles"
+                          type="number"
+                          value={String(concepts.overtimeDoubleHours)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, overtimeDoubleHours: Number(value) })
+                          }
+                          min={0}
+                          step={0.5}
+                          inputMode="decimal"
+                          hint="Las primeras 9 de la semana se pagan al doble."
+                        />
+                        <FormField
+                          id="overtimeTripleHours"
+                          label="Horas extra triples"
+                          type="number"
+                          value={String(concepts.overtimeTripleHours)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, overtimeTripleHours: Number(value) })
+                          }
+                          min={0}
+                          step={0.5}
+                          inputMode="decimal"
+                          hint="Las que exceden esas 9 horas."
+                        />
+                        <FormField
+                          id="christmasBonusDays"
+                          label="Días de aguinaldo"
+                          type="number"
+                          value={String(concepts.christmasBonusDays)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, christmasBonusDays: Number(value) })
+                          }
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          hint="La ley pide 15 días como mínimo."
+                        />
+                        <FormField
+                          id="vacationDays"
+                          label="Días de vacaciones"
+                          type="number"
+                          value={String(concepts.vacationDays)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, vacationDays: Number(value) })
+                          }
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          hint="La prima vacacional es el 25% de esos días."
+                        />
+                        <FormField
+                          id="bonus"
+                          label="Bono o gratificación"
+                          type="number"
+                          value={String(concepts.bonus)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, bonus: Number(value) })
+                          }
+                          min={0}
+                          step={0.01}
+                          inputMode="decimal"
+                          prefix="$"
+                        />
+
+                        <p className="payroll-concepts-legend">Deducciones</p>
+                        <FormField
+                          id="loanDeduction"
+                          label="Préstamo"
+                          type="number"
+                          value={String(concepts.loanDeduction)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, loanDeduction: Number(value) })
+                          }
+                          min={0}
+                          step={0.01}
+                          inputMode="decimal"
+                          prefix="$"
+                        />
+                        <FormField
+                          id="housingCreditDeduction"
+                          label="Crédito Infonavit"
+                          type="number"
+                          value={String(concepts.housingCreditDeduction)}
+                          onChange={(value) =>
+                            setConcepts({
+                              ...concepts,
+                              housingCreditDeduction: Number(value)
+                            })
+                          }
+                          min={0}
+                          step={0.01}
+                          inputMode="decimal"
+                          prefix="$"
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   <SubmitButton
                     label="Calcular y emitir recibo"
                     loadingLabel="Calculando…"

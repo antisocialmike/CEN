@@ -2122,3 +2122,66 @@ p {
   font-size: 13px;
   color: var(--danger-text);
 }
+
+.payroll-result-row.is-group {
+  margin-top: var(--s-4);
+  font-weight: 600;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.payroll-result-row.is-group:first-child {
+  margin-top: 0;
+}
+
+.payroll-result-row.is-item {
+  padding-left: var(--s-4);
+  color: var(--ink-2);
+  border-bottom: 0;
+}
+
+.payroll-concepts {
+  margin-bottom: var(--s-5);
+}
+
+.payroll-concepts-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.payroll-concepts-hint {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.payroll-concepts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--s-4);
+  padding-top: var(--s-4);
+}
+
+.payroll-concepts-legend {
+  grid-column: 1 / -1;
+  margin-bottom: var(--s-3);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+@media (max-width: 560px) {
+  .payroll-concepts-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
