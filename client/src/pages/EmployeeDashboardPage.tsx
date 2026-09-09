@@ -112,7 +112,7 @@ export default function EmployeeDashboardPage() {
                 </span>
                 <div>
                   <p className="stat-card-label">Último periodo</p>
-                  <p className="stat-card-value is-text">{formatMonth(latest.period)}</p>
+                  <p className="stat-card-value is-text">{formatMonth(latest.period_start)}</p>
                 </div>
               </div>
               <div className="stat-card">

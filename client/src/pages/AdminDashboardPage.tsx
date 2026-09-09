@@ -15,17 +15,26 @@ import {
   getRecentReceipts,
   PayrollCalculationResult,
   PayrollConcepts,
-  PayrollReceipt
+  PayrollReceipt,
+  Periodicity,
+  PERIODICITY_LABELS
 } from "../services/payrollService";
 import { listEmployees, EmployeeCreated } from "../services/employeeService";
 import { getStatusCode } from "../services/apiError";
-import { currentPeriod, formatCurrency, formatDateShort } from "../services/format";
+import {
+  currentPeriod,
+  formatCurrency,
+  formatDateShort,
+  periodStartsOf
+} from "../services/format";
 
 export default function AdminDashboardPage() {
   const [employees, setEmployees] = useState<EmployeeCreated[] | null>(null);
   const [receipts, setReceipts] = useState<PayrollReceipt[] | null>(null);
   const [employeeId, setEmployeeId] = useState("");
-  const [period, setPeriod] = useState(currentPeriod());
+  const [month, setMonth] = useState(currentPeriod());
+  const [periodicity, setPeriodicity] = useState<Periodicity>("mensual");
+  const [periodStart, setPeriodStart] = useState(currentPeriod() + "-01");
   const [concepts, setConcepts] = useState<PayrollConcepts>(emptyConcepts);
   const [showConcepts, setShowConcepts] = useState(false);
   const [grossSalary, setGrossSalary] = useState("");
@@ -35,6 +44,19 @@ export default function AdminDashboardPage() {
   const navigate = useNavigate();
 
   const selectedEmployee = employees?.find((item) => String(item.id) === employeeId);
+  const periodOptions = periodStartsOf(periodicity, month);
+
+  function changePeriodicity(next: Periodicity) {
+    setPeriodicity(next);
+    setPeriodStart(periodStartsOf(next, month)[0]);
+    setResult(null);
+  }
+
+  function changeMonth(next: string) {
+    setMonth(next);
+    setPeriodStart(periodStartsOf(periodicity, next)[0]);
+    setResult(null);
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -82,7 +104,8 @@ export default function AdminDashboardPage() {
     try {
       const calculation = await calculatePayroll(
         Number(employeeId),
-        period,
+        periodicity,
+        periodStart,
         Number(grossSalary),
         concepts
       );
@@ -92,7 +115,10 @@ export default function AdminDashboardPage() {
           id: calculation.receipt_id,
           employee_id: calculation.employee_id,
           employee_name: calculation.employee_name ?? selectedEmployee?.name,
-          period: `${calculation.period}-01`,
+          period_start: calculation.period_start,
+          period_end: calculation.period_end,
+          periodicity,
+          paid_days: 0,
           processed_by: calculation.processed_by,
           created_at: new Date().toISOString(),
           ...calculation.data
@@ -106,6 +132,8 @@ export default function AdminDashboardPage() {
         setErrorMessage("Ese empleado ya no existe. Recarga la página para actualizar la lista.");
       } else if (status === 400) {
         setErrorMessage("El salario bruto no puede ser negativo.");
+      } else if (status === 409) {
+        setErrorMessage("Esa persona ya tiene un recibo que cubre esos días.");
       } else if (status === 422) {
         setErrorMessage("Revisa el periodo y el salario: alguno tiene un formato inválido.");
       } else {
@@ -220,15 +248,39 @@ export default function AdminDashboardPage() {
                       employees.length === 1 ? "persona registrada" : "personas registradas"
                     } en la nómina.`}
                   />
+                  <SelectField
+                    id="periodicity"
+                    label="Periodicidad"
+                    value={periodicity}
+                    onChange={(value) => changePeriodicity(value as Periodicity)}
+                    options={Object.entries(PERIODICITY_LABELS).map(
+                      ([value, label]) => ({ value, label })
+                    )}
+                  />
                   <FormField
-                    id="period"
-                    label="Periodo de nómina"
+                    id="month"
+                    label="Mes"
                     type="month"
-                    value={period}
-                    onChange={setPeriod}
-                    hint="Un recibo por empleado y periodo. Recalcular el mismo mes reemplaza el recibo anterior."
+                    value={month}
+                    onChange={changeMonth}
                     required
                   />
+                  {periodOptions.length > 1 && (
+                    <SelectField
+                      id="periodStart"
+                      label="Periodo"
+                      value={periodStart}
+                      onChange={setPeriodStart}
+                      options={periodOptions.map((start, index) => ({
+                        value: start,
+                        label:
+                          periodicity === "quincenal"
+                            ? `${index === 0 ? "Primera" : "Segunda"} quincena`
+                            : `Semana ${index + 1}`
+                      }))}
+                      hint="Recalcular el mismo periodo reemplaza el recibo anterior."
+                    />
+                  )}
                   <FormField
                     id="grossSalary"
                     label="Salario bruto del periodo"

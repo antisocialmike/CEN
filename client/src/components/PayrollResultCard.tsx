@@ -21,7 +21,7 @@ export default function PayrollResultCard({ result }: PayrollResultCardProps) {
       transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
     >
       <p className="payroll-result-heading">
-        <span>Desglose de {formatMonth(`${result.period}-01`)}</span>
+        <span>Desglose de {formatMonth(result.period_start)}</span>
         <small>Recibo #{result.receipt_id}</small>
       </p>
 

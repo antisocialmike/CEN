@@ -2,7 +2,11 @@ import { Receipt } from "@phosphor-icons/react";
 import PayrollBreakdownRows from "./PayrollBreakdownRows";
 import ReceiptDownloadButton from "./ReceiptDownloadButton";
 import { PayrollReceipt } from "../services/payrollService";
-import { formatCurrency, formatDateShort, formatMonth } from "../services/format";
+import {
+  formatCurrency,
+  formatMonth,
+  formatRange
+} from "../services/format";
 
 interface ReceiptCardProps {
   receipt: PayrollReceipt;
@@ -18,9 +22,11 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
           </span>
 
           <span>
-            <p className="receipt-card-month">{formatMonth(receipt.period)}</p>
+            <p className="receipt-card-month">
+              {formatMonth(receipt.period_start)}
+            </p>
             <p className="receipt-card-date">
-              Recibo #{receipt.id} · emitido el {formatDateShort(receipt.created_at)}
+              Recibo #{receipt.id} · {formatRange(receipt.period_start, receipt.period_end)}
             </p>
           </span>
         </span>

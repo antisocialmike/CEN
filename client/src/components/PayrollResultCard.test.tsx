@@ -48,7 +48,8 @@ const result = {
   created: true,
   employee_id: 3,
   employee_name: "Ana Lopez",
-  period: "2026-09",
+  period_start: "2026-09-01",
+  period_end: "2026-09-30",
   processed_by: "admin@cen.com",
   data: {
     gross_salary: 21000,
