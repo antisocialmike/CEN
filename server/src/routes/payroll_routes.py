@@ -34,7 +34,9 @@ def calculate_payroll(
         )
 
     try:
-        breakdown = payroll_service.process_salary(request.gross_salary)
+        breakdown = payroll_service.process(
+            request.model_dump(exclude={"employee_id", "period"})
+        )
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

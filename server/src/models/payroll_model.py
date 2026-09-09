@@ -34,6 +34,13 @@ class PayrollCalculationRequest(BaseModel):
     employee_id: int
     period: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     gross_salary: float
+    overtime_double_hours: float = Field(default=0, ge=0, le=744)
+    overtime_triple_hours: float = Field(default=0, ge=0, le=744)
+    christmas_bonus_days: float = Field(default=0, ge=0, le=90)
+    vacation_days: float = Field(default=0, ge=0, le=90)
+    bonus: float = Field(default=0, ge=0)
+    loan_deduction: float = Field(default=0, ge=0)
+    housing_credit_deduction: float = Field(default=0, ge=0)
 
     def period_as_date(self) -> date:
         year, month = self.period.split("-")
