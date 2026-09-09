@@ -63,3 +63,17 @@ export async function activateEmployee(id: number): Promise<EmployeeCreated> {
   const response = await httpClient.post<EmployeeCreated>(`/employees/${id}/activate`);
   return response.data;
 }
+
+export interface PasswordReset {
+  employee_id: number;
+  name: string;
+  email: string;
+  temporary_password: string;
+}
+
+export async function resetEmployeePassword(id: number): Promise<PasswordReset> {
+  const response = await httpClient.post<PasswordReset>(
+    `/employees/${id}/reset-password`
+  );
+  return response.data;
+}
