@@ -8,6 +8,21 @@ export const PERIODICITY_LABELS: Record<Periodicity, string> = {
   semanal: "Semanal"
 };
 
+export function suggestedGrossSalary(
+  baseSalary: number,
+  periodicity: Periodicity
+): number {
+  if (periodicity === "quincenal") return Math.round(baseSalary * 50) / 100;
+  if (periodicity === "semanal") {
+    return Math.round((baseSalary * 12 * 100) / 52) / 100;
+  }
+  return baseSalary;
+}
+
+export function countActiveConcepts(concepts: PayrollConcepts): number {
+  return Object.values(concepts).filter((value) => Number(value) > 0).length;
+}
+
 export interface PayrollItem {
   kind: "perception" | "deduction";
   concept: string;
