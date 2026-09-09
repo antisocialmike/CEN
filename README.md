@@ -62,6 +62,20 @@ pendientes corren dentro de una unica transaccion: si una falla, ninguna
 queda a medias. Para cambiar el esquema se agrega un archivo nuevo con el
 siguiente numero; los ya aplicados no se editan.
 
+Tras `LOGIN_MAX_ATTEMPTS` intentos fallidos (5 por omision) la cuenta
+queda bloqueada durante `LOGIN_LOCK_MINUTES` minutos (15 por omision) y
+el login responde `429`, incluso con la contrasena correcta. Un acceso
+correcto reinicia el contador, y un restablecimiento hecho por un
+administrador tambien levanta el bloqueo.
+
+Ese bloqueo protege de la fuerza bruta pero abre la puerta a molestar a
+alguien fallando a proposito con su correo. Por eso el bloqueo es
+temporal y no permanente.
+
+El cliente comprueba la expiracion del token antes de dejar entrar al
+panel, asi que una sesion vencida manda al login en vez de mostrar una
+pantalla que fallaria en la primera peticion.
+
 Las credenciales por defecto para el primer acceso son `admin@cen.com` y
 `admin1234`. En una base nueva esa cuenta arranca marcada para cambio de
 contrasena: el primer inicio de sesion obliga a definir una propia antes
@@ -185,6 +199,10 @@ capa.
   cuenta sigue usando la contrasena temporal que le asignaron.
 - `POST /auth/password`: cambia la contrasena del dueno del token. Exige
   la contrasena actual, rechaza reutilizar la misma y responde `204`.
+- `POST /employees/{id}/reset-password`: genera una contrasena temporal
+  para esa persona, la marca para cambio obligatorio y desbloquea su
+  cuenta. Devuelve la contrasena una sola vez, para que el administrador
+  se la entregue por un canal seguro. Requiere rol `admin`.
 - `POST /payroll/calculate`: recibe `employee_id`, `period` (`AAAA-MM`) y
   `gross_salary`, mas los conceptos opcionales
   (`overtime_double_hours`, `overtime_triple_hours`,
