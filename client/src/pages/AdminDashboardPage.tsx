@@ -11,13 +11,15 @@ import Skeleton from "../components/Skeleton";
 import { Receipt, UsersThree, Wallet } from "@phosphor-icons/react";
 import {
   calculatePayroll,
+  countActiveConcepts,
   emptyConcepts,
   getRecentReceipts,
   PayrollCalculationResult,
   PayrollConcepts,
   PayrollReceipt,
   Periodicity,
-  PERIODICITY_LABELS
+  PERIODICITY_LABELS,
+  suggestedGrossSalary
 } from "../services/payrollService";
 import { listEmployees, EmployeeCreated } from "../services/employeeService";
 import { getStatusCode } from "../services/apiError";
@@ -46,10 +48,17 @@ export default function AdminDashboardPage() {
   const selectedEmployee = employees?.find((item) => String(item.id) === employeeId);
   const periodOptions = periodStartsOf(periodicity, month);
 
+  const activeConcepts = countActiveConcepts(concepts);
+
   function changePeriodicity(next: Periodicity) {
     setPeriodicity(next);
     setPeriodStart(periodStartsOf(next, month)[0]);
     setResult(null);
+    if (selectedEmployee) {
+      setGrossSalary(
+        String(suggestedGrossSalary(selectedEmployee.base_salary, next))
+      );
+    }
   }
 
   function changeMonth(next: string) {
@@ -68,7 +77,9 @@ export default function AdminDashboardPage() {
         setEmployees(result);
         if (result.length > 0) {
           setEmployeeId(String(result[0].id));
-          setGrossSalary(String(result[0].base_salary));
+          setGrossSalary(
+            String(suggestedGrossSalary(result[0].base_salary, "mensual"))
+          );
         }
       })
       .catch(() => {
@@ -89,9 +100,12 @@ export default function AdminDashboardPage() {
   function handleEmployeeChange(nextId: string) {
     setEmployeeId(nextId);
     setResult(null);
+    setConcepts(emptyConcepts);
     const employee = employees?.find((item) => String(item.id) === nextId);
     if (employee) {
-      setGrossSalary(String(employee.base_salary));
+      setGrossSalary(
+        String(suggestedGrossSalary(employee.base_salary, periodicity))
+      );
     }
   }
 
@@ -294,7 +308,13 @@ export default function AdminDashboardPage() {
                     prefix="$"
                     hint={
                       selectedEmployee
-                        ? `Salario base registrado: ${formatCurrency(selectedEmployee.base_salary)}`
+                        ? periodicity === "mensual"
+                          ? `Salario base registrado: ${formatCurrency(
+                              selectedEmployee.base_salary
+                            )}`
+                          : `Sugerido a partir del salario base mensual de ${formatCurrency(
+                              selectedEmployee.base_salary
+                            )}.`
                         : undefined
                     }
                     required
@@ -307,10 +327,20 @@ export default function AdminDashboardPage() {
                       aria-expanded={showConcepts}
                     >
                       <span>Otros conceptos</span>
-                      <span className="payroll-concepts-hint">
-                        {showConcepts
-                          ? "Ocultar"
-                          : "Horas extra, aguinaldo, prima, préstamos"}
+                      <span
+                        className={
+                          activeConcepts > 0
+                            ? "payroll-concepts-hint is-active"
+                            : "payroll-concepts-hint"
+                        }
+                      >
+                        {activeConcepts > 0
+                          ? `${activeConcepts} aplicado${
+                              activeConcepts === 1 ? "" : "s"
+                            }`
+                          : showConcepts
+                            ? "Ocultar"
+                            : "Horas extra, aguinaldo, prima, préstamos"}
                       </span>
                     </button>
 

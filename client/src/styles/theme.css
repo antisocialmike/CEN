@@ -2165,6 +2165,11 @@ p {
   color: var(--ink-3);
 }
 
+.payroll-concepts-hint.is-active {
+  font-weight: 600;
+  color: var(--ink);
+}
+
 .payroll-concepts-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
