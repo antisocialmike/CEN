@@ -71,15 +71,17 @@ RECEIPT_ITEMS_JSON = (
 SELECT_RECEIPTS_BY_EMPLOYEE = (
     "SELECT r.id, r.employee_id, r.period, r.gross_salary, r.isr_deduction, "
     "r.imss_deduction, r.net_salary, r.total_perceptions, "
-    "r.total_deductions, r.taxable_base, r.processed_by, r.created_at, "
+    "r.total_deductions, r.taxable_base, r.periodicity, r.paid_days, "
+    "r.processed_by, r.created_at, "
     "r.updated_at, "
     + RECEIPT_ITEMS_JSON
     + "FROM payroll_receipts r "
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
-    "WHERE r.employee_id = %s GROUP BY r.id ORDER BY r.period DESC;"
+    "WHERE r.employee_id = %s GROUP BY r.id ORDER BY r.period_start DESC;"
 )
 SELECT_RECENT_RECEIPTS = (
-    "SELECT r.id, r.employee_id, e.name AS employee_name, r.period, "
+    "SELECT r.id, r.employee_id, e.name AS employee_name, "
+    "r.period_start, r.period_end, r.periodicity, r.paid_days, "
     "r.gross_salary, r.isr_deduction, r.imss_deduction, r.net_salary, "
     "r.total_perceptions, r.total_deductions, r.taxable_base, "
     "r.processed_by, r.created_at, r.updated_at, "
@@ -87,24 +89,29 @@ SELECT_RECENT_RECEIPTS = (
     + "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
     "GROUP BY r.id, e.name "
-    "ORDER BY r.period DESC, r.updated_at DESC LIMIT %s;"
+    "ORDER BY r.period_start DESC, r.updated_at DESC LIMIT %s;"
 )
 SELECT_RECEIPT_BY_ID = (
     "SELECT r.id, r.employee_id, e.name AS employee_name, "
-    "e.email AS employee_email, r.period, r.gross_salary, r.isr_deduction, "
+    "e.email AS employee_email, r.period_start, r.period_end, "
+    "r.gross_salary, r.isr_deduction, "
     "r.imss_deduction, r.net_salary, r.total_perceptions, "
-    "r.total_deductions, r.taxable_base, r.processed_by, r.created_at, "
+    "r.total_deductions, r.taxable_base, r.periodicity, r.paid_days, "
+    "r.processed_by, r.created_at, "
     + RECEIPT_ITEMS_JSON
     + "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
     "WHERE r.id = %s GROUP BY r.id, e.name, e.email;"
 )
 UPSERT_RECEIPT = (
-    "INSERT INTO payroll_receipts (employee_id, period, gross_salary, "
-    "isr_deduction, imss_deduction, net_salary, total_perceptions, "
-    "total_deductions, taxable_base, processed_by) "
-    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
-    "ON CONFLICT (employee_id, period) DO UPDATE SET "
+    "INSERT INTO payroll_receipts (employee_id, period_start, period_end, "
+    "periodicity, paid_days, gross_salary, isr_deduction, imss_deduction, "
+    "net_salary, total_perceptions, total_deductions, taxable_base, "
+    "processed_by) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+    "ON CONFLICT (employee_id, period_start, period_end) DO UPDATE SET "
+    "periodicity = EXCLUDED.periodicity, "
+    "paid_days = EXCLUDED.paid_days, "
     "gross_salary = EXCLUDED.gross_salary, "
     "isr_deduction = EXCLUDED.isr_deduction, "
     "imss_deduction = EXCLUDED.imss_deduction, "
@@ -221,7 +228,10 @@ class PayrollRepository:
                 UPSERT_RECEIPT,
                 (
                     receipt_data["employee_id"],
-                    receipt_data["period"],
+                    receipt_data["period_start"],
+                    receipt_data["period_end"],
+                    receipt_data["periodicity"],
+                    receipt_data["paid_days"],
                     receipt_data["gross_salary"],
                     receipt_data["isr_deduction"],
                     receipt_data["imss_deduction"],

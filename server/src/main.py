@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from psycopg2 import OperationalError
-from psycopg2.errors import UniqueViolation
+from psycopg2.errors import ExclusionViolation, UniqueViolation
 
 from .bootstrap import bootstrap_database
 from .config.database import close_pool
@@ -45,6 +45,16 @@ async def duplicated_record(request: Request, exc: UniqueViolation):
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={"detail": "El correo ya esta registrado"},
+    )
+
+
+@app.exception_handler(ExclusionViolation)
+async def overlapping_period(request: Request, exc: ExclusionViolation):
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "detail": "Ese empleado ya tiene un recibo que cubre esos dias"
+        },
     )
 
 

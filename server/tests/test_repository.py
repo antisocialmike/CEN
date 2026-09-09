@@ -168,7 +168,10 @@ def test_list_recent_receipts_applies_the_limit(repository, cursor):
 def _receipt(**overrides):
     data = {
         "employee_id": 1,
-        "period": date(2026, 9, 1),
+        "period_start": date(2026, 9, 1),
+        "period_end": date(2026, 9, 30),
+        "periodicity": "mensual",
+        "paid_days": 30,
         "processed_by": "admin@cen.com",
         "gross_salary": 10000,
         "isr_deduction": 1600,
@@ -202,7 +205,9 @@ def test_save_payroll_receipt_creates_a_new_one(repository, cursor):
     assert result == {"id": 100, "created": True}
     upsert = cursor.execute.call_args_list[0][0][1]
     assert upsert[1] == date(2026, 9, 1)
-    assert upsert[9] == "admin@cen.com"
+    assert upsert[2] == date(2026, 9, 30)
+    assert upsert[3] == "mensual"
+    assert upsert[12] == "admin@cen.com"
 
 
 def test_save_payroll_receipt_replaces_the_items(repository, cursor):
@@ -223,7 +228,7 @@ def test_save_payroll_receipt_replaces_the_period(repository, cursor):
     result = repository.save_payroll_receipt(_receipt())
 
     assert result == {"id": 100, "created": False}
-    assert "ON CONFLICT (employee_id, period)" in str(
+    assert "ON CONFLICT (employee_id, period_start, period_end)" in str(
         cursor.execute.call_args_list[0][0][0]
     )
 
