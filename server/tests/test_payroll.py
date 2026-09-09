@@ -179,3 +179,94 @@ def test_el_imss_se_topa_a_veinticinco_uma():
     assert service.process({"gross_salary": 500000})["imss_deduction"] == (
         service.process({"gross_salary": 1000000})["imss_deduction"]
     )
+
+
+def test_la_tarifa_de_isr_escala_con_la_periodicidad():
+    service = PayrollService()
+
+    mensual = service.process({"gross_salary": 21000, "periodicity": "mensual"})
+    quincenal = service.process({
+        "gross_salary": 10500, "periodicity": "quincenal"
+    })
+
+    assert round(quincenal["isr_deduction"] * 2, 0) == round(
+        mensual["isr_deduction"], 0
+    )
+
+
+def test_el_imss_tambien_escala_con_la_periodicidad():
+    service = PayrollService()
+
+    mensual = service.process({"gross_salary": 21000, "periodicity": "mensual"})
+    quincenal = service.process({
+        "gross_salary": 10500, "periodicity": "quincenal"
+    })
+
+    assert round(quincenal["imss_deduction"] * 2, 2) == round(
+        mensual["imss_deduction"], 2
+    )
+
+
+def test_la_exencion_de_horas_extra_se_ajusta_a_las_semanas_del_periodo():
+    service = PayrollService()
+
+    mensual = service.process({
+        "gross_salary": 60000, "periodicity": "mensual",
+        "overtime_double_hours": 40
+    })
+    semanal = service.process({
+        "gross_salary": 14000, "periodicity": "semanal",
+        "overtime_double_hours": 40
+    })
+
+    tope_mensual = next(
+        i for i in mensual["items"] if i["concept"] == "horas_extra"
+    )["exempt"]
+    tope_semanal = next(
+        i for i in semanal["items"] if i["concept"] == "horas_extra"
+    )["exempt"]
+
+    assert tope_mensual > tope_semanal
+
+
+def test_el_salario_diario_sale_de_los_dias_realmente_pagados():
+    service = PayrollService()
+
+    primera = service.process({
+        "gross_salary": 10500, "periodicity": "quincenal",
+        "paid_days": 15, "christmas_bonus_days": 15
+    })
+    segunda = service.process({
+        "gross_salary": 10500, "periodicity": "quincenal",
+        "paid_days": 16, "christmas_bonus_days": 15
+    })
+
+    aguinaldo_primera = next(
+        i for i in primera["items"] if i["concept"] == "aguinaldo"
+    )["amount"]
+    aguinaldo_segunda = next(
+        i for i in segunda["items"] if i["concept"] == "aguinaldo"
+    )["amount"]
+
+    assert aguinaldo_primera > aguinaldo_segunda
+
+
+def test_una_periodicidad_desconocida_se_rechaza():
+    with pytest.raises(ValueError, match="Periodicidad no reconocida"):
+        PayrollService().process({
+            "gross_salary": 10000, "periodicity": "decenal"
+        })
+
+
+def test_los_dias_pagados_deben_ser_positivos():
+    with pytest.raises(ValueError, match="dias pagados"):
+        PayrollService().process({"gross_salary": 10000, "paid_days": 0})
+
+
+def test_la_periodicidad_viaja_en_el_resultado():
+    result = PayrollService().process({
+        "gross_salary": 10500, "periodicity": "quincenal", "paid_days": 15
+    })
+
+    assert result["periodicity"] == "quincenal"
+    assert result["paid_days"] == 15

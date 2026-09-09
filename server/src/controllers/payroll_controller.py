@@ -5,9 +5,27 @@ from typing import List
 UMA_MENSUAL = 3566.22
 UMA_DIARIA = round(UMA_MENSUAL / 30.4, 2)
 
-DIAS_DEL_MES = 30
 HORAS_DE_JORNADA = 8
-SEMANAS_DEL_MES = 4
+DIAS_TARIFA_MENSUAL = 30.4
+
+MENSUAL = "mensual"
+QUINCENAL = "quincenal"
+SEMANAL = "semanal"
+
+PERIODICITIES = {
+    MENSUAL: {
+        "tarifa_dias": 30.4, "dias_nominales": 30,
+        "semanas": 4.0, "etiqueta": "Mensual",
+    },
+    QUINCENAL: {
+        "tarifa_dias": 15.2, "dias_nominales": 15,
+        "semanas": 2.0, "etiqueta": "Quincenal",
+    },
+    SEMANAL: {
+        "tarifa_dias": 7.0, "dias_nominales": 7,
+        "semanas": 1.0, "etiqueta": "Semanal",
+    },
+}
 
 ISR_SUBSIDIO_LIMITE = 11492.66
 ISR_SUBSIDIO_MONTO = 536.22
@@ -81,10 +99,28 @@ class TaxCalculationStrategy(ABC):
         pass
 
 
+def scale_isr_table(factor: float) -> list:
+    return [
+        (
+            limite_inferior * factor,
+            None if limite_superior is None else limite_superior * factor,
+            cuota_fija * factor,
+            porcentaje,
+        )
+        for limite_inferior, limite_superior, cuota_fija, porcentaje in ISR_TABLE
+    ]
+
+
 class ISRStrategy(TaxCalculationStrategy):
+    def __init__(self, periodicity: str = MENSUAL):
+        self.factor = (
+            PERIODICITIES[periodicity]["tarifa_dias"] / DIAS_TARIFA_MENSUAL
+        )
+        self.table = scale_isr_table(self.factor)
+
     def calculate(self, base_salary: float) -> float:
         isr_causado = 0.0
-        for limite_inferior, limite_superior, cuota_fija, porcentaje in ISR_TABLE:
+        for limite_inferior, limite_superior, cuota_fija, porcentaje in self.table:
             dentro_del_rango = base_salary >= limite_inferior and (
                 limite_superior is None or base_salary <= limite_superior
             )
@@ -92,16 +128,24 @@ class ISRStrategy(TaxCalculationStrategy):
                 isr_causado = cuota_fija + (base_salary - limite_inferior) * porcentaje
                 break
 
-        if base_salary <= ISR_SUBSIDIO_LIMITE:
-            isr_causado = max(0.0, isr_causado - ISR_SUBSIDIO_MONTO)
+        if base_salary <= ISR_SUBSIDIO_LIMITE * self.factor:
+            isr_causado = max(
+                0.0, isr_causado - ISR_SUBSIDIO_MONTO * self.factor
+            )
 
         return _round(isr_causado)
 
 
 class IMSSStrategy(TaxCalculationStrategy):
+    def __init__(self, periodicity: str = MENSUAL):
+        self.factor = (
+            PERIODICITIES[periodicity]["tarifa_dias"] / DIAS_TARIFA_MENSUAL
+        )
+
     def calculate(self, base_salary: float) -> float:
-        salario_cotizable = min(base_salary, UMA_MENSUAL * IMSS_TOPE_UMA)
-        tres_uma_mensual = UMA_MENSUAL * 3
+        tope = UMA_MENSUAL * IMSS_TOPE_UMA * self.factor
+        salario_cotizable = min(base_salary, tope)
+        tres_uma_mensual = UMA_MENSUAL * 3 * self.factor
         excedente = max(0.0, salario_cotizable - tres_uma_mensual)
 
         cuotas_sobre_sbc = (
@@ -120,22 +164,39 @@ class IMSSStrategy(TaxCalculationStrategy):
 
 
 class PayrollService:
-    def __init__(
-        self,
-        isr: TaxCalculationStrategy = ISRStrategy(),
-        imss: TaxCalculationStrategy = IMSSStrategy(),
-    ):
-        self.isr_calc = isr
-        self.imss_calc = imss
+    def __init__(self, isr=None, imss=None):
+        self.isr_override = isr
+        self.imss_override = imss
+
+    def _strategies(self, periodicity: str) -> tuple:
+        isr = self.isr_override or ISRStrategy(periodicity)
+        imss = self.imss_override or IMSSStrategy(periodicity)
+        return isr, imss
 
     def process_salary(self, gross_salary: float) -> dict:
         return self.process({"gross_salary": gross_salary})
 
     def process(self, inputs: dict) -> dict:
         gross_salary = float(inputs.get("gross_salary", 0))
+        periodicity = inputs.get("periodicity") or MENSUAL
+        if periodicity not in PERIODICITIES:
+            raise ValueError("Periodicidad no reconocida")
+
+        given_days = inputs.get("paid_days")
+        paid_days = float(
+            given_days
+            if given_days is not None
+            else PERIODICITIES[periodicity]["dias_nominales"]
+        )
+        if paid_days <= 0:
+            raise ValueError("Los dias pagados deben ser mayores que cero")
+
+        self.isr_calc, self.imss_calc = self._strategies(periodicity)
         self._reject_negatives(inputs)
 
-        perceptions = self._perceptions(gross_salary, inputs)
+        perceptions = self._perceptions(
+            gross_salary, inputs, paid_days, periodicity
+        )
         taxable_base = sum(item.taxable for item in perceptions)
 
         deductions = self._deductions(gross_salary, taxable_base, inputs)
@@ -147,6 +208,8 @@ class PayrollService:
         imss = next(item.amount for item in deductions if item.concept == "imss")
 
         return {
+            "periodicity": periodicity,
+            "paid_days": paid_days,
             "gross_salary": gross_salary,
             "isr_deduction": isr,
             "imss_deduction": imss,
@@ -173,13 +236,19 @@ class PayrollService:
             if float(inputs.get(field) or 0) < 0:
                 raise ValueError("Los conceptos de nomina no pueden ser negativos")
 
-    def _hourly_wage(self, gross_salary: float) -> float:
-        return gross_salary / DIAS_DEL_MES / HORAS_DE_JORNADA
+    def _hourly_wage(self, gross_salary: float, paid_days: float) -> float:
+        return self._daily_wage(gross_salary, paid_days) / HORAS_DE_JORNADA
 
-    def _daily_wage(self, gross_salary: float) -> float:
-        return gross_salary / DIAS_DEL_MES
+    def _daily_wage(self, gross_salary: float, paid_days: float) -> float:
+        return gross_salary / paid_days
 
-    def _perceptions(self, gross_salary: float, inputs: dict) -> List[PayrollItem]:
+    def _perceptions(
+        self,
+        gross_salary: float,
+        inputs: dict,
+        paid_days: float,
+        periodicity: str,
+    ) -> List[PayrollItem]:
         items = [
             PayrollItem(
                 kind=PERCEPTION,
@@ -190,15 +259,17 @@ class PayrollService:
             )
         ]
 
-        overtime = self._overtime(gross_salary, inputs)
+        overtime = self._overtime(gross_salary, inputs, paid_days, periodicity)
         if overtime is not None:
             items.append(overtime)
 
-        christmas_bonus = self._christmas_bonus(gross_salary, inputs)
+        christmas_bonus = self._christmas_bonus(gross_salary, inputs, paid_days)
         if christmas_bonus is not None:
             items.append(christmas_bonus)
 
-        vacation_premium = self._vacation_premium(gross_salary, inputs)
+        vacation_premium = self._vacation_premium(
+            gross_salary, inputs, paid_days
+        )
         if vacation_premium is not None:
             items.append(vacation_premium)
 
@@ -216,13 +287,19 @@ class PayrollService:
 
         return items
 
-    def _overtime(self, gross_salary: float, inputs: dict):
+    def _overtime(
+        self,
+        gross_salary: float,
+        inputs: dict,
+        paid_days: float,
+        periodicity: str,
+    ):
         double_hours = float(inputs.get("overtime_double_hours") or 0)
         triple_hours = float(inputs.get("overtime_triple_hours") or 0)
         if double_hours <= 0 and triple_hours <= 0:
             return None
 
-        hourly = self._hourly_wage(gross_salary)
+        hourly = self._hourly_wage(gross_salary, paid_days)
         amount = _round(
             hourly * FACTOR_HORA_DOBLE * double_hours
             + hourly * FACTOR_HORA_TRIPLE * triple_hours
@@ -231,7 +308,7 @@ class PayrollService:
         cap = (
             UMA_DIARIA
             * HORAS_EXTRA_EXENTO_UMA_POR_SEMANA
-            * SEMANAS_DEL_MES
+            * PERIODICITIES[periodicity]["semanas"]
         )
         taxable, exempt = _split_exemption(
             amount, min(amount * HORAS_EXTRA_PORCENTAJE_EXENTO, cap)
@@ -248,12 +325,14 @@ class PayrollService:
             exempt=exempt,
         )
 
-    def _christmas_bonus(self, gross_salary: float, inputs: dict):
+    def _christmas_bonus(
+        self, gross_salary: float, inputs: dict, paid_days: float
+    ):
         days = float(inputs.get("christmas_bonus_days") or 0)
         if days <= 0:
             return None
 
-        amount = _round(self._daily_wage(gross_salary) * days)
+        amount = _round(self._daily_wage(gross_salary, paid_days) * days)
         taxable, exempt = _split_exemption(
             amount, UMA_DIARIA * AGUINALDO_EXENTO_UMA
         )
@@ -267,13 +346,17 @@ class PayrollService:
             exempt=exempt,
         )
 
-    def _vacation_premium(self, gross_salary: float, inputs: dict):
+    def _vacation_premium(
+        self, gross_salary: float, inputs: dict, paid_days: float
+    ):
         days = float(inputs.get("vacation_days") or 0)
         if days <= 0:
             return None
 
         amount = _round(
-            self._daily_wage(gross_salary) * days * PRIMA_VACACIONAL_PORCENTAJE
+            self._daily_wage(gross_salary, paid_days)
+            * days
+            * PRIMA_VACACIONAL_PORCENTAJE
         )
         taxable, exempt = _split_exemption(
             amount, UMA_DIARIA * PRIMA_VACACIONAL_EXENTO_UMA
