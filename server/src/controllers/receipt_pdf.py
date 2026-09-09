@@ -34,8 +34,26 @@ def format_currency(amount) -> str:
     return "${:,.2f}".format(float(amount))
 
 
+PERIODICITY_LABELS = {
+    "mensual": "Mensual",
+    "quincenal": "Quincenal",
+    "semanal": "Semanal",
+}
+
+
 def format_period(period) -> str:
     return "{} de {}".format(MONTHS[period.month - 1].capitalize(), period.year)
+
+
+def format_range(start, end) -> str:
+    if start.month == end.month:
+        return "{} al {} de {} de {}".format(
+            start.day, end.day, MONTHS[start.month - 1], start.year
+        )
+    return "{} de {} al {} de {} de {}".format(
+        start.day, MONTHS[start.month - 1],
+        end.day, MONTHS[end.month - 1], start.year
+    )
 
 
 def format_date(moment) -> str:
@@ -68,10 +86,18 @@ class ReceiptPDF(FPDF):
         self.ln(15)
         self.set_font("Times", "B", 34)
         self.set_text_color(*INK)
-        self.cell(0, 14, format_period(receipt["period"]),
+        self.cell(0, 14, format_period(receipt["period_start"]),
                   new_x="LMARGIN", new_y="NEXT")
 
-        self.ln(5)
+        self.ln(1)
+        self.set_font("Helvetica", "", 10.5)
+        self.set_text_color(*INK_FAINT)
+        self.cell(0, 5, "{}, {}".format(
+            PERIODICITY_LABELS.get(receipt.get("periodicity"), "Periodo"),
+            format_range(receipt["period_start"], receipt["period_end"]),
+        ), new_x="LMARGIN", new_y="NEXT")
+
+        self.ln(4)
         self.set_font("Helvetica", "", 12.5)
         self.set_text_color(*INK)
         self.cell(0, 6.5, str(receipt["employee_name"]),
@@ -192,9 +218,9 @@ def build_receipt_pdf(receipt: dict) -> bytes:
 
 
 def receipt_filename(receipt: dict) -> str:
-    period = receipt["period"]
-    return "recibo-{}-{:04d}-{:02d}.pdf".format(
-        receipt["id"], period.year, period.month
+    start = receipt["period_start"]
+    return "recibo-{}-{:04d}-{:02d}-{:02d}.pdf".format(
+        receipt["id"], start.year, start.month, start.day
     )
 
 

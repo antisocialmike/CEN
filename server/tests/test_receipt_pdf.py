@@ -9,6 +9,7 @@ from server.src.controllers.receipt_pdf import (
     format_currency,
     format_date,
     format_period,
+    format_range,
     receipt_filename,
 )
 
@@ -20,7 +21,10 @@ def receipt():
         "employee_id": 3,
         "employee_name": "Ana López Ruiz",
         "employee_email": "ana@cen.com",
-        "period": date(2026, 9, 1),
+        "period_start": date(2026, 9, 1),
+        "period_end": date(2026, 9, 30),
+        "periodicity": "mensual",
+        "paid_days": 30,
         "gross_salary": 21000,
         "isr_deduction": 2612.86,
         "imss_deduction": 583.0,
@@ -77,18 +81,36 @@ def test_build_receipt_pdf_accepts_decimal_amounts(receipt):
 
 
 def test_receipt_filename_carries_the_folio_and_the_period(receipt):
-    assert receipt_filename(receipt) == "recibo-42-2026-09.pdf"
+    assert receipt_filename(receipt) == "recibo-42-2026-09-01.pdf"
 
 
 def test_receipt_filename_pads_single_digit_months(receipt):
-    receipt["period"] = date(2026, 1, 1)
+    receipt["period_start"] = date(2026, 1, 1)
 
-    assert receipt_filename(receipt) == "recibo-42-2026-01.pdf"
+    assert receipt_filename(receipt) == "recibo-42-2026-01-01.pdf"
+
+
+def test_receipt_filename_distinguishes_the_two_fortnights(receipt):
+    receipt["period_start"] = date(2026, 9, 16)
+
+    assert receipt_filename(receipt) == "recibo-42-2026-09-16.pdf"
+
+
+def test_format_range_within_one_month():
+    assert format_range(date(2026, 9, 1), date(2026, 9, 15)) == (
+        "1 al 15 de septiembre de 2026"
+    )
+
+
+def test_format_range_across_months():
+    assert format_range(date(2026, 9, 28), date(2026, 10, 4)) == (
+        "28 de septiembre al 4 de octubre de 2026"
+    )
 
 
 def test_response_headers_ask_the_browser_to_download(receipt):
     headers = build_receipt_response_headers(receipt)
 
     assert headers["Content-Disposition"] == (
-        'attachment; filename="recibo-42-2026-09.pdf"'
+        'attachment; filename="recibo-42-2026-09-01.pdf"'
     )
