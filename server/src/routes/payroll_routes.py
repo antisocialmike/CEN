@@ -34,9 +34,10 @@ def calculate_payroll(
         )
 
     try:
-        breakdown = payroll_service.process(
-            request.model_dump(exclude={"employee_id", "period"})
-        )
+        breakdown = payroll_service.process({
+            **request.model_dump(exclude={"employee_id", "period_start"}),
+            "paid_days": request.paid_days(),
+        })
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -45,7 +46,8 @@ def calculate_payroll(
 
     saved = payroll_repository.save_payroll_receipt({
         "employee_id": request.employee_id,
-        "period": request.period_as_date(),
+        "period_start": request.period_start,
+        "period_end": request.period_end(),
         "processed_by": user["username"],
         **breakdown,
     })
@@ -54,7 +56,8 @@ def calculate_payroll(
         "created": saved["created"],
         "employee_id": request.employee_id,
         "employee_name": employee.get("name", ""),
-        "period": request.period,
+        "period_start": request.period_start.isoformat(),
+        "period_end": request.period_end().isoformat(),
         "data": breakdown,
         "processed_by": user["username"],
     }

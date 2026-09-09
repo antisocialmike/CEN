@@ -29,7 +29,10 @@ def test_calculate_payroll_success(mock_get_employee, mock_save_receipt):
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000
+        },
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
@@ -37,12 +40,13 @@ def test_calculate_payroll_success(mock_get_employee, mock_save_receipt):
     body = response.json()
     assert body["receipt_id"] == 55
     assert body["created"] is True
-    assert body["period"] == "2026-09"
+    assert body["period_start"] == "2026-09-01"
+    assert body["period_end"] == "2026-09-30"
     assert body["employee_id"] == 1
     assert body["data"]["net_salary"] == 9569.7
     assert body["processed_by"] == "admin1"
     saved = mock_save_receipt.call_args[0][0]
-    assert saved["period"] == date(2026, 9, 1)
+    assert saved["period_start"] == date(2026, 9, 1)
     assert saved["processed_by"] == "admin1"
 
 
@@ -54,7 +58,10 @@ def test_calculate_payroll_replacing_an_existing_period(mock_get_employee, mock_
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000
+        },
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
@@ -81,7 +88,10 @@ def test_calculate_payroll_rejects_an_impossible_month(mock_get_employee):
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "period": "2026-13", "gross_salary": 10000},
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-13-01", "gross_salary": 10000
+        },
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
@@ -94,7 +104,10 @@ def test_calculate_payroll_employee_not_found(mock_get_employee):
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 999, "period": "2026-09", "gross_salary": 10000},
+        json={
+            "employee_id": 999, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000
+        },
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
@@ -107,7 +120,10 @@ def test_calculate_payroll_negative_salary(mock_get_employee):
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "period": "2026-09", "gross_salary": -500},
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": -500
+        },
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
@@ -117,7 +133,10 @@ def test_calculate_payroll_negative_salary(mock_get_employee):
 def test_calculate_payroll_requires_admin_role():
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000
+        },
         headers={"Authorization": f"Bearer {_employee_token()}"}
     )
 
@@ -127,7 +146,10 @@ def test_calculate_payroll_requires_admin_role():
 def test_calculate_payroll_requires_authentication():
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000}
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000
+        }
     )
 
     assert response.status_code == 401
@@ -213,7 +235,10 @@ def test_unavailable_database_answers_503(mock_get_employee):
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000
+        },
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
@@ -238,7 +263,10 @@ def test_calculate_payroll_rejects_a_deactivated_employee(mock_get_employee, moc
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 3, "period": "2026-09", "gross_salary": 10000},
+        json={
+            "employee_id": 3, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000
+        },
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
@@ -253,7 +281,10 @@ def _receipt_row(employee_id=7):
         "employee_id": employee_id,
         "employee_name": "Ana Lopez",
         "employee_email": "ana@cen.com",
-        "period": date(2026, 9, 1),
+        "period_start": date(2026, 9, 1),
+        "period_end": date(2026, 9, 30),
+        "periodicity": "mensual",
+        "paid_days": 30,
         "gross_salary": 21000,
         "isr_deduction": 2612.86,
         "imss_deduction": 583.0,
@@ -274,7 +305,7 @@ def test_download_receipt_as_its_owner(mock_get_receipt):
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
-    assert "recibo-42-2026-09.pdf" in response.headers["content-disposition"]
+    assert "recibo-42-2026-09-01.pdf" in response.headers["content-disposition"]
     assert response.content.startswith(b"%PDF-")
 
 
@@ -330,7 +361,8 @@ def test_calculate_payroll_with_every_concept(mock_get_employee, mock_save):
     response = client.post(
         "/payroll/calculate",
         json={
-            "employee_id": 1, "period": "2026-12", "gross_salary": 21000,
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-12-01", "gross_salary": 21000,
             "overtime_double_hours": 9, "overtime_triple_hours": 3,
             "christmas_bonus_days": 15, "vacation_days": 12,
             "bonus": 1500, "loan_deduction": 800,
@@ -362,7 +394,8 @@ def test_calculate_payroll_rejects_negative_concepts(mock_get_employee):
     response = client.post(
         "/payroll/calculate",
         json={
-            "employee_id": 1, "period": "2026-12", "gross_salary": 21000,
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-12-01", "gross_salary": 21000,
             "loan_deduction": -500
         },
         headers={"Authorization": f"Bearer {_admin_token()}"}
@@ -381,7 +414,10 @@ def test_calculate_payroll_without_concepts_keeps_the_simple_shape(
 
     response = client.post(
         "/payroll/calculate",
-        json={"employee_id": 1, "period": "2026-09", "gross_salary": 10000},
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000
+        },
         headers={"Authorization": f"Bearer {_admin_token()}"}
     )
 
