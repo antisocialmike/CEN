@@ -115,7 +115,7 @@ export default function LandingPage() {
               <motion.div className="lp-photo" {...wipe(0.34)}>
                 <img
                   src={PHOTO_HERO}
-                  alt="Persona de un equipo de nómina en su lugar de trabajo"
+                  alt=""
                   loading="eager"
                   width={900}
                   height={1100}
@@ -179,7 +179,7 @@ export default function LandingPage() {
                 <div className="lp-role-photo">
                   <img
                     src={PHOTO_ADMIN}
-                    alt="Escritorio de trabajo de un administrador de nómina"
+                    alt=""
                     loading="lazy"
                     width={900}
                     height={560}
@@ -213,7 +213,7 @@ export default function LandingPage() {
                 <div className="lp-role-photo">
                   <img
                     src={PHOTO_EMPLEADO}
-                    alt="Persona consultando sus recibos de nómina"
+                    alt=""
                     loading="lazy"
                     width={900}
                     height={560}
