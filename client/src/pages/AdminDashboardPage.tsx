@@ -367,8 +367,12 @@ export default function AdminDashboardPage() {
                       className="payroll-concepts-toggle"
                       onClick={() => setShowConcepts((current) => !current)}
                       aria-expanded={showConcepts}
+                      aria-label={`Otros conceptos ${activeConcepts > 0 ? `(${activeConcepts} activo${activeConcepts === 1 ? "" : "s"})` : ""}`}
                     >
                       <span>Otros conceptos</span>
+                      {activeConcepts > 0 && (
+                        <span className="payroll-concepts-badge">{activeConcepts}</span>
+                      )}
                       <span
                         className={
                           activeConcepts > 0
@@ -377,12 +381,12 @@ export default function AdminDashboardPage() {
                         }
                       >
                         {activeConcepts > 0
-                          ? `${activeConcepts} aplicado${
+                          ? `${activeConcepts} concepto${
                               activeConcepts === 1 ? "" : "s"
                             }`
                           : showConcepts
                             ? "Ocultar"
-                            : "Horas extra, aguinaldo, prima, préstamos"}
+                            : "Opcional"}
                       </span>
                     </button>
 

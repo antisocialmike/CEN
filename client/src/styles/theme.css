@@ -2180,10 +2180,35 @@ p {
   .dashboard-topbar {
     gap: var(--s-3);
     padding-inline: var(--s-4);
+    min-width: 0;
   }
 
   .dashboard-topbar-right {
     gap: var(--s-2);
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  .user-chip {
+    min-width: 0;
+    max-width: 140px;
+  }
+
+  .logout-link {
+    flex-shrink: 1;
+    min-width: 0;
+    white-space: normal;
+    word-break: break-word;
+    padding: 8px 12px;
+  }
+
+  .logout-link span {
+    display: none;
+  }
+
+  .logout-link svg {
+    width: 16px;
+    height: 16px;
   }
 
   .dashboard-topbar .brand-logo-text small {
@@ -2194,6 +2219,10 @@ p {
 @media (max-width: 374px) {
   .dashboard-topbar .brand-logo-text {
     display: none;
+  }
+
+  .user-chip {
+    max-width: 100px;
   }
 }
 
@@ -2250,6 +2279,21 @@ p {
   border: 0;
   border-top: 1px solid var(--line);
   cursor: pointer;
+}
+
+.payroll-concepts-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--rosa);
+  color: var(--on-rosa);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .payroll-concepts-hint {
