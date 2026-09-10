@@ -33,3 +33,12 @@ ADMIN_NAME = os.getenv("ADMIN_NAME", "Administrador")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@cen.com")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin1234")
 ADMIN_BASE_SALARY = float(os.getenv("ADMIN_BASE_SALARY", "20000"))
+
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "noreply@cenpayroll.com")
+SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "True").lower() == "true"
+
+PASSWORD_RESET_TOKEN_EXPIRE_MINUTES = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "15"))
