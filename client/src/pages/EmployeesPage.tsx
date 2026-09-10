@@ -43,6 +43,8 @@ export default function EmployeesPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmingResetId, setConfirmingResetId] = useState<number | null>(null);
+  const [confirmingToggleId, setConfirmingToggleId] = useState<number | null>(null);
+  const [pendingEditSave, setPendingEditSave] = useState(false);
   const [issuedPassword, setIssuedPassword] = useState<IssuedPassword | null>(null);
   const confirmResetRef = useRef<HTMLButtonElement>(null);
   const ownEmployeeId = getEmployeeId();
@@ -96,6 +98,19 @@ export default function EmployeesPage() {
     event.preventDefault();
     if (editingId === null || form === null) return;
 
+    const employee = employees?.find((e) => e.id === editingId);
+    if (!employee) return;
+
+    const emailChanged = employee.email !== form.email;
+    const salaryChanged = employee.base_salary !== Number(form.baseSalary);
+    const roleChanged = employee.role !== form.role;
+
+    if ((emailChanged || salaryChanged || roleChanged) && !pendingEditSave) {
+      setPendingEditSave(true);
+      return;
+    }
+
+    setPendingEditSave(false);
     setErrorMessage(null);
     setSuccessMessage(null);
     setIsSaving(true);
@@ -152,10 +167,16 @@ export default function EmployeesPage() {
     }
   }
 
-  async function toggleActive(employee: EmployeeCreated) {
+  function askToggleActive(employee: EmployeeCreated) {
     setErrorMessage(null);
     setSuccessMessage(null);
     setConfirmingResetId(null);
+    setConfirmingToggleId(employee.id);
+  }
+
+  async function confirmToggleActive(employee: EmployeeCreated) {
+    setErrorMessage(null);
+    setSuccessMessage(null);
     setBusyId(employee.id);
 
     try {
@@ -176,6 +197,7 @@ export default function EmployeesPage() {
       }
     } finally {
       setBusyId(null);
+      setConfirmingToggleId(null);
     }
   }
 
@@ -291,16 +313,40 @@ export default function EmployeesPage() {
                         prefix="$"
                         required
                       />
-                      <div className="employee-edit-actions">
-                        <SubmitButton
-                          label="Guardar cambios"
-                          loadingLabel="Guardando…"
-                          isLoading={isSaving}
-                        />
-                        <button type="button" className="btn btn-line" onClick={cancelEditing}>
-                          Cancelar
-                        </button>
-                      </div>
+                      {pendingEditSave && (
+                        <div className="action-confirm" role="alert">
+                          <p className="action-confirm-message">Se guardarán cambios importantes.</p>
+                          <div className="action-confirm-actions">
+                            <button
+                              type="button"
+                              className="btn btn-line"
+                              onClick={() => setPendingEditSave(false)}
+                              disabled={isSaving}
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="submit"
+                              className="btn btn-rosa"
+                              disabled={isSaving}
+                            >
+                              {isSaving ? "Guardando…" : "Confirmar"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {!pendingEditSave && (
+                        <div className="employee-edit-actions">
+                          <SubmitButton
+                            label="Guardar cambios"
+                            loadingLabel="Guardando…"
+                            isLoading={isSaving}
+                          />
+                          <button type="button" className="btn btn-line" onClick={cancelEditing}>
+                            Cancelar
+                          </button>
+                        </div>
+                      )}
                     </form>
                   ) : (
                     <>
@@ -339,6 +385,30 @@ export default function EmployeesPage() {
                             </button>
                           </div>
                         </div>
+                      ) : confirmingToggleId === employee.id ? (
+                        <div className="employee-row-confirm">
+                          <p>
+                            {employee.is_active
+                              ? employee.name + " quedará fuera de la nómina. Sus recibos se conservan."
+                              : employee.name + " volverá a estar activa en la nómina."}
+                          </p>
+                          <div className="employee-row-actions">
+                            <button
+                              className="btn btn-rosa"
+                              onClick={() => confirmToggleActive(employee)}
+                              disabled={busyId === employee.id}
+                            >
+                              {busyId === employee.id ? "Procesando…" : employee.is_active ? "Dar de baja" : "Reactivar"}
+                            </button>
+                            <button
+                              className="btn btn-line"
+                              onClick={() => setConfirmingToggleId(null)}
+                              disabled={busyId === employee.id}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
                       ) : (
                         <div className="employee-row-actions">
                           <button
@@ -359,7 +429,7 @@ export default function EmployeesPage() {
                               </button>
                               <button
                                 className="btn btn-line"
-                                onClick={() => toggleActive(employee)}
+                                onClick={() => askToggleActive(employee)}
                                 disabled={busyId === employee.id}
                               >
                                 {employee.is_active ? "Dar de baja" : "Reactivar"}

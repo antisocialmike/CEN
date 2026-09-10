@@ -2353,6 +2353,31 @@ p {
   min-width: 140px;
 }
 
+.action-confirm {
+  padding: var(--s-4);
+  background: var(--rosa-wash);
+  border: 1px solid var(--rosa);
+  margin-bottom: var(--s-3);
+}
+
+.action-confirm-message {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--danger-text);
+  margin: 0 0 var(--s-3) 0;
+}
+
+.action-confirm-actions {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.action-confirm-actions .btn {
+  flex: 1;
+  min-width: 120px;
+}
+
 .form-note {
   margin: var(--s-3) 0 0 0;
   padding: 0;
