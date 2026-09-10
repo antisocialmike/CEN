@@ -341,3 +341,24 @@ def test_get_receipt_by_id_not_found(repository, cursor):
     cursor.fetchone.return_value = None
 
     assert repository.get_receipt_by_id(999) is None
+
+
+def test_get_receipt_by_period_matches_the_exact_range(repository, cursor):
+    cursor.fetchone.return_value = {"id": 12, "net_salary": 17862.79}
+
+    result = repository.get_receipt_by_period(
+        3, date(2026, 9, 1), date(2026, 9, 30)
+    )
+
+    assert result is not None
+    assert cursor.execute.call_args[0][1] == (
+        3, date(2026, 9, 1), date(2026, 9, 30)
+    )
+
+
+def test_get_receipt_by_period_when_the_period_is_free(repository, cursor):
+    cursor.fetchone.return_value = None
+
+    assert repository.get_receipt_by_period(
+        3, date(2026, 10, 1), date(2026, 10, 31)
+    ) is None

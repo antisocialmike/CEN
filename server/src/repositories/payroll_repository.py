@@ -103,6 +103,12 @@ SELECT_RECEIPT_BY_ID = (
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
     "WHERE r.id = %s GROUP BY r.id, e.name, e.email;"
 )
+SELECT_RECEIPT_BY_PERIOD = (
+    "SELECT id, employee_id, period_start, period_end, periodicity, "
+    "net_salary, total_perceptions, total_deductions, processed_by, "
+    "created_at, updated_at FROM payroll_receipts "
+    "WHERE employee_id = %s AND period_start = %s AND period_end = %s;"
+)
 UPSERT_RECEIPT = (
     "INSERT INTO payroll_receipts (employee_id, period_start, period_end, "
     "periodicity, paid_days, gross_salary, isr_deduction, imss_deduction, "
@@ -215,6 +221,13 @@ class PayrollRepository:
 
     def get_receipts_by_employee_id(self, employee_id: int) -> list:
         return self._fetch_all(SELECT_RECEIPTS_BY_EMPLOYEE, (employee_id,))
+
+    def get_receipt_by_period(
+        self, employee_id: int, period_start, period_end
+    ) -> Optional[dict]:
+        return self._fetch_one(
+            SELECT_RECEIPT_BY_PERIOD, (employee_id, period_start, period_end)
+        )
 
     def get_receipt_by_id(self, receipt_id: int) -> Optional[dict]:
         return self._fetch_one(SELECT_RECEIPT_BY_ID, (receipt_id,))

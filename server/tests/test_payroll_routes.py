@@ -426,3 +426,84 @@ def test_calculate_payroll_without_concepts_keeps_the_simple_shape(
         "sueldo", "isr", "imss"
     ]
     assert data["net_salary"] == 9569.7
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_receipt_by_period")
+def test_lookup_finds_an_existing_receipt(mock_lookup):
+    mock_lookup.return_value = {
+        "id": 12, "employee_id": 3, "period_start": date(2026, 9, 1),
+        "period_end": date(2026, 9, 30), "periodicity": "mensual",
+        "net_salary": 17862.79, "processed_by": "admin@cen.com"
+    }
+
+    response = client.post(
+        "/payroll/lookup",
+        json={
+            "employee_id": 3, "periodicity": "mensual",
+            "period_start": "2026-09-01"
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["receipt"]["id"] == 12
+    assert mock_lookup.call_args[0] == (3, date(2026, 9, 1), date(2026, 9, 30))
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_receipt_by_period")
+def test_lookup_returns_null_when_the_period_is_free(mock_lookup):
+    mock_lookup.return_value = None
+
+    response = client.post(
+        "/payroll/lookup",
+        json={
+            "employee_id": 3, "periodicity": "quincenal",
+            "period_start": "2026-09-16"
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["receipt"] is None
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.get_receipt_by_period")
+def test_lookup_resolves_the_second_fortnight(mock_lookup):
+    mock_lookup.return_value = None
+
+    client.post(
+        "/payroll/lookup",
+        json={
+            "employee_id": 3, "periodicity": "quincenal",
+            "period_start": "2026-01-16"
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert mock_lookup.call_args[0][2] == date(2026, 1, 31)
+
+
+def test_lookup_rejects_an_invalid_period_start():
+    response = client.post(
+        "/payroll/lookup",
+        json={
+            "employee_id": 3, "periodicity": "quincenal",
+            "period_start": "2026-01-10"
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
+
+
+def test_lookup_requires_admin_role():
+    response = client.post(
+        "/payroll/lookup",
+        json={
+            "employee_id": 3, "periodicity": "mensual",
+            "period_start": "2026-09-01"
+        },
+        headers={"Authorization": f"Bearer {_employee_token()}"}
+    )
+
+    assert response.status_code == 403

@@ -8,6 +8,35 @@ EmployeeRole = Literal["admin", "employee"]
 Periodicity = Literal["mensual", "quincenal", "semanal"]
 
 
+def period_start_is_valid(periodicity: str, start: date) -> bool:
+    if periodicity == "mensual":
+        return start.day == 1
+    if periodicity == "quincenal":
+        return start.day in (1, 16)
+    return True
+
+
+def period_end_for(periodicity: str, start: date) -> date:
+    last_day = monthrange(start.year, start.month)[1]
+    if periodicity == "mensual":
+        return start.replace(day=last_day)
+    if periodicity == "quincenal":
+        if start.day == 1:
+            return start.replace(day=15)
+        return start.replace(day=last_day)
+    return start + timedelta(days=6)
+
+
+def paid_days_for(periodicity: str, start: date) -> int:
+    return (period_end_for(periodicity, start) - start).days + 1
+
+
+PERIOD_START_ERRORS = {
+    "mensual": "Un periodo mensual empieza el dia 1",
+    "quincenal": "Una quincena empieza el dia 1 o el 16",
+}
+
+
 class Employee(BaseModel):
     id: Optional[int] = None
     name: str
@@ -54,22 +83,27 @@ class PayrollCalculationRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check_period_start(self) -> "PayrollCalculationRequest":
-        day = self.period_start.day
-        if self.periodicity == "mensual" and day != 1:
-            raise ValueError("Un periodo mensual empieza el dia 1")
-        if self.periodicity == "quincenal" and day not in (1, 16):
-            raise ValueError("Una quincena empieza el dia 1 o el 16")
+        if not period_start_is_valid(self.periodicity, self.period_start):
+            raise ValueError(PERIOD_START_ERRORS[self.periodicity])
         return self
 
     def period_end(self) -> date:
-        last_day = monthrange(self.period_start.year, self.period_start.month)[1]
-        if self.periodicity == "mensual":
-            return self.period_start.replace(day=last_day)
-        if self.periodicity == "quincenal":
-            if self.period_start.day == 1:
-                return self.period_start.replace(day=15)
-            return self.period_start.replace(day=last_day)
-        return self.period_start + timedelta(days=6)
+        return period_end_for(self.periodicity, self.period_start)
 
     def paid_days(self) -> int:
-        return (self.period_end() - self.period_start).days + 1
+        return paid_days_for(self.periodicity, self.period_start)
+
+
+class PeriodLookupRequest(BaseModel):
+    employee_id: int
+    periodicity: Periodicity
+    period_start: date
+
+    @model_validator(mode="after")
+    def _check_period_start(self) -> "PeriodLookupRequest":
+        if not period_start_is_valid(self.periodicity, self.period_start):
+            raise ValueError(PERIOD_START_ERRORS[self.periodicity])
+        return self
+
+    def period_end(self) -> date:
+        return period_end_for(self.periodicity, self.period_start)

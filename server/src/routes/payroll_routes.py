@@ -6,7 +6,10 @@ from ..controllers.receipt_pdf import (
     build_receipt_response_headers,
 )
 from ..middlewares.auth_middleware import get_current_user, require_role
-from ..models.payroll_model import PayrollCalculationRequest
+from ..models.payroll_model import (
+    PayrollCalculationRequest,
+    PeriodLookupRequest,
+)
 from ..repositories.payroll_repository import payroll_repository
 
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
@@ -61,6 +64,17 @@ def calculate_payroll(
         "data": breakdown,
         "processed_by": user["username"],
     }
+
+
+@router.post("/lookup")
+def lookup_receipt(
+    request: PeriodLookupRequest,
+    user: dict = Depends(require_role("admin")),
+):
+    receipt = payroll_repository.get_receipt_by_period(
+        request.employee_id, request.period_start, request.period_end()
+    )
+    return {"receipt": receipt}
 
 
 @router.get("/receipts")
