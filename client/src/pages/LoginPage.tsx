@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import { EnvelopeSimple, Lock } from "@phosphor-icons/react";
 import FormField from "../components/FormField";
@@ -37,13 +37,13 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <aside className="auth-side">
-        <Link className="brand-logo on-color" to="/">
+        <RouterLink className="brand-logo on-color" to="/">
           <LogoMark />
           <div className="brand-logo-text">
             <span>CEN Payroll</span>
             <small>Sistema de nómina</small>
           </div>
-        </Link>
+        </RouterLink>
 
         <div>
           <p className="auth-side-title">Nómina que cuadra.</p>
@@ -54,13 +54,13 @@ export default function LoginPage() {
       </aside>
 
       <main className="auth-panel">
-        <Link className="brand-logo auth-mobile-brand" to="/">
+        <RouterLink className="brand-logo auth-mobile-brand" to="/">
           <LogoMark />
           <div className="brand-logo-text">
             <span>CEN Payroll</span>
             <small>Sistema de nómina</small>
           </div>
-        </Link>
+        </RouterLink>
 
         <div className="auth-card">
           <h1 className="auth-card-title">Inicia sesión</h1>
@@ -106,9 +106,14 @@ export default function LoginPage() {
 
         <ThemeToggle />
 
-        <p className="auth-panel-foot">
-          ¿No tienes cuenta? Tu administrador de nómina la crea por ti.
-        </p>
+        <div className="auth-panel-links">
+          <RouterLink to="/password-recovery" className="text-button">
+            ¿Olvidaste tu contraseña?
+          </RouterLink>
+          <p className="auth-panel-foot">
+            ¿No tienes cuenta? Tu administrador de nómina la crea por ti.
+          </p>
+        </div>
       </main>
     </div>
   );
