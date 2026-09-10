@@ -137,6 +137,17 @@ INSERT_RECEIPT_ITEM = (
     "description, amount, taxable, exempt, position) "
     "VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"
 )
+INSERT_PASSWORD_RESET_TOKEN = (
+    "INSERT INTO password_reset_tokens (employee_id, token, code, expires_at) "
+    "VALUES (%s, %s, %s, %s);"
+)
+SELECT_PASSWORD_RESET_TOKEN = (
+    "SELECT id, employee_id, token, code, created_at, expires_at, used_at "
+    "FROM password_reset_tokens WHERE code = %s;"
+)
+MARK_RESET_TOKEN_USED = (
+    "UPDATE password_reset_tokens SET used_at = NOW() WHERE id = %s;"
+)
 
 
 class PayrollRepository:
@@ -297,6 +308,19 @@ class PayrollRepository:
             if not row:
                 raise RuntimeError(error_message)
             return int(dict(row)["id"])
+
+    def create_password_reset_token(
+        self, employee_id: int, token: str, code: str, expires_at
+    ) -> None:
+        with db_cursor() as cursor:
+            cursor.execute(INSERT_PASSWORD_RESET_TOKEN, (employee_id, token, code, expires_at))
+
+    def get_password_reset_token(self, code: str) -> Optional[dict]:
+        return self._fetch_one(SELECT_PASSWORD_RESET_TOKEN, (code,))
+
+    def mark_reset_token_used(self, token_id: int) -> None:
+        with db_cursor() as cursor:
+            cursor.execute(MARK_RESET_TOKEN_USED, (token_id,))
 
 
 payroll_repository = PayrollRepository()
