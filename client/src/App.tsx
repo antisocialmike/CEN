@@ -11,6 +11,8 @@ const SignupPage = lazy(() => import("./pages/SignupPage"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const EmployeeDashboardPage = lazy(() => import("./pages/EmployeeDashboardPage"));
 const ChangePasswordPage = lazy(() => import("./pages/ChangePasswordPage"));
+const PasswordRecoveryPage = lazy(() => import("./pages/PasswordRecoveryPage"));
+const PasswordResetVerifyPage = lazy(() => import("./pages/PasswordResetVerifyPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
 
 export default function App() {
@@ -23,6 +25,8 @@ export default function App() {
           <Routes location={location}>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/password-recovery" element={<PasswordRecoveryPage />} />
+            <Route path="/password-reset-verify" element={<PasswordResetVerifyPage />} />
 
             <Route element={<ProtectedRoute />}>
               <Route
