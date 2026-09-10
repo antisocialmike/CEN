@@ -155,3 +155,29 @@ export async function downloadReceipt(receiptId: number): Promise<void> {
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+export interface ExistingReceipt {
+  id: number;
+  employee_id: number;
+  period_start: string;
+  period_end: string;
+  periodicity: Periodicity;
+  net_salary: number;
+  processed_by: string;
+}
+
+export async function lookupReceipt(
+  employeeId: number,
+  periodicity: Periodicity,
+  periodStart: string
+): Promise<ExistingReceipt | null> {
+  const response = await httpClient.post<{ receipt: ExistingReceipt | null }>(
+    "/payroll/lookup",
+    {
+      employee_id: employeeId,
+      periodicity,
+      period_start: periodStart
+    }
+  );
+  return response.data.receipt;
+}

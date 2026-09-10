@@ -19,6 +19,8 @@ import {
   PayrollReceipt,
   Periodicity,
   PERIODICITY_LABELS,
+  ExistingReceipt,
+  lookupReceipt,
   suggestedGrossSalary
 } from "../services/payrollService";
 import { listEmployees, EmployeeCreated } from "../services/employeeService";
@@ -43,6 +45,8 @@ export default function AdminDashboardPage() {
   const [result, setResult] = useState<PayrollCalculationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [pendingReplacement, setPendingReplacement] =
+    useState<ExistingReceipt | null>(null);
   const navigate = useNavigate();
 
   const selectedEmployee = employees?.find((item) => String(item.id) === employeeId);
@@ -52,6 +56,7 @@ export default function AdminDashboardPage() {
 
   function changePeriodicity(next: Periodicity) {
     setPeriodicity(next);
+    setPendingReplacement(null);
     setPeriodStart(periodStartsOf(next, month)[0]);
     setResult(null);
     if (selectedEmployee) {
@@ -63,6 +68,7 @@ export default function AdminDashboardPage() {
 
   function changeMonth(next: string) {
     setMonth(next);
+    setPendingReplacement(null);
     setPeriodStart(periodStartsOf(periodicity, next)[0]);
     setResult(null);
   }
@@ -99,6 +105,7 @@ export default function AdminDashboardPage() {
 
   function handleEmployeeChange(nextId: string) {
     setEmployeeId(nextId);
+    setPendingReplacement(null);
     setResult(null);
     setConcepts(emptyConcepts);
     const employee = employees?.find((item) => String(item.id) === nextId);
@@ -113,6 +120,35 @@ export default function AdminDashboardPage() {
     event.preventDefault();
     setErrorMessage(null);
     setResult(null);
+
+    if (pendingReplacement === null) {
+      setIsCalculating(true);
+      try {
+        const existing = await lookupReceipt(
+          Number(employeeId),
+          periodicity,
+          periodStart
+        );
+        if (existing) {
+          setPendingReplacement(existing);
+          return;
+        }
+      } catch {
+        setErrorMessage(
+          "No se pudo comprobar si ya existe un recibo de ese periodo. Inténtalo de nuevo."
+        );
+        return;
+      } finally {
+        setIsCalculating(false);
+      }
+    }
+
+    await emitPayroll();
+  }
+
+  async function emitPayroll() {
+    setPendingReplacement(null);
+    setErrorMessage(null);
     setIsCalculating(true);
 
     try {
@@ -447,8 +483,35 @@ export default function AdminDashboardPage() {
                     )}
                   </div>
 
+                  {pendingReplacement && (
+                    <div className="replace-warning" role="alert">
+                      <p className="replace-warning-title">
+                        {selectedEmployee?.name} ya tiene el recibo #
+                        {pendingReplacement.id} de este periodo, por{" "}
+                        {formatCurrency(pendingReplacement.net_salary)}.
+                      </p>
+                      <p className="replace-warning-note">
+                        Al continuar se reemplaza y el empleado verá el nuevo en
+                        su portal. El anterior no se puede recuperar.
+                      </p>
+                      <div className="replace-warning-actions">
+                        <button
+                          type="button"
+                          className="btn btn-line"
+                          onClick={() => setPendingReplacement(null)}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <SubmitButton
-                    label="Calcular y emitir recibo"
+                    label={
+                      pendingReplacement
+                        ? "Reemplazar el recibo"
+                        : "Calcular y emitir recibo"
+                    }
                     loadingLabel="Calculando…"
                     isLoading={isCalculating}
                   />
