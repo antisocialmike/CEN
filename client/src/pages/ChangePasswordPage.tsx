@@ -17,6 +17,7 @@ export default function ChangePasswordPage() {
   const [confirmation, setConfirmation] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState(false);
   const navigate = useNavigate();
 
   const isForced = mustChangePassword();
@@ -30,6 +31,10 @@ export default function ChangePasswordPage() {
       return;
     }
 
+    setPendingConfirmation(true);
+  }
+
+  async function confirmPasswordChange() {
     setIsSubmitting(true);
 
     try {
@@ -44,6 +49,7 @@ export default function ChangePasswordPage() {
         setErrorMessage("No se pudo cambiar la contraseña. Inténtalo de nuevo.");
       }
       setIsSubmitting(false);
+      setPendingConfirmation(false);
     }
   }
 
@@ -109,11 +115,44 @@ export default function ChangePasswordPage() {
               icon={<Lock weight="bold" />}
               required
             />
-            <SubmitButton
-              label="Guardar contraseña"
-              loadingLabel="Guardando…"
-              isLoading={isSubmitting}
-            />
+            {pendingConfirmation && (
+              <div className="password-warning" role="alert">
+                <p className="password-warning-title">
+                  {isForced ? "Establecer contraseña" : "Cambiar contraseña"}
+                </p>
+                <p className="password-warning-note">
+                  {isForced
+                    ? "Después de esto, deberás usar tu nueva contraseña para entrar la próxima vez."
+                    : "Tu contraseña se cambió. Usa la nueva para entrar la próxima vez."}
+                </p>
+                <div className="password-warning-actions">
+                  <button
+                    type="button"
+                    className="btn btn-line"
+                    onClick={() => setPendingConfirmation(false)}
+                    disabled={isSubmitting}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-rosa"
+                    onClick={confirmPasswordChange}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Guardando…" : "Confirmar"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!pendingConfirmation && (
+              <SubmitButton
+                label="Guardar contraseña"
+                loadingLabel="Guardando…"
+                isLoading={isSubmitting}
+              />
+            )}
           </form>
         </div>
 

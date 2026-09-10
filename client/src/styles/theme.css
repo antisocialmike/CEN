@@ -2321,6 +2321,38 @@ p {
   margin-top: var(--s-4);
 }
 
+.password-warning {
+  margin-bottom: var(--s-4);
+  padding: var(--s-4);
+  background: var(--rosa-wash);
+  border: 1px solid var(--rosa);
+}
+
+.password-warning-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--danger-text);
+  margin: 0 0 var(--s-3) 0;
+}
+
+.password-warning-note {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 0 0 var(--s-4) 0;
+}
+
+.password-warning-actions {
+  display: flex;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.password-warning-actions .btn {
+  flex: 1;
+  min-width: 140px;
+}
+
 .form-note {
   margin: var(--s-3) 0 0 0;
   padding: 0;
