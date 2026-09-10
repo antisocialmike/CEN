@@ -7,6 +7,7 @@ import {
   activateEmployee,
   deactivateEmployee,
   listEmployees,
+  resetEmployeePassword,
   updateEmployee
 } from "../services/employeeService";
 
@@ -14,7 +15,8 @@ vi.mock("../services/employeeService", () => ({
   listEmployees: vi.fn(),
   updateEmployee: vi.fn(),
   deactivateEmployee: vi.fn(),
-  activateEmployee: vi.fn()
+  activateEmployee: vi.fn(),
+  resetEmployeePassword: vi.fn()
 }));
 
 const ana = {
@@ -33,6 +35,13 @@ const luis = {
   role: "admin" as const,
   base_salary: 25000,
   is_active: false
+};
+
+const anaReset = {
+  employee_id: 3,
+  name: "Ana Lopez",
+  email: "ana@cen.com",
+  temporary_password: "Xk7mQ2pRt9Zc"
 };
 
 function renderPage() {
@@ -80,6 +89,17 @@ describe("listado", () => {
 
     expect(await screen.findByText(/Todavía no hay nadie/)).toBeInTheDocument();
   });
+
+  it("no ofrece restablecer ni dar de baja la propia cuenta", async () => {
+    localStorage.setItem("cen_employee_id", "3");
+
+    renderPage();
+
+    expect(await screen.findByText("Ana Lopez")).toBeInTheDocument();
+    expect(screen.getAllByText("Editar")).toHaveLength(2);
+    expect(screen.getAllByText("Restablecer contraseña")).toHaveLength(1);
+    expect(screen.queryByText("Dar de baja")).not.toBeInTheDocument();
+  });
 });
 
 describe("edicion", () => {
@@ -125,6 +145,95 @@ describe("edicion", () => {
 
     expect(updateEmployee).not.toHaveBeenCalled();
     expect(screen.getAllByText("Editar")).toHaveLength(2);
+  });
+});
+
+describe("restablecer contraseña", () => {
+  it("pide confirmacion antes de invalidar la contraseña actual", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Restablecer contraseña"))[0]);
+
+    expect(resetEmployeePassword).not.toHaveBeenCalled();
+    expect(screen.getByText(/La contraseña actual de Ana Lopez dejará de funcionar/)).toBeInTheDocument();
+    expect(screen.getByText("Restablecer")).toHaveFocus();
+  });
+
+  it("cancelar la confirmacion no restablece nada", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Restablecer contraseña"))[0]);
+    await user.click(screen.getByText("Cancelar"));
+
+    expect(resetEmployeePassword).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Restablecer contraseña")).toHaveLength(2);
+  });
+
+  it("muestra la contraseña temporal aparte y la enfoca", async () => {
+    vi.mocked(resetEmployeePassword).mockResolvedValue(anaReset);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Restablecer contraseña"))[0]);
+    await user.click(screen.getByText("Restablecer"));
+
+    const panel = await screen.findByRole("region", { name: /Contraseña temporal de Ana Lopez/ });
+    expect(resetEmployeePassword).toHaveBeenCalledWith(3);
+    expect(screen.getByText("Xk7mQ2pRt9Zc")).toBeInTheDocument();
+    expect(panel).toHaveFocus();
+  });
+
+  it("copia la contraseña al portapapeles", async () => {
+    vi.mocked(resetEmployeePassword).mockResolvedValue(anaReset);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Restablecer contraseña"))[0]);
+    await user.click(screen.getByText("Restablecer"));
+    await user.click(await screen.findByText("Copiar"));
+
+    expect(await screen.findByText("Copiada")).toBeInTheDocument();
+    expect(await navigator.clipboard.readText()).toBe("Xk7mQ2pRt9Zc");
+  });
+
+  it("conserva la contraseña aunque se haga otra accion", async () => {
+    vi.mocked(resetEmployeePassword).mockResolvedValue(anaReset);
+    vi.mocked(deactivateEmployee).mockResolvedValue({ ...ana, is_active: false });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Restablecer contraseña"))[0]);
+    await user.click(screen.getByText("Restablecer"));
+    await screen.findByText("Xk7mQ2pRt9Zc");
+    await user.click(screen.getByText("Dar de baja"));
+
+    expect(await screen.findByText(/Sus recibos se conservan/)).toBeInTheDocument();
+    expect(screen.getByText("Xk7mQ2pRt9Zc")).toBeInTheDocument();
+  });
+
+  it("la retira cuando se confirma que ya se compartio", async () => {
+    vi.mocked(resetEmployeePassword).mockResolvedValue(anaReset);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Restablecer contraseña"))[0]);
+    await user.click(screen.getByText("Restablecer"));
+    await user.click(await screen.findByText("Ya la compartí"));
+
+    await waitFor(() => expect(screen.queryByText("Xk7mQ2pRt9Zc")).not.toBeInTheDocument());
+  });
+
+  it("avisa si no se pudo restablecer", async () => {
+    vi.mocked(resetEmployeePassword).mockRejectedValue(new Error("sin red"));
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Restablecer contraseña"))[0]);
+    await user.click(screen.getByText("Restablecer"));
+
+    expect(await screen.findByText(/No se pudo restablecer la contraseña/)).toBeInTheDocument();
   });
 });
 

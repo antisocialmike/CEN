@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import { ArrowLeft, UsersThree } from "@phosphor-icons/react";
@@ -9,6 +9,7 @@ import ErrorMessage from "../components/ErrorMessage";
 import SuccessMessage from "../components/SuccessMessage";
 import SubmitButton from "../components/SubmitButton";
 import Skeleton from "../components/Skeleton";
+import TemporaryPassword from "../components/TemporaryPassword";
 import {
   activateEmployee,
   deactivateEmployee,
@@ -17,7 +18,7 @@ import {
   resetEmployeePassword,
   updateEmployee
 } from "../services/employeeService";
-import { UserRole } from "../services/authSession";
+import { getEmployeeId, UserRole } from "../services/authSession";
 import { getStatusCode } from "../services/apiError";
 import { formatCurrency } from "../services/format";
 
@@ -28,6 +29,11 @@ interface EditForm {
   baseSalary: string;
 }
 
+interface IssuedPassword {
+  name: string;
+  password: string;
+}
+
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<EmployeeCreated[] | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -36,6 +42,10 @@ export default function EmployeesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmingResetId, setConfirmingResetId] = useState<number | null>(null);
+  const [issuedPassword, setIssuedPassword] = useState<IssuedPassword | null>(null);
+  const confirmResetRef = useRef<HTMLButtonElement>(null);
+  const ownEmployeeId = getEmployeeId();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,6 +64,10 @@ export default function EmployeesPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (confirmingResetId !== null) confirmResetRef.current?.focus();
+  }, [confirmingResetId]);
+
   function replaceEmployee(updated: EmployeeCreated) {
     setEmployees((current) =>
       (current ?? []).map((item) => (item.id === updated.id ? updated : item))
@@ -63,6 +77,7 @@ export default function EmployeesPage() {
   function startEditing(employee: EmployeeCreated) {
     setErrorMessage(null);
     setSuccessMessage(null);
+    setConfirmingResetId(null);
     setEditingId(employee.id);
     setForm({
       name: employee.name,
@@ -111,30 +126,36 @@ export default function EmployeesPage() {
     }
   }
 
-  async function handleResetPassword(employee: EmployeeCreated) {
+  function askResetPassword(employee: EmployeeCreated) {
     setErrorMessage(null);
     setSuccessMessage(null);
+    cancelEditing();
+    setConfirmingResetId(employee.id);
+  }
+
+  async function handleResetPassword(employee: EmployeeCreated) {
+    setErrorMessage(null);
     setBusyId(employee.id);
 
     try {
       const reset = await resetEmployeePassword(employee.id);
-      setSuccessMessage(
-        "Contraseña temporal de " +
-          reset.name +
-          ": " +
-          reset.temporary_password +
-          ". Compártela por un canal seguro; se le pedirá cambiarla al entrar."
-      );
-    } catch {
-      setErrorMessage("No se pudo restablecer la contraseña. Inténtalo de nuevo.");
+      setIssuedPassword({ name: reset.name, password: reset.temporary_password });
+    } catch (error) {
+      if (getStatusCode(error) === 400) {
+        setErrorMessage("Tu propia contraseña se cambia desde el botón Contraseña de la barra superior.");
+      } else {
+        setErrorMessage("No se pudo restablecer la contraseña. Inténtalo de nuevo.");
+      }
     } finally {
       setBusyId(null);
+      setConfirmingResetId(null);
     }
   }
 
   async function toggleActive(employee: EmployeeCreated) {
     setErrorMessage(null);
     setSuccessMessage(null);
+    setConfirmingResetId(null);
     setBusyId(employee.id);
 
     try {
@@ -191,6 +212,17 @@ export default function EmployeesPage() {
             {successMessage && <SuccessMessage key="success" message={successMessage} />}
           </AnimatePresence>
 
+          <AnimatePresence mode="wait">
+            {issuedPassword && (
+              <TemporaryPassword
+                key={issuedPassword.password}
+                name={issuedPassword.name}
+                password={issuedPassword.password}
+                onDismiss={() => setIssuedPassword(null)}
+              />
+            )}
+          </AnimatePresence>
+
           {employees === null && (
             <div className="skeleton-stack" aria-hidden="true">
               <Skeleton height={64} />
@@ -205,7 +237,7 @@ export default function EmployeesPage() {
                 <UsersThree weight="bold" />
               </span>
               <p className="empty-state-title">Todavía no hay nadie en la nómina</p>
-              <button className="btn btn-solid" onClick={() => navigate("/admin/nuevo-empleado")}>
+              <button className="btn btn-rosa" onClick={() => navigate("/admin/nuevo-empleado")}>
                 Dar de alta al primer empleado
               </button>
             </div>
@@ -286,29 +318,56 @@ export default function EmployeesPage() {
                           {employee.email} · {formatCurrency(employee.base_salary)}
                         </p>
                       </div>
-                      <div className="employee-row-actions">
-                        <button
-                          className="btn btn-line"
-                          onClick={() => startEditing(employee)}
-                          disabled={busyId === employee.id}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="btn btn-line"
-                          onClick={() => handleResetPassword(employee)}
-                          disabled={busyId === employee.id}
-                        >
-                          Restablecer contraseña
-                        </button>
-                        <button
-                          className="btn btn-line"
-                          onClick={() => toggleActive(employee)}
-                          disabled={busyId === employee.id}
-                        >
-                          {employee.is_active ? "Dar de baja" : "Reactivar"}
-                        </button>
-                      </div>
+                      {confirmingResetId === employee.id ? (
+                        <div className="employee-row-confirm">
+                          <p>La contraseña actual de {employee.name} dejará de funcionar.</p>
+                          <div className="employee-row-actions">
+                            <button
+                              ref={confirmResetRef}
+                              className="btn btn-rosa"
+                              onClick={() => handleResetPassword(employee)}
+                              disabled={busyId === employee.id}
+                            >
+                              {busyId === employee.id ? "Restableciendo…" : "Restablecer"}
+                            </button>
+                            <button
+                              className="btn btn-line"
+                              onClick={() => setConfirmingResetId(null)}
+                              disabled={busyId === employee.id}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="employee-row-actions">
+                          <button
+                            className="btn btn-line"
+                            onClick={() => startEditing(employee)}
+                            disabled={busyId === employee.id}
+                          >
+                            Editar
+                          </button>
+                          {employee.id !== ownEmployeeId && (
+                            <>
+                              <button
+                                className="btn btn-line"
+                                onClick={() => askResetPassword(employee)}
+                                disabled={busyId === employee.id}
+                              >
+                                Restablecer contraseña
+                              </button>
+                              <button
+                                className="btn btn-line"
+                                onClick={() => toggleActive(employee)}
+                                disabled={busyId === employee.id}
+                              >
+                                {employee.is_active ? "Dar de baja" : "Reactivar"}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
                 </li>
