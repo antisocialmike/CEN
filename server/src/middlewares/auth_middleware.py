@@ -17,6 +17,12 @@ from ..config.settings import (
 
 security_bearer = HTTPBearer()
 BCRYPT_MAX_BYTES = 72
+AMBIGUOUS_CHARACTERS = "0O1lI"
+TEMPORARY_PASSWORD_ALPHABET = "".join(
+    character
+    for character in string.ascii_letters + string.digits
+    if character not in AMBIGUOUS_CHARACTERS
+)
 
 INVALID_TOKEN = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -25,9 +31,9 @@ INVALID_TOKEN = HTTPException(
 
 
 def generate_temporary_password() -> str:
-    alphabet = string.ascii_letters + string.digits
     return "".join(
-        secrets.choice(alphabet) for _ in range(TEMPORARY_PASSWORD_LENGTH)
+        secrets.choice(TEMPORARY_PASSWORD_ALPHABET)
+        for _ in range(TEMPORARY_PASSWORD_LENGTH)
     )
 
 

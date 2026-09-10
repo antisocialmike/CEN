@@ -108,6 +108,12 @@ def reset_employee_password(
     employee_id: int,
     user: dict = Depends(require_role("admin")),
 ):
+    if employee_id == user.get("employee_id"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tu propia contraseña se cambia desde tu cuenta",
+        )
+
     temporary_password = generate_temporary_password()
     employee = payroll_repository.reset_password(
         employee_id, hash_password(temporary_password)

@@ -71,3 +71,9 @@ def test_generate_temporary_password_is_long_and_random():
     assert len(first) >= 8
     assert first != second
     assert first.isalnum()
+
+
+def test_generate_temporary_password_avoids_ambiguous_characters():
+    passwords = "".join(generate_temporary_password() for _ in range(200))
+
+    assert not set(passwords) & set("0O1lI")

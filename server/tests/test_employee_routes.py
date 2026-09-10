@@ -342,6 +342,17 @@ def test_reset_password_for_a_missing_employee(mock_reset):
     assert response.status_code == 404
 
 
+@patch("server.src.routes.employee_routes.payroll_repository.reset_password")
+def test_reset_password_cannot_be_yourself(mock_reset):
+    response = client.post(
+        "/employees/1/reset-password",
+        headers={"Authorization": f"Bearer {_admin_token_with_id(1)}"}
+    )
+
+    assert response.status_code == 400
+    mock_reset.assert_not_called()
+
+
 def test_reset_password_requires_admin_role():
     response = client.post(
         "/employees/3/reset-password",
