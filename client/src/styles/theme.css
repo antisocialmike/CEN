@@ -1945,7 +1945,7 @@ p {
     align-items: flex-start;
   }
 
-    .dashboard-topbar {
+  .dashboard-topbar {
     height: 64px;
   }
 
@@ -2097,10 +2097,94 @@ p {
   flex-wrap: wrap;
 }
 
+.employee-row-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.employee-row-confirm p {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--danger-text);
+}
+
+.temp-password {
+  display: grid;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
+  padding: var(--s-4) var(--s-5);
+  background: var(--ok-bg);
+  border: 1px solid var(--ok-line);
+  outline: none;
+}
+
+.temp-password:focus-visible {
+  outline: 2px solid var(--ok-line);
+  outline-offset: 2px;
+}
+
+.temp-password-title {
+  font-weight: 600;
+  color: var(--ok-text);
+}
+
+.temp-password-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.temp-password-value {
+  flex: 1 1 14ch;
+  min-width: 0;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--cal);
+  border: 1px solid var(--ok-line);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.temp-password-note {
+  font-size: 13.5px;
+  color: var(--ok-text);
+}
+
+.temp-password .text-button {
+  justify-self: start;
+}
+
 @media (max-width: 640px) {
   .employee-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-topbar {
+    gap: var(--s-3);
+    padding-inline: var(--s-4);
+  }
+
+  .dashboard-topbar-right {
+    gap: var(--s-2);
+  }
+
+  .dashboard-topbar .brand-logo-text small {
+    display: none;
+  }
+}
+
+@media (max-width: 374px) {
+  .dashboard-topbar .brand-logo-text {
+    display: none;
   }
 }
 
@@ -2189,4 +2273,28 @@ p {
   .payroll-concepts-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.replace-warning {
+  margin-bottom: var(--s-4);
+  padding: var(--s-4);
+  background: var(--rosa-wash);
+  border: 1px solid var(--rosa);
+}
+
+.replace-warning-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--danger-text);
+}
+
+.replace-warning-note {
+  margin-top: var(--s-2);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.replace-warning-actions {
+  margin-top: var(--s-4);
 }
