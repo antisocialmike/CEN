@@ -7,8 +7,8 @@
 
   --ink: light-dark(#14100e, #f1f3f7);
   --ink-2: light-dark(#5a5049, #aab0bf);   --ink-3: light-dark(#736961, #858d9e);   --ink-hover: light-dark(#2c2521, #dde1ea);
-  --line: light-dark(#e4ded6, #232733);
-  --line-strong: light-dark(#cfc7bc, #353b4a);
+  --line: light-dark(#d4ccc1, #3d4556);
+  --line-strong: light-dark(#b8aca0, #5a6273);
 
     --rosa: light-dark(#b1354c, #de6676);
   --rosa-deep: light-dark(#961737, #f48a95);

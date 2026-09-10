@@ -351,12 +351,18 @@ export default function AdminDashboardPage() {
                     hint={
                       selectedEmployee
                         ? periodicity === "mensual"
-                          ? `Salario base registrado: ${formatCurrency(
-                              selectedEmployee.base_salary
-                            )}`
-                          : `Sugerido a partir del salario base mensual de ${formatCurrency(
-                              selectedEmployee.base_salary
-                            )}.`
+                          ? `Base mensual: ${formatCurrency(selectedEmployee.base_salary)}`
+                          : periodicity === "quincenal"
+                            ? `Mitad del base mensual: ${formatCurrency(
+                                selectedEmployee.base_salary
+                              )} ÷ 2 = ${formatCurrency(
+                                selectedEmployee.base_salary / 2
+                              )}`
+                            : `Prorrateo semanal: ${formatCurrency(
+                                selectedEmployee.base_salary
+                              )} × 12 ÷ 52 = ${formatCurrency(
+                                (selectedEmployee.base_salary * 12) / 52
+                              )}`
                         : undefined
                     }
                     required
