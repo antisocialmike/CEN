@@ -9,7 +9,6 @@ import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
 import { login } from "../services/authService";
 
-const PHOTO_MURO = "https://picsum.photos/seed/cen-muro-luz-dura/1200/1600";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -38,10 +37,6 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <aside className="auth-side">
-        <span className="auth-side-photo" aria-hidden="true">
-          <img src={PHOTO_MURO} alt="" width={1200} height={1600} />
-        </span>
-
         <Link className="brand-logo on-color" to="/">
           <LogoMark />
           <div className="brand-logo-text">

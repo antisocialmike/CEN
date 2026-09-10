@@ -59,6 +59,7 @@ export default function AdminDashboardPage() {
     setPendingReplacement(null);
     setPeriodStart(periodStartsOf(next, month)[0]);
     setResult(null);
+    setConcepts(emptyConcepts);
     if (selectedEmployee) {
       setGrossSalary(
         String(suggestedGrossSalary(selectedEmployee.base_salary, next))
@@ -331,6 +332,11 @@ export default function AdminDashboardPage() {
                       hint="Recalcular el mismo periodo reemplaza el recibo anterior."
                     />
                   )}
+                  {periodOptions.length === 1 && (
+                    <p className="form-note">
+                      Recalcular el mismo periodo reemplaza el recibo anterior.
+                    </p>
+                  )}
                   <FormField
                     id="grossSalary"
                     label="Salario bruto del periodo"
@@ -486,14 +492,19 @@ export default function AdminDashboardPage() {
                   {pendingReplacement && (
                     <div className="replace-warning" role="alert">
                       <p className="replace-warning-title">
-                        {selectedEmployee?.name} ya tiene el recibo #
-                        {pendingReplacement.id} de este periodo, por{" "}
-                        {formatCurrency(pendingReplacement.net_salary)}.
+                        Se reemplazará el recibo de {selectedEmployee?.name}
                       </p>
-                      <p className="replace-warning-note">
-                        Al continuar se reemplaza y el empleado verá el nuevo en
-                        su portal. El anterior no se puede recuperar.
-                      </p>
+                      <div className="replace-warning-details">
+                        <p className="replace-warning-note">
+                          Recibo actual: #{pendingReplacement.id}
+                          <br />
+                          Neto: {formatCurrency(pendingReplacement.net_salary)}
+                        </p>
+                        <p className="replace-warning-caution">
+                          Al continuar, el empleado verá el nuevo recibo en su portal.
+                          El anterior no se puede recuperar.
+                        </p>
+                      </div>
                       <div className="replace-warning-actions">
                         <button
                           type="button"

@@ -41,17 +41,20 @@ export default function TemporaryPassword({ name, password, onDismiss }: Tempora
       transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
     >
       <p className="temp-password-title">Contraseña temporal de {name}</p>
-      <div className="temp-password-row">
+      <p className="temp-password-note">Comparte por un canal seguro. No se volverá a mostrar.</p>
+      <div className="temp-password-block">
         <code className="temp-password-value">{password}</code>
-        <button type="button" className="btn btn-ink" onClick={copyPassword}>
+        <button type="button" className="btn btn-ink" onClick={copyPassword} aria-label={`Copiar contraseña: ${password}`}>
           {copyState === "copied" ? <Check weight="bold" /> : <Copy weight="bold" />}
           {copyState === "copied" ? "Copiada" : "Copiar"}
         </button>
       </div>
-      <p className="temp-password-note" aria-live="polite">
+      <p className="temp-password-feedback" aria-live="polite" role="status">
         {copyState === "failed"
           ? "No se pudo copiar. Selecciónala y cópiala a mano."
-          : "Compártela por un canal seguro. No se volverá a mostrar y se le pedirá cambiarla al entrar."}
+          : copyState === "copied"
+            ? "Contraseña copiada al portapapeles."
+            : ""}
       </p>
       <button type="button" className="text-button" onClick={onDismiss}>
         Ya la compartí

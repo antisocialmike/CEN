@@ -12,9 +12,6 @@ import {
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
 
-const PHOTO_HERO = "https://picsum.photos/seed/cen-nomina-equipo/900/1100";
-const PHOTO_ADMIN = "https://picsum.photos/seed/cen-nomina-admin/900/560";
-const PHOTO_EMPLEADO = "https://picsum.photos/seed/cen-nomina-empleado/900/560";
 
 const calculo = [
   { label: "Salario bruto", value: "$22,000.00" },
@@ -112,15 +109,6 @@ export default function LandingPage() {
             <div className="lp-stage">
               <motion.span className="lp-plane lp-plane-ocre" aria-hidden="true" {...wipe(0.1)} />
               <motion.span className="lp-plane lp-plane-rosa" aria-hidden="true" {...wipe(0.22)} />
-              <motion.div className="lp-photo" {...wipe(0.34)}>
-                <img
-                  src={PHOTO_HERO}
-                  alt=""
-                  loading="eager"
-                  width={900}
-                  height={1100}
-                />
-              </motion.div>
 
               <motion.div
                 className="lp-deposit"
@@ -176,15 +164,6 @@ export default function LandingPage() {
             </div>
             <div className="lp-roles-grid">
               <motion.article className="lp-role lp-role--admin" {...rise}>
-                <div className="lp-role-photo">
-                  <img
-                    src={PHOTO_ADMIN}
-                    alt=""
-                    loading="lazy"
-                    width={900}
-                    height={560}
-                  />
-                </div>
                 <div className="lp-role-body">
                   <h3>Administrador</h3>
                   <p>Da de alta al equipo, calcula la nómina y ve los recibos de todos.</p>
@@ -210,15 +189,6 @@ export default function LandingPage() {
                 {...rise}
                 transition={{ ...rise.transition, delay: reduce ? 0 : 0.1 }}
               >
-                <div className="lp-role-photo">
-                  <img
-                    src={PHOTO_EMPLEADO}
-                    alt=""
-                    loading="lazy"
-                    width={900}
-                    height={560}
-                  />
-                </div>
                 <div className="lp-role-body">
                   <h3>Empleado</h3>
                   <p>Entra a su propio portal y encuentra sus recibos. Nada más, nada menos.</p>
