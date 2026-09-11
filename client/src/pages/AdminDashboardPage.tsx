@@ -603,14 +603,22 @@ export default function AdminDashboardPage() {
                     <tbody>
                       {receipts.map((receipt) => (
                         <tr key={receipt.id}>
-                          <td className="name">
+                          <td className="name" data-label="Empleado">
                             {receipt.employee_name ?? `Empleado #${receipt.employee_id}`}
                           </td>
-                          <td>{formatDateShort(receipt.created_at)}</td>
-                          <td className="num">{formatCurrency(receipt.gross_salary)}</td>
-                          <td className="num">− {formatCurrency(receipt.isr_deduction)}</td>
-                          <td className="num">− {formatCurrency(receipt.imss_deduction)}</td>
-                          <td className="num net">{formatCurrency(receipt.net_salary)}</td>
+                          <td data-label="Fecha">{formatDateShort(receipt.created_at)}</td>
+                          <td className="num" data-label="Bruto">
+                            {formatCurrency(receipt.gross_salary)}
+                          </td>
+                          <td className="num" data-label="ISR">
+                            − {formatCurrency(receipt.isr_deduction)}
+                          </td>
+                          <td className="num" data-label="IMSS">
+                            − {formatCurrency(receipt.imss_deduction)}
+                          </td>
+                          <td className="num net" data-label="Neto">
+                            {formatCurrency(receipt.net_salary)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
