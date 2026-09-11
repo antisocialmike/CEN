@@ -69,7 +69,8 @@ RECEIPT_ITEMS_JSON = (
 )
 
 SELECT_RECEIPTS_BY_EMPLOYEE = (
-    "SELECT r.id, r.employee_id, r.period, r.gross_salary, r.isr_deduction, "
+    "SELECT r.id, r.employee_id, r.period_start, r.period_end, "
+    "r.gross_salary, r.isr_deduction, "
     "r.imss_deduction, r.net_salary, r.total_perceptions, "
     "r.total_deductions, r.taxable_base, r.periodicity, r.paid_days, "
     "r.processed_by, r.created_at, "
