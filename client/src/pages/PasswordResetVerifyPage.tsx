@@ -7,7 +7,7 @@ import ErrorMessage from "../components/ErrorMessage";
 import SubmitButton from "../components/SubmitButton";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
-import { httpClient } from "../services/httpClient";
+import httpClient from "../services/httpClient";
 
 export default function PasswordResetVerifyPage() {
   const [code, setCode] = useState("");

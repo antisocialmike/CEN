@@ -8,7 +8,7 @@ import SuccessMessage from "../components/SuccessMessage";
 import SubmitButton from "../components/SubmitButton";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
-import { httpClient } from "../services/httpClient";
+import httpClient from "../services/httpClient";
 
 export default function PasswordRecoveryPage() {
   const [email, setEmail] = useState("");

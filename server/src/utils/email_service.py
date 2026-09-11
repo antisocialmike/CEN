@@ -1,7 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from config.settings import (
+from ..config.settings import (
     SMTP_SERVER,
     SMTP_PORT,
     SMTP_USER,
