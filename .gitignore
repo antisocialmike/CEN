@@ -8,3 +8,5 @@ venv/
 .claude/
 
 graphify-out/
+design/
+client/src/components/mobile/ANIMATIONS_GUIDE.md
