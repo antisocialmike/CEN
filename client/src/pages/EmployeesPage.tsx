@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { rowVariants, stackVariants, useStill } from "../motion/variants";
 import { ArrowLeft, UsersThree } from "@phosphor-icons/react";
 import DashboardTopbar from "../components/DashboardTopbar";
 import FormField from "../components/FormField";
@@ -35,6 +36,8 @@ interface IssuedPassword {
 }
 
 export default function EmployeesPage() {
+  const stackTravel = useStill(stackVariants);
+  const rowTravel = useStill(rowVariants);
   const [employees, setEmployees] = useState<EmployeeCreated[] | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
@@ -266,10 +269,16 @@ export default function EmployeesPage() {
           )}
 
           {employees !== null && employees.length > 0 && (
-            <ul className="employee-list">
+            <motion.ul
+              className="employee-list"
+              variants={stackTravel}
+              initial="initial"
+              animate="animate"
+            >
               {employees.map((employee) => (
-                <li
+                <motion.li
                   key={employee.id}
+                  variants={rowTravel}
                   className={employee.is_active ? "employee-row" : "employee-row is-inactive"}
                 >
                   {editingId === employee.id && form !== null ? (
@@ -440,9 +449,9 @@ export default function EmployeesPage() {
                       )}
                     </>
                   )}
-                </li>
+                </motion.li>
               ))}
-            </ul>
+            </motion.ul>
           )}
         </div>
       </main>
