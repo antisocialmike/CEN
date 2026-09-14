@@ -29,10 +29,17 @@ services:
       DB_NAME: ${DB_NAME:-cen_payroll_db}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgrespassword}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-cen-secret-payroll-key-for-jwt-tokens}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?define JWT_SECRET_KEY en tu .env}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@cen.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin1234}
+      SMTP_SERVER: ${SMTP_SERVER:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@cenpayroll.com}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-True}
+      PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: ${PASSWORD_RESET_TOKEN_EXPIRE_MINUTES:-15}
     ports:
       - "8000:8000"
     depends_on:
