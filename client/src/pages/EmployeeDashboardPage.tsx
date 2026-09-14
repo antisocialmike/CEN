@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { blockVariants, stackVariants, useStill } from "../motion/variants";
 import DashboardTopbar from "../components/DashboardTopbar";
 import ErrorMessage from "../components/ErrorMessage";
 import ReceiptCard from "../components/ReceiptCard";
@@ -14,6 +16,8 @@ function byNewestFirst(receipts: PayrollReceipt[]): PayrollReceipt[] {
 }
 
 export default function EmployeeDashboardPage() {
+  const stackTravel = useStill(stackVariants);
+  const blockTravel = useStill(blockVariants);
   const [receipts, setReceipts] = useState<PayrollReceipt[] | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -96,8 +100,13 @@ export default function EmployeeDashboardPage() {
           )}
 
           {receipts && latest && (
-            <div className="stat-row">
-              <div className="stat-card">
+            <motion.div
+              className="stat-row"
+              variants={stackTravel}
+              initial="initial"
+              animate="animate"
+            >
+              <motion.div className="stat-card" variants={blockTravel}>
                 <span className="stat-card-icon" aria-hidden="true">
                   <Wallet weight="bold" />
                 </span>
@@ -105,8 +114,8 @@ export default function EmployeeDashboardPage() {
                   <p className="stat-card-label">Último neto recibido</p>
                   <p className="stat-card-value">{formatCurrency(latest.net_salary)}</p>
                 </div>
-              </div>
-              <div className="stat-card">
+              </motion.div>
+              <motion.div className="stat-card" variants={blockTravel}>
                 <span className="stat-card-icon" aria-hidden="true">
                   <CalendarBlank weight="bold" />
                 </span>
@@ -114,8 +123,8 @@ export default function EmployeeDashboardPage() {
                   <p className="stat-card-label">Último periodo</p>
                   <p className="stat-card-value is-text">{formatMonth(latest.period_start)}</p>
                 </div>
-              </div>
-              <div className="stat-card">
+              </motion.div>
+              <motion.div className="stat-card" variants={blockTravel}>
                 <span className="stat-card-icon" aria-hidden="true">
                   <Receipt weight="bold" />
                 </span>
@@ -126,8 +135,8 @@ export default function EmployeeDashboardPage() {
                   </p>
                   <p className="stat-card-value">{formatCurrency(totalWithheld)}</p>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           )}
 
           {receipts !== null && receipts.length === 0 && (
