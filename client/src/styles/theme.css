@@ -1,37 +1,43 @@
 :root {
-    --cal: light-dark(#faf9f7, #0a0b0f);
-  --cal-2: light-dark(#f1eee9, #111319);
-  --cal-3: light-dark(#e9e4dc, #1a1d25);
-  --surface: light-dark(#ffffff, #14161c);
-  --chrome: light-dark(rgba(250, 249, 247, 0.88), rgba(10, 11, 15, 0.88));
+  --cal: light-dark(#f4f4f0, #0a0a0a);
+  --cal-2: light-dark(#eae8e3, #121212);
+  --cal-3: light-dark(#dedcd4, #1a1a1a);
+  --surface: light-dark(#ffffff, #121212);
+  --chrome: light-dark(#f4f4f0, #0a0a0a);
 
-  --ink: light-dark(#14100e, #f1f3f7);
-  --ink-2: light-dark(#5a5049, #aab0bf);   --ink-3: light-dark(#736961, #858d9e);   --ink-hover: light-dark(#2c2521, #dde1ea);
-  --line: light-dark(#d4ccc1, #3d4556);
-  --line-strong: light-dark(#b8aca0, #5a6273);
+  --ink: light-dark(#050505, #eaeaea);
+  --ink-2: light-dark(#41413c, #9c9c97);
+  --ink-3: light-dark(#6d6d66, #72726d);
+  --ink-hover: light-dark(#000000, #ffffff);
 
-    --rosa: light-dark(#b1354c, #de6676);
-  --rosa-deep: light-dark(#961737, #f48a95);
-  --rosa-wash: light-dark(#ffebec, #33171a);
-  --on-rosa: light-dark(#ffffff, #0a0b0f);
-  --danger-text: light-dark(#961737, #de6676);
+  --line: light-dark(#050505, #eaeaea);
+  --line-strong: light-dark(#050505, #ffffff);
+  --line-soft: light-dark(#c6c4bb, #2c2c2c);
+  --bw: 2px;
+  --bw-hair: 1px;
 
-  --ocre: light-dark(#e5b37e, #d7a672);
-  --ultramar: #3a5084;
-  --ok-bg: light-dark(#e6f5e9, #102617);
-  --ok-line: #3a8753;
-  --ok-text: light-dark(#0d6332, #86d29b);
+  --rosa: #e61919;
+  --rosa-deep: #ff2a2a;
+  --rosa-wash: light-dark(#ffdedc, #2a0606);
+  --on-rosa: #ffffff;
+  --danger-text: light-dark(#c20f0f, #ff5a5a);
 
-    --ink-fixed: #14100e;
+  --ocre: light-dark(#eae8e3, #d8d6cd);
+  --ultramar: light-dark(#050505, #121212);
+  --ok-bg: light-dark(#eae8e3, #161616);
+  --ok-line: light-dark(#050505, #eaeaea);
+  --ok-text: light-dark(#050505, #eaeaea);
 
-    --plane-admin: light-dark(#14100e, #3a5084);
-  --plane-admin-ink: light-dark(#faf9f7, #ffffff);
-  --plane-admin-ink-soft: light-dark(rgba(250, 249, 247, 0.82), rgba(255, 255, 255, 0.82));
+    --ink-fixed: #050505;
 
-  --shadow-deposit: light-dark(rgba(20, 16, 14, 0.4), transparent);
+    --plane-admin: light-dark(#050505, #050505);
+  --plane-admin-ink: #f4f4f0;
+  --plane-admin-ink-soft: rgba(244, 244, 240, 0.72);
 
-    --r-pill: 999px;
-  --ring: 0 0 0 2px var(--cal), 0 0 0 4px var(--ink);
+  --shadow-deposit: transparent;
+
+    --r-pill: 0;
+  --ring: 0 0 0 2px var(--cal), 0 0 0 4px var(--rosa);
 
     --s-1: 4px;
   --s-2: 8px;
@@ -46,18 +52,27 @@
   --page: 1240px;
   --gutter: clamp(20px, 4vw, 56px);
 
-    --font: "Satoshi", "Segoe UI", system-ui, sans-serif;
+    --font: "Satoshi", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Archivo Black", "Satoshi", Impact, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  --t-display: clamp(46px, 7vw, 92px);
-  --t-h2: clamp(32px, 4.2vw, 54px);
-  --t-h3: clamp(20px, 2vw, 25px);
-  --t-body: 17px;
-  --t-small: 14px;
+  --t-display: clamp(54px, 10.5vw, 158px);
+  --t-h2: clamp(36px, 5.6vw, 76px);
+  --t-h3: clamp(20px, 2.1vw, 27px);
+  --t-body: 16px;
+  --t-small: 13px;
+  --t-micro: 11px;
 
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-fast: 140ms;
-  --dur: 220ms;
+  --track-macro: -0.04em;
+  --lead-macro: 0.88;
+  --track-micro: 0.08em;
+
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 260ms;
 
   color-scheme: light dark;
   accent-color: var(--rosa);
@@ -141,11 +156,26 @@ img {
 h1,
 h2,
 h3 {
-  font-weight: 500;
-  letter-spacing: -0.024em;
-  line-height: 1;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: var(--track-macro);
+  line-height: var(--lead-macro);
   margin: 0;
+  text-transform: uppercase;
   text-wrap: balance;
+}
+
+.mono,
+.eyebrow,
+.lp-calc-label,
+.lp-deposit-label,
+.lp-receipt-folio,
+.user-chip-role,
+.form-field label {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
 }
 
 p {
@@ -225,8 +255,11 @@ p {
 }
 
 .brand-logo-text small {
+  font-family: var(--font-mono);
   font-weight: 400;
-  font-size: 12px;
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
   color: var(--ink-3);
   white-space: nowrap;
 }
@@ -252,12 +285,13 @@ p {
   gap: var(--s-2);
   min-height: 48px;
   padding: 13px 26px;
-  border: 1.5px solid transparent;
+  border: var(--bw) solid transparent;
   border-radius: var(--r-pill);
-  font-family: inherit;
-  font-size: 15.5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
@@ -331,10 +365,9 @@ p {
   width: 15px;
   height: 15px;
   flex-shrink: 0;
-  border-radius: 50%;
-  border: 2px solid var(--line-strong);
+  border: var(--bw) solid var(--line-strong);
   border-top-color: var(--rosa);
-  animation: spin 0.7s linear infinite;
+  animation: spin 0.7s steps(8, end) infinite;
 }
 
 @keyframes spin {
@@ -426,8 +459,7 @@ p {
   top: 0;
   z-index: 40;
   background: var(--chrome);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--bw) solid var(--line);
 }
 
 .lp-nav-inner {
@@ -447,8 +479,11 @@ p {
 
 .lp-nav-links a {
   color: var(--ink-2);
-  font-size: 15px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
   font-weight: 500;
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
   text-decoration: none;
   padding: 12px 0;
   transition: color var(--dur-fast) var(--ease);
@@ -569,8 +604,7 @@ p {
   gap: var(--s-3);
   padding: 14px 20px 14px 14px;
   background: var(--cal);
-  border: 1px solid var(--line);
-  box-shadow: 0 18px 40px -18px var(--shadow-deposit);
+  border: var(--bw) solid var(--line);
 }
 
 .lp-deposit-mark {
@@ -822,7 +856,7 @@ p {
 }
 
 .lp-receipt {
-  border: 1px solid var(--line);
+  border: var(--bw) solid var(--line);
   background: var(--surface);
   padding: var(--s-5);
   display: flex;
@@ -1030,7 +1064,11 @@ p {
 }
 
 .auth-side-title {
-  font-size: clamp(32px, 3.4vw, 48px);
+  font-family: var(--font-display);
+  font-size: clamp(34px, 4vw, 58px);
+  letter-spacing: var(--track-macro);
+  line-height: var(--lead-macro);
+  text-transform: uppercase;
   max-width: 13ch;
 }
 
@@ -1071,8 +1109,6 @@ p {
   width: 44px;
   height: 44px;
   margin-bottom: var(--s-5);
-  /* --ultramar está pensado como fondo y sobre --cal-2 oscuro cae a 2.35;
-     se aclara igual que --rosa para que el icono no desaparezca. */
   color: light-dark(#3a5084, #8fa4d4);
   background: var(--cal-2);
   font-size: 22px;
@@ -1142,7 +1178,7 @@ p {
 .form-field-control select:focus {
   outline: none;
   border-color: var(--rosa);
-  box-shadow: 0 0 0 3px var(--rosa-wash);
+  box-shadow: 0 0 0 var(--bw) var(--rosa);
 }
 
 .form-field-control select {
@@ -1240,7 +1276,7 @@ p {
   font-size: 14.5px;
   line-height: 1.45;
   margin-bottom: var(--s-5);
-  border: 1px solid;
+  border: var(--bw) solid;
 }
 
 .error-banner {
@@ -1264,9 +1300,14 @@ p {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--cal-2) 25%, var(--cal-3) 37%, var(--cal-2) 63%);
+  background: linear-gradient(
+    90deg,
+    var(--cal-2) 0 46%,
+    var(--cal-3) 46% 54%,
+    var(--cal-2) 54% 100%
+  );
   background-size: 400% 100%;
-  animation: skeleton-sweep 1.4s ease-in-out infinite;
+  animation: skeleton-sweep 1.4s linear infinite;
 }
 
 @keyframes skeleton-sweep {
@@ -1279,7 +1320,7 @@ p {
 }
 
 .skeleton-card {
-  border: 1px solid var(--line);
+  border: var(--bw) solid var(--line);
   background: var(--surface);
   padding: var(--s-5);
 }
@@ -1345,8 +1386,7 @@ p {
   height: 72px;
   padding-inline: var(--gutter);
   background: var(--chrome);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--bw) solid var(--line);
 }
 
 .dashboard-topbar-right {
@@ -1513,7 +1553,7 @@ p {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   margin-bottom: var(--s-6);
-  border: 1px solid var(--line);
+  border: var(--bw) solid var(--line);
   background: var(--surface);
 }
 
@@ -1564,7 +1604,7 @@ p {
 }
 
 .payroll-form {
-  border: 1px solid var(--line);
+  border: var(--bw) solid var(--line);
   background: var(--surface);
   padding: var(--s-6);
 }
@@ -1690,7 +1730,7 @@ p {
 }
 
 .receipt-card {
-  border: 1px solid var(--line);
+  border: var(--bw) solid var(--line);
   background: var(--surface);
   padding: var(--s-5);
   transition: border-color var(--dur-fast) var(--ease);
@@ -1762,7 +1802,7 @@ p {
 }
 
 .table-wrap {
-  border: 1px solid var(--line);
+  border: var(--bw) solid var(--line);
   background: var(--surface);
   overflow-x: auto;
 }
@@ -1776,11 +1816,14 @@ p {
 
 .data-table th {
   text-align: left;
-  font-size: 12.5px;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
   font-weight: 700;
-  color: var(--ink-3);
+  letter-spacing: var(--track-micro);
+  text-transform: uppercase;
+  color: var(--ink-2);
   padding: 14px var(--s-5);
-  border-bottom: 1px solid var(--line-strong);
+  border-bottom: var(--bw) solid var(--line-strong);
   white-space: nowrap;
 }
 
@@ -1865,7 +1908,7 @@ p {
 .signup-card {
   width: 100%;
   max-width: 460px;
-  border: 1px solid var(--line);
+  border: var(--bw) solid var(--line);
   background: var(--surface);
   padding: var(--s-7);
 }
@@ -2061,7 +2104,7 @@ p {
     grid-template-columns: repeat(3, 1fr);
     gap: var(--s-3) var(--s-2);
     padding: var(--s-4);
-    border: 1px solid var(--line);
+    border: var(--bw) solid var(--line);
     background: var(--surface);
   }
 
@@ -2204,8 +2247,6 @@ p {
 
 .employee-tag.is-role {
   background: var(--ultramar);
-  /* --ultramar no cambia entre temas, así que el texto tampoco puede: con
-     var(--cal) se volvía casi negro en oscuro y el contraste caía a 2.49. */
   color: #faf9f7;
 }
 
@@ -2245,7 +2286,7 @@ p {
   margin-bottom: var(--s-5);
   padding: var(--s-4) var(--s-5);
   background: var(--ok-bg);
-  border: 1px solid var(--ok-line);
+  border: var(--bw) solid var(--ok-line);
   outline: none;
 }
 
@@ -2277,7 +2318,7 @@ p {
   line-height: 1.4;
   color: var(--ink);
   background: var(--cal);
-  border: 1px solid var(--ok-line);
+  border: var(--bw) solid var(--ok-line);
   word-break: break-all;
   user-select: all;
 }
@@ -2473,7 +2514,7 @@ p {
   margin-bottom: var(--s-4);
   padding: var(--s-4);
   background: var(--rosa-wash);
-  border: 1px solid var(--rosa);
+  border: var(--bw) solid var(--rosa);
 }
 
 .replace-warning-title {
@@ -2510,7 +2551,7 @@ p {
   margin-bottom: var(--s-4);
   padding: var(--s-4);
   background: var(--rosa-wash);
-  border: 1px solid var(--rosa);
+  border: var(--bw) solid var(--rosa);
 }
 
 .password-warning-title {
@@ -2541,7 +2582,7 @@ p {
 .action-confirm {
   padding: var(--s-4);
   background: var(--rosa-wash);
-  border: 1px solid var(--rosa);
+  border: var(--bw) solid var(--rosa);
   margin-bottom: var(--s-3);
 }
 
