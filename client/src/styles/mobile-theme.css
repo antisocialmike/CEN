@@ -1,0 +1,259 @@
+
+:root {
+  --rosa-900: #5c1f2a;
+  --rosa-600: #b1354c;
+  --rosa-500: #d4537e;
+  --rosa-400: #e87aa5;
+  --rosa-50: #ffebec;
+
+  --azul-600: #3a5084;
+  --azul-500: #4a66b3;
+  --azul-50: #e6f1fb;
+
+  --success: #3a8753;
+  --success-light: #e6f5e9;
+  --warning: #f97316;
+  --warning-light: #ffe6cc;
+  --danger: #c41e3a;
+  --danger-light: #ffe6e6;
+
+  --neutral-900: #0a0b0f;
+  --neutral-800: #1a1d25;
+  --neutral-700: #2a2d35;
+  --neutral-600: #5a5049;
+  --neutral-500: #6f6a63;
+  --neutral-400: #aab0bf;
+  --neutral-300: #c5cad6;
+  --neutral-200: #e9e4dc;
+  --neutral-100: #f1eee9;
+  --neutral-50: #faf9f7;
+
+  --text-primary: #14100e;
+  --text-secondary: #5a5049;
+  --text-muted: #736961;
+  --text-disabled: #aab0bf;
+
+  --bg-primary: #faf9f7;
+  --bg-secondary: #f1eee9;
+  --surface: #ffffff;
+  --surface-hover: #f9f7f5;
+  --surface-active: #f1eee9;
+
+  --border-default: #d4ccc1;
+  --border-strong: #b8aca0;
+  --border-subtle: #e9e4dc;
+
+  --shadow-xs: 0 1px 2px rgba(20, 16, 14, 0.05);
+  --shadow-sm: 0 1px 3px rgba(20, 16, 14, 0.1);
+  --shadow-md: 0 4px 6px rgba(20, 16, 14, 0.07);
+  --shadow-lg: 0 10px 15px rgba(20, 16, 14, 0.1);
+  --shadow-xl: 0 20px 25px rgba(20, 16, 14, 0.15);
+  --shadow-rosa: 0 10px 30px rgba(177, 53, 76, 0.2);
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --text-h1: 700 28px / 1.2 var(--font-sans);
+  --text-h2: 600 24px / 1.3 var(--font-sans);
+  --text-h3: 600 18px / 1.3 var(--font-sans);
+  --text-body: 400 15px / 1.6 var(--font-sans);
+  --text-body-sm: 400 14px / 1.5 var(--font-sans);
+  --text-label: 600 13px / 1.4 var(--font-sans);
+  --text-small: 500 12px / 1.4 var(--font-sans);
+  --text-caption: 400 12px / 1.5 var(--font-sans);
+
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-normal: -0.005em;
+  --letter-spacing-label: 0.3px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  --max-width-mobile: 375px;
+  --max-width-tablet: 768px;
+  --max-width-desktop: 1440px;
+
+  --safe-area-top: env(safe-area-inset-top, 0);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0);
+  --safe-area-left: env(safe-area-inset-left, 0);
+  --safe-area-right: env(safe-area-inset-right, 0);
+
+  --ease-in-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  --duration-fast: 140ms;
+  --duration-base: 220ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-primary: #f1f3f7;
+    --text-secondary: #aab0bf;
+    --text-muted: #858d9e;
+    --text-disabled: #5a6273;
+
+    --bg-primary: #0a0b0f;
+    --bg-secondary: #14161c;
+    --surface: #14161c;
+    --surface-hover: #1a1d25;
+    --surface-active: #242833;
+
+    --border-default: #3d4556;
+    --border-strong: #5a6273;
+    --border-subtle: #2a2d35;
+
+    --rosa-600: #de6676;
+    --rosa-500: #e87aa5;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+    --shadow-rosa: 0 10px 30px rgba(222, 102, 118, 0.3);
+
+    color-scheme: dark;
+  }
+}
+
+[data-theme="dark"] {
+  --text-primary: #f1f3f7;
+  --text-secondary: #aab0bf;
+  --text-muted: #858d9e;
+  --text-disabled: #5a6273;
+
+  --bg-primary: #0a0b0f;
+  --bg-secondary: #14161c;
+  --surface: #14161c;
+  --surface-hover: #1a1d25;
+  --surface-active: #242833;
+
+  --border-default: #3d4556;
+  --border-strong: #5a6273;
+  --border-subtle: #2a2d35;
+
+  --rosa-600: #de6676;
+  --rosa-500: #e87aa5;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  --shadow-rosa: 0 10px 30px rgba(222, 102, 118, 0.3);
+
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-primary);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font: var(--text-body);
+  font-family: var(--font-sans);
+  letter-spacing: var(--letter-spacing-normal);
+  transition: background 300ms var(--ease-in-out),
+              color 300ms var(--ease-in-out);
+  padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--rosa-600);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(177, 53, 76, 0.1), 0 0 0 2px var(--rosa-600);
+}
+
+h1 { font: var(--text-h1); letter-spacing: var(--letter-spacing-tight); }
+h2 { font: var(--text-h2); letter-spacing: var(--letter-spacing-tight); }
+h3 { font: var(--text-h3); letter-spacing: var(--letter-spacing-tight); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+::selection {
+  background: var(--rosa-600);
+  color: white;
+}
+
+::-moz-selection {
+  background: var(--rosa-600);
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-600);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+select,
+textarea {
+  font-size: 16px;  font-family: var(--font-sans);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  body { padding-top: calc(var(--safe-area-top) / 2); }
+}
