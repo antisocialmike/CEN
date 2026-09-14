@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
+import { DUR, EASE_OUT } from "../motion/variants";
 import {
   ArrowRight,
   Check,
@@ -11,7 +12,6 @@ import {
 } from "@phosphor-icons/react";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
-
 
 const calculo = [
   { label: "Salario bruto", value: "$22,000.00" },
@@ -44,14 +44,14 @@ export default function LandingPage() {
       : {
           initial: { clipPath: "inset(0 100% 0 0)" },
           animate: { clipPath: "inset(0 0% 0 0)" },
-          transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const, delay }
+          transition: { duration: 0.7, ease: EASE_OUT, delay }
         };
 
   const rise = {
-    initial: reduce ? false : { opacity: 0, y: 20 },
-    whileInView: { opacity: 1, y: 0 },
+    initial: reduce ? false : { opacity: 0, transform: "translateY(20px)" },
+    whileInView: { opacity: 1, transform: "translateY(0px)" },
     viewport: { once: true, amount: 0.3 },
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
+    transition: { duration: DUR.slow, ease: EASE_OUT }
   };
 
   return (
@@ -214,12 +214,12 @@ export default function LandingPage() {
 
         <section className="lp-rail-section">
           <div className="lp-wrap">
-            <div className="lp-rail-head">
+            <motion.div className="lp-rail-head" {...rise}>
               <h2>El historial no se pierde.</h2>
               <p>
                 Cada cálculo se guarda con su folio y su fecha. El empleado lo tiene al instante.
               </p>
-            </div>
+            </motion.div>
           </div>
           <div className="lp-wrap">
             <div className="lp-rail" tabIndex={0} role="group" aria-label="Recibos de ejemplo">
@@ -252,13 +252,13 @@ export default function LandingPage() {
 
         <section className="lp-sec" id="seguridad">
           <div className="lp-wrap lp-sec-grid">
-            <div>
+            <motion.div {...rise}>
               <h2>El sueldo de tu equipo no es dato público.</h2>
               <p className="lp-sec-lead">
                 El permiso se verifica en el servidor, nunca en la interfaz. Un empleado no puede
                 pedir los recibos de otro aunque escriba la dirección a mano.
               </p>
-            </div>
+            </motion.div>
             <div className="lp-flow">
               {flujo.map((paso, i) => (
                 <div className={`lp-flow-step${paso.end ? " is-end" : ""}`} key={i}>
@@ -271,14 +271,14 @@ export default function LandingPage() {
         </section>
 
         <section className="lp-cta">
-          <div className="lp-wrap lp-cta">
+          <motion.div className="lp-wrap lp-cta" {...rise}>
             <h2>Tu próxima nómina, en dos minutos.</h2>
             <p>Entra para calcular la nómina de tu equipo o para consultar tus recibos.</p>
             <button className="btn btn-rosa" onClick={() => navigate("/login")}>
               Iniciar sesión
               <ArrowRight weight="bold" />
             </button>
-          </div>
+          </motion.div>
         </section>
       </main>
 
