@@ -4,13 +4,15 @@ import { AnimatePresence } from "motion/react";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLoader from "./components/AppLoader";
 import PageTransition from "./components/PageTransition";
+import RutaDePanel from "./components/RutaDePanel";
+import { claveDeTransicion } from "./routes/claveDeTransicion";
+import LoginPage from "./pages/LoginPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
-const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SignupPage = lazy(() => import("./pages/SignupPage"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const EmployeeDashboardPage = lazy(() => import("./pages/EmployeeDashboardPage"));
-const ChangePasswordPage = lazy(() => import("./pages/ChangePasswordPage"));
 const PasswordRecoveryPage = lazy(() => import("./pages/PasswordRecoveryPage"));
 const PasswordResetVerifyPage = lazy(() => import("./pages/PasswordResetVerifyPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
@@ -21,7 +23,7 @@ export default function App() {
   return (
     <Suspense fallback={<AppLoader />}>
       <AnimatePresence mode="wait" initial={false}>
-        <PageTransition key={location.pathname}>
+        <PageTransition key={claveDeTransicion(location.pathname)}>
           <Routes location={location}>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -36,13 +38,17 @@ export default function App() {
             </Route>
 
             <Route element={<ProtectedRoute allowedRole="admin" />}>
-              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route element={<RutaDePanel />}>
+                <Route path="/admin" element={<AdminDashboardPage />} />
+                <Route path="/admin/empleados" element={<EmployeesPage />} />
+              </Route>
               <Route path="/admin/nuevo-empleado" element={<SignupPage />} />
-              <Route path="/admin/empleados" element={<EmployeesPage />} />
             </Route>
 
             <Route element={<ProtectedRoute allowedRole="employee" />}>
-              <Route path="/empleado" element={<EmployeeDashboardPage />} />
+              <Route element={<RutaDePanel />}>
+                <Route path="/empleado" element={<EmployeeDashboardPage />} />
+              </Route>
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
