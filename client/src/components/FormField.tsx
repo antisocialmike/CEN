@@ -16,6 +16,7 @@ interface FormFieldProps {
   hint?: string;
   prefix?: string;
   inputMode?: "text" | "numeric" | "decimal" | "email";
+  maxLength?: number;
 }
 
 export default function FormField({
@@ -32,7 +33,8 @@ export default function FormField({
   placeholder,
   hint,
   prefix,
-  inputMode
+  inputMode,
+  maxLength
 }: FormFieldProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const isPasswordField = type === "password";
@@ -65,6 +67,7 @@ export default function FormField({
           step={step}
           placeholder={placeholder}
           inputMode={inputMode}
+          maxLength={maxLength}
           aria-describedby={hintId}
           onChange={(event) => onChange(event.target.value)}
         />
