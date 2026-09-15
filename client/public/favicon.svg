@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="CEN Payroll">
+  <!-- Corte de 16 px del monograma CE.
+
+       El dibujo de la aplicacion (LogoMark, en icons.tsx) lleva dos brazos
+       centrales sobre una rejilla de 32. Al reducirlo a 16 los huecos quedan en
+       1.50 y 1.45 px: por debajo del pixel, asi que no se rasterizan como hueco
+       sino como gris sucio, y la E se cierra.
+
+       Aqui el brazo central es uno solo y la rejilla es de 16 unidades, de modo
+       que a 16 px cada unidad vale exactamente un pixel y ningun borde cae en
+       una fraccion. Los huecos pasan a 3 px en vertical y 2 px en horizontal.
+
+       Sigue siendo una E completa: el travesano superior y el inferior de la C
+       hacen de brazos primero y tercero, y el asta izquierda hace de espina. El
+       brazo central queda separado 2 unidades de la espina, que es lo que
+       mantiene la doble lectura C + E del original.
+
+       El cuadro va en jade solido, sin transparencia, porque el icono se ve
+       sobre la barra del navegador en claro y en oscuro. -->
+  <rect width="16" height="16" fill="#0E7C66"/>
+  <path d="M2 2H14V4H4V12H14V14H2Z" fill="#fff"/>
+  <rect x="6" y="7" width="8" height="2" fill="#fff"/>
+</svg>
