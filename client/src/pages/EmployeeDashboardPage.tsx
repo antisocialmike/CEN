@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { blockVariants, stackVariants, useStill } from "../motion/variants";
-import DashboardTopbar from "../components/DashboardTopbar";
 import ErrorMessage from "../components/ErrorMessage";
 import ReceiptCard from "../components/ReceiptCard";
 import Skeleton from "../components/Skeleton";
@@ -45,128 +44,119 @@ export default function EmployeeDashboardPage() {
     : 0;
 
   return (
-    <div className="dashboard-shell">
-      <a className="skip-link" href="#contenido">
-        Ir al contenido
-      </a>
-      <DashboardTopbar context="Portal del empleado" />
-
-      <main className="dashboard-content" id="contenido">
-        <div className="dashboard-panel">
-          <div className="dashboard-panel-header">
-            <div className="dashboard-panel-heading">
-              <span className="panel-icon-badge" aria-hidden="true">
-                <Receipt weight="bold" />
-              </span>
-              <div>
-                <h1>Mis recibos de nómina</h1>
-                <p className="dashboard-panel-subtitle">
-                  Cada recibo muestra tu salario bruto, lo que se retuvo por ISR e IMSS y el neto
-                  que recibiste.
-                </p>
-              </div>
-            </div>
+    <div className="dashboard-panel">
+      <div className="dashboard-panel-header">
+        <div className="dashboard-panel-heading">
+          <span className="panel-icon-badge" aria-hidden="true">
+            <Receipt weight="bold" />
+          </span>
+          <div>
+            <h1>Mis recibos de nómina</h1>
+            <p className="dashboard-panel-subtitle">
+              Cada recibo muestra tu salario bruto, lo que se retuvo por ISR e IMSS y el neto
+              que recibiste.
+            </p>
           </div>
-
-          {errorMessage && <ErrorMessage message={errorMessage} />}
-
-          {receipts === null && !errorMessage && (
-            <>
-              <p className="visually-hidden" role="status">
-                Cargando tus recibos
-              </p>
-              <div className="stat-row" aria-hidden="true">
-                {[0, 1, 2].map((index) => (
-                  <div className="stat-card" key={index}>
-                    <Skeleton width="36px" height={36} />
-                    <div className="skeleton-stack" style={{ flex: 1 }}>
-                      <Skeleton width="70%" height={11} />
-                      <Skeleton width="50%" height={16} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="receipt-list" aria-hidden="true">
-                {[0, 1].map((index) => (
-                  <div className="skeleton-card skeleton-stack" key={index}>
-                    <Skeleton width="55%" height={18} />
-                    <Skeleton height={14} />
-                    <Skeleton height={14} />
-                    <Skeleton height={14} />
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {receipts && latest && (
-            <motion.div
-              className="stat-row"
-              variants={stackTravel}
-              initial="initial"
-              animate="animate"
-            >
-              <motion.div className="stat-card" variants={blockTravel}>
-                <span className="stat-card-icon" aria-hidden="true">
-                  <Wallet weight="bold" />
-                </span>
-                <div>
-                  <p className="stat-card-label">Último neto recibido</p>
-                  <p className="stat-card-value">{formatCurrency(latest.net_salary)}</p>
-                </div>
-              </motion.div>
-              <motion.div className="stat-card" variants={blockTravel}>
-                <span className="stat-card-icon" aria-hidden="true">
-                  <CalendarBlank weight="bold" />
-                </span>
-                <div>
-                  <p className="stat-card-label">Último periodo</p>
-                  <p className="stat-card-value is-text">{formatMonth(latest.period_start)}</p>
-                </div>
-              </motion.div>
-              <motion.div className="stat-card" variants={blockTravel}>
-                <span className="stat-card-icon" aria-hidden="true">
-                  <Receipt weight="bold" />
-                </span>
-                <div>
-                  <p className="stat-card-label">
-                    Retenido en {receipts.length}{" "}
-                    {receipts.length === 1 ? "recibo" : "recibos"}
-                  </p>
-                  <p className="stat-card-value">{formatCurrency(totalWithheld)}</p>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-
-          {receipts !== null && receipts.length === 0 && (
-            <div className="empty-state">
-              <span className="empty-state-icon" aria-hidden="true">
-                <Receipt weight="bold" />
-              </span>
-              <p className="empty-state-title">Todavía no tienes recibos</p>
-              <p>
-                En cuanto tu administrador calcule tu nómina, el recibo aparecerá aquí con el
-                desglose completo. No tienes que hacer nada.
-              </p>
-            </div>
-          )}
-
-          {receipts !== null && receipts.length > 0 && (
-            <>
-              <div className="section-title-row">
-                <h2 className="section-title">Historial</h2>
-                <p className="section-note">Del más reciente al más antiguo</p>
-              </div>
-              <div className="receipt-list">
-                {receipts.map((receipt) => (
-                  <ReceiptCard key={receipt.id} receipt={receipt} />
-                ))}
-              </div>
-            </>
-          )}
         </div>
-      </main>
+      </div>
+
+      {errorMessage && <ErrorMessage message={errorMessage} />}
+
+      {receipts === null && !errorMessage && (
+        <>
+          <p className="visually-hidden" role="status">
+            Cargando tus recibos
+          </p>
+          <div className="stat-row" aria-hidden="true">
+            {[0, 1, 2].map((index) => (
+              <div className="stat-card" key={index}>
+                <Skeleton width="36px" height={36} />
+                <div className="skeleton-stack" style={{ flex: 1 }}>
+                  <Skeleton width="70%" height={11} />
+                  <Skeleton width="50%" height={16} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="receipt-list" aria-hidden="true">
+            {[0, 1].map((index) => (
+              <div className="skeleton-card skeleton-stack" key={index}>
+                <Skeleton width="55%" height={18} />
+                <Skeleton height={14} />
+                <Skeleton height={14} />
+                <Skeleton height={14} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {receipts && latest && (
+        <motion.div
+          className="stat-row"
+          variants={stackTravel}
+          initial="initial"
+          animate="animate"
+        >
+          <motion.div className="stat-card" variants={blockTravel}>
+            <span className="stat-card-icon" aria-hidden="true">
+              <Wallet weight="bold" />
+            </span>
+            <div>
+              <p className="stat-card-label">Último neto recibido</p>
+              <p className="stat-card-value">{formatCurrency(latest.net_salary)}</p>
+            </div>
+          </motion.div>
+          <motion.div className="stat-card" variants={blockTravel}>
+            <span className="stat-card-icon" aria-hidden="true">
+              <CalendarBlank weight="bold" />
+            </span>
+            <div>
+              <p className="stat-card-label">Último periodo</p>
+              <p className="stat-card-value is-text">{formatMonth(latest.period_start)}</p>
+            </div>
+          </motion.div>
+          <motion.div className="stat-card" variants={blockTravel}>
+            <span className="stat-card-icon" aria-hidden="true">
+              <Receipt weight="bold" />
+            </span>
+            <div>
+              <p className="stat-card-label">
+                Retenido en {receipts.length}{" "}
+                {receipts.length === 1 ? "recibo" : "recibos"}
+              </p>
+              <p className="stat-card-value">{formatCurrency(totalWithheld)}</p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {receipts !== null && receipts.length === 0 && (
+        <div className="empty-state">
+          <span className="empty-state-icon" aria-hidden="true">
+            <Receipt weight="bold" />
+          </span>
+          <p className="empty-state-title">Todavía no tienes recibos</p>
+          <p>
+            En cuanto tu administrador calcule tu nómina, el recibo aparecerá aquí con el
+            desglose completo. No tienes que hacer nada.
+          </p>
+        </div>
+      )}
+
+      {receipts !== null && receipts.length > 0 && (
+        <>
+          <div className="section-title-row">
+            <h2 className="section-title">Historial</h2>
+            <p className="section-note">Del más reciente al más antiguo</p>
+          </div>
+          <div className="receipt-list">
+            {receipts.map((receipt) => (
+              <ReceiptCard key={receipt.id} receipt={receipt} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
