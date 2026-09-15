@@ -10,3 +10,5 @@ venv/
 graphify-out/
 design/
 client/src/components/mobile/ANIMATIONS_GUIDE.md
+
+client/public/fuentes/satoshi-*.woff2
