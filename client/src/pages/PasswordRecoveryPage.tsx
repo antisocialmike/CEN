@@ -28,7 +28,7 @@ export default function PasswordRecoveryPage() {
       setSuccessMessage("Se envió un código a tu correo. Revisa tu bandeja de entrada.");
       setSubmitted(true);
       setEmail("");
-    } catch (error) {
+    } catch {
       setErrorMessage("No se pudo enviar el correo. Verifica que el correo sea válido.");
     } finally {
       setIsSubmitting(false);

@@ -34,7 +34,7 @@ export default function PasswordResetVerifyPage() {
         new_password: newPassword,
       });
       navigate("/login", { replace: true });
-    } catch (error) {
+    } catch {
       setErrorMessage("Código inválido, expirado o ya utilizado.");
       setIsSubmitting(false);
     }
