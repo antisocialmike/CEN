@@ -114,6 +114,10 @@ describe("edicion", () => {
     await user.type(salary, "21000");
     await user.click(screen.getByText("Guardar cambios"));
 
+    expect(await screen.findByText(/Se guardarán cambios importantes/)).toBeInTheDocument();
+    expect(updateEmployee).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
     await waitFor(() => {
       expect(updateEmployee).toHaveBeenCalledWith(3, {
         name: "Ana Lopez",
@@ -245,8 +249,12 @@ describe("baja y reactivacion", () => {
 
     await user.click(await screen.findByText("Dar de baja"));
 
+    expect(await screen.findByText(/quedará fuera de la nómina/)).toBeInTheDocument();
+    expect(deactivateEmployee).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Dar de baja" }));
+
     await waitFor(() => expect(deactivateEmployee).toHaveBeenCalledWith(3));
-    expect(await screen.findByText(/Sus recibos se conservan/)).toBeInTheDocument();
+    expect(await screen.findByText(/quedó fuera de la nómina/)).toBeInTheDocument();
   });
 
   it("reactiva a quien estaba dado de baja", async () => {
@@ -255,6 +263,10 @@ describe("baja y reactivacion", () => {
     renderPage();
 
     await user.click(await screen.findByText("Reactivar"));
+
+    expect(await screen.findByText(/volverá a estar activa/)).toBeInTheDocument();
+    expect(activateEmployee).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Reactivar" }));
 
     await waitFor(() => expect(activateEmployee).toHaveBeenCalledWith(4));
     expect(await screen.findByText(/vuelve a estar activa/)).toBeInTheDocument();
@@ -266,6 +278,7 @@ describe("baja y reactivacion", () => {
     renderPage();
 
     await user.click(await screen.findByText("Dar de baja"));
+    await user.click(await screen.findByRole("button", { name: "Dar de baja" }));
 
     expect(
       await screen.findByText(/No puedes desactivar tu propia cuenta/)
