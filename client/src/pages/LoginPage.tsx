@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, startTransition, useState } from "react";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import { EnvelopeSimple, Lock } from "@phosphor-icons/react";
@@ -27,7 +27,9 @@ export default function LoginPage() {
 
     try {
       const role = await login(email, password);
-      navigate(role === "admin" ? "/admin" : "/empleado", { replace: true });
+      startTransition(() => {
+        navigate(role === "admin" ? "/admin" : "/empleado", { replace: true });
+      });
     } catch {
       setErrorMessage("Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo.");
       setIsSubmitting(false);
