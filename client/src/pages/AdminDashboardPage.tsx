@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
-import DashboardTopbar from "../components/DashboardTopbar";
 import FormField from "../components/FormField";
 import SelectField from "../components/SelectField";
 import ErrorMessage from "../components/ErrorMessage";
@@ -198,437 +197,428 @@ export default function AdminDashboardPage() {
   const hasEmployees = employees !== null && employees.length > 0;
 
   return (
-    <div className="dashboard-shell">
-      <a className="skip-link" href="#contenido">
-        Ir al contenido
-      </a>
-      <DashboardTopbar context="Panel de administración" />
-
-      <main className="dashboard-content" id="contenido">
-        <div className="dashboard-panel">
-          <div className="dashboard-panel-header">
-            <div className="dashboard-panel-heading">
-              <span className="panel-icon-badge" aria-hidden="true">
-                <Wallet weight="bold" />
-              </span>
-              <div>
-                <h1>Calcular nómina</h1>
-                <p className="dashboard-panel-subtitle">
-                  Cada cálculo genera un recibo con el desglose de ISR e IMSS y queda disponible
-                  para el empleado.
-                </p>
-              </div>
-            </div>
-            <div className="dashboard-panel-actions">
-              <button
-                className="btn btn-line"
-                onClick={() => navigate("/admin/empleados")}
-              >
-                <UsersThree weight="bold" />
-                Empleados
-              </button>
-              <button
-                className="btn btn-line"
-                onClick={() => navigate("/admin/nuevo-empleado")}
-              >
-                Dar de alta empleado
-              </button>
-            </div>
+    <div className="dashboard-panel">
+      <div className="dashboard-panel-header">
+        <div className="dashboard-panel-heading">
+          <span className="panel-icon-badge" aria-hidden="true">
+            <Wallet weight="bold" />
+          </span>
+          <div>
+            <h1>Calcular nómina</h1>
+            <p className="dashboard-panel-subtitle">
+              Cada cálculo genera un recibo con el desglose de ISR e IMSS y queda disponible
+              para el empleado.
+            </p>
           </div>
+        </div>
+        <div className="dashboard-panel-actions">
+          <button
+            className="btn btn-line"
+            onClick={() => navigate("/admin/empleados")}
+          >
+            <UsersThree weight="bold" />
+            Empleados
+          </button>
+          <button
+            className="btn btn-line"
+            onClick={() => navigate("/admin/nuevo-empleado")}
+          >
+            Dar de alta empleado
+          </button>
+        </div>
+      </div>
 
-          <AnimatePresence mode="wait">
-            {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
-          </AnimatePresence>
+      <AnimatePresence mode="wait">
+        {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
+      </AnimatePresence>
 
-          {employees === null && (
-            <div className="dashboard-grid">
-              <div className="payroll-form skeleton-stack" aria-hidden="true">
-                <Skeleton width="30%" height={12} />
-                <Skeleton height={44} />
-                <Skeleton width="40%" height={12} />
-                <Skeleton height={44} />
-                <Skeleton height={44} />
-              </div>
-              <div className="payroll-result skeleton-stack" aria-hidden="true">
-                <Skeleton width="45%" height={12} />
-                <Skeleton height={16} />
-                <Skeleton height={16} />
-                <Skeleton height={16} />
-                <Skeleton width="60%" height={28} />
-              </div>
-              <p className="visually-hidden" role="status">
-                Cargando empleados
-              </p>
-            </div>
-          )}
+      {employees === null && (
+        <div className="dashboard-grid">
+          <div className="payroll-form skeleton-stack" aria-hidden="true">
+            <Skeleton width="30%" height={12} />
+            <Skeleton height={44} />
+            <Skeleton width="40%" height={12} />
+            <Skeleton height={44} />
+            <Skeleton height={44} />
+          </div>
+          <div className="payroll-result skeleton-stack" aria-hidden="true">
+            <Skeleton width="45%" height={12} />
+            <Skeleton height={16} />
+            <Skeleton height={16} />
+            <Skeleton height={16} />
+            <Skeleton width="60%" height={28} />
+          </div>
+          <p className="visually-hidden" role="status">
+            Cargando empleados
+          </p>
+        </div>
+      )}
 
-          {employees !== null && employees.length === 0 && (
-            <div className="empty-state">
-              <span className="empty-state-icon" aria-hidden="true">
-                <UsersThree weight="bold" />
-              </span>
-              <p className="empty-state-title">Todavía no hay nadie en la nómina</p>
-              <p>
-                Da de alta al primer empleado y podrás calcular su ISR e IMSS y emitir su recibo
-                en el mismo paso.
-              </p>
-              <button
-                className="btn btn-line"
-                onClick={() => navigate("/admin/nuevo-empleado")}
-              >
-                <UsersThree weight="bold" />
-                Dar de alta al primer empleado
-              </button>
-            </div>
-          )}
+      {employees !== null && employees.length === 0 && (
+        <div className="empty-state">
+          <span className="empty-state-icon" aria-hidden="true">
+            <UsersThree weight="bold" />
+          </span>
+          <p className="empty-state-title">Todavía no hay nadie en la nómina</p>
+          <p>
+            Da de alta al primer empleado y podrás calcular su ISR e IMSS y emitir su recibo
+            en el mismo paso.
+          </p>
+          <button
+            className="btn btn-line"
+            onClick={() => navigate("/admin/nuevo-empleado")}
+          >
+            <UsersThree weight="bold" />
+            Dar de alta al primer empleado
+          </button>
+        </div>
+      )}
 
-          {hasEmployees && (
-            <>
-              <div className="dashboard-grid">
-                <form className="payroll-form" onSubmit={handleSubmit}>
-                  <SelectField
-                    id="employeeId"
-                    label="Empleado"
-                    value={employeeId}
-                    onChange={handleEmployeeChange}
-                    options={employees.map((employee) => ({
-                      value: String(employee.id),
-                      label: employee.name
-                    }))}
-                    hint={`${employees.length} ${
-                      employees.length === 1 ? "persona registrada" : "personas registradas"
-                    } en la nómina.`}
-                  />
-                  <SelectField
-                    id="periodicity"
-                    label="Periodicidad"
-                    value={periodicity}
-                    onChange={(value) => changePeriodicity(value as Periodicity)}
-                    options={Object.entries(PERIODICITY_LABELS).map(
-                      ([value, label]) => ({ value, label })
-                    )}
-                  />
-                  <FormField
-                    id="month"
-                    label="Mes"
-                    type="month"
-                    value={month}
-                    onChange={changeMonth}
-                    required
-                  />
-                  {periodOptions.length > 1 && (
-                    <SelectField
-                      id="periodStart"
-                      label="Periodo"
-                      value={periodStart}
-                      onChange={setPeriodStart}
-                      options={periodOptions.map((start, index) => ({
-                        value: start,
-                        label:
-                          periodicity === "quincenal"
-                            ? `${index === 0 ? "Primera" : "Segunda"} quincena`
-                            : `Semana ${index + 1}`
-                      }))}
-                      hint="Recalcular el mismo periodo reemplaza el recibo anterior."
-                    />
+      {hasEmployees && (
+        <>
+          <div className="dashboard-grid">
+            <form className="payroll-form" onSubmit={handleSubmit}>
+              <SelectField
+                id="employeeId"
+                label="Empleado"
+                value={employeeId}
+                onChange={handleEmployeeChange}
+                options={employees.map((employee) => ({
+                  value: String(employee.id),
+                  label: employee.name
+                }))}
+                hint={`${employees.length} ${
+                  employees.length === 1 ? "persona registrada" : "personas registradas"
+                } en la nómina.`}
+              />
+              <SelectField
+                id="periodicity"
+                label="Periodicidad"
+                value={periodicity}
+                onChange={(value) => changePeriodicity(value as Periodicity)}
+                options={Object.entries(PERIODICITY_LABELS).map(
+                  ([value, label]) => ({ value, label })
+                )}
+              />
+              <FormField
+                id="month"
+                label="Mes"
+                type="month"
+                value={month}
+                onChange={changeMonth}
+                required
+              />
+              {periodOptions.length > 1 && (
+                <SelectField
+                  id="periodStart"
+                  label="Periodo"
+                  value={periodStart}
+                  onChange={setPeriodStart}
+                  options={periodOptions.map((start, index) => ({
+                    value: start,
+                    label:
+                      periodicity === "quincenal"
+                        ? `${index === 0 ? "Primera" : "Segunda"} quincena`
+                        : `Semana ${index + 1}`
+                  }))}
+                  hint="Recalcular el mismo periodo reemplaza el recibo anterior."
+                />
+              )}
+              {periodOptions.length === 1 && (
+                <p className="form-note">
+                  Recalcular el mismo periodo reemplaza el recibo anterior.
+                </p>
+              )}
+              <FormField
+                id="grossSalary"
+                label="Salario bruto del periodo"
+                type="number"
+                value={grossSalary}
+                onChange={setGrossSalary}
+                min={0}
+                step={0.01}
+                inputMode="decimal"
+                placeholder="0.00"
+                prefix="$"
+                hint={
+                  selectedEmployee
+                    ? periodicity === "mensual"
+                      ? `Base mensual: ${formatCurrency(selectedEmployee.base_salary)}`
+                      : periodicity === "quincenal"
+                        ? `Mitad del base mensual: ${formatCurrency(
+                            selectedEmployee.base_salary
+                          )} ÷ 2 = ${formatCurrency(
+                            selectedEmployee.base_salary / 2
+                          )}`
+                        : `Prorrateo semanal: ${formatCurrency(
+                            selectedEmployee.base_salary
+                          )} × 12 ÷ 52 = ${formatCurrency(
+                            (selectedEmployee.base_salary * 12) / 52
+                          )}`
+                    : undefined
+                }
+                required
+              />
+              <div className="payroll-concepts">
+                <button
+                  type="button"
+                  className="payroll-concepts-toggle"
+                  onClick={() => setShowConcepts((current) => !current)}
+                  aria-expanded={showConcepts}
+                  aria-label={`Otros conceptos ${activeConcepts > 0 ? `(${activeConcepts} activo${activeConcepts === 1 ? "" : "s"})` : ""}`}
+                >
+                  <span>Otros conceptos</span>
+                  {activeConcepts > 0 && (
+                    <span className="payroll-concepts-badge">{activeConcepts}</span>
                   )}
-                  {periodOptions.length === 1 && (
-                    <p className="form-note">
-                      Recalcular el mismo periodo reemplaza el recibo anterior.
-                    </p>
-                  )}
-                  <FormField
-                    id="grossSalary"
-                    label="Salario bruto del periodo"
-                    type="number"
-                    value={grossSalary}
-                    onChange={setGrossSalary}
-                    min={0}
-                    step={0.01}
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    prefix="$"
-                    hint={
-                      selectedEmployee
-                        ? periodicity === "mensual"
-                          ? `Base mensual: ${formatCurrency(selectedEmployee.base_salary)}`
-                          : periodicity === "quincenal"
-                            ? `Mitad del base mensual: ${formatCurrency(
-                                selectedEmployee.base_salary
-                              )} ÷ 2 = ${formatCurrency(
-                                selectedEmployee.base_salary / 2
-                              )}`
-                            : `Prorrateo semanal: ${formatCurrency(
-                                selectedEmployee.base_salary
-                              )} × 12 ÷ 52 = ${formatCurrency(
-                                (selectedEmployee.base_salary * 12) / 52
-                              )}`
-                        : undefined
+                  <span
+                    className={
+                      activeConcepts > 0
+                        ? "payroll-concepts-hint is-active"
+                        : "payroll-concepts-hint"
                     }
-                    required
-                  />
-                  <div className="payroll-concepts">
+                  >
+                    {activeConcepts > 0
+                      ? `${activeConcepts} concepto${
+                          activeConcepts === 1 ? "" : "s"
+                        }`
+                      : showConcepts
+                        ? "Ocultar"
+                        : "Opcional"}
+                  </span>
+                </button>
+
+                {showConcepts && (
+                  <div className="payroll-concepts-grid">
+                    <p className="payroll-concepts-legend">Percepciones</p>
+                    <FormField
+                      id="overtimeDoubleHours"
+                      label="Horas extra dobles"
+                      type="number"
+                      value={String(concepts.overtimeDoubleHours)}
+                      onChange={(value) =>
+                        setConcepts({ ...concepts, overtimeDoubleHours: Number(value) })
+                      }
+                      min={0}
+                      step={0.5}
+                      inputMode="decimal"
+                      hint="Las primeras 9 de la semana se pagan al doble."
+                    />
+                    <FormField
+                      id="overtimeTripleHours"
+                      label="Horas extra triples"
+                      type="number"
+                      value={String(concepts.overtimeTripleHours)}
+                      onChange={(value) =>
+                        setConcepts({ ...concepts, overtimeTripleHours: Number(value) })
+                      }
+                      min={0}
+                      step={0.5}
+                      inputMode="decimal"
+                      hint="Las que exceden esas 9 horas."
+                    />
+                    <FormField
+                      id="christmasBonusDays"
+                      label="Días de aguinaldo"
+                      type="number"
+                      value={String(concepts.christmasBonusDays)}
+                      onChange={(value) =>
+                        setConcepts({ ...concepts, christmasBonusDays: Number(value) })
+                      }
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      hint="La ley pide 15 días como mínimo."
+                    />
+                    <FormField
+                      id="vacationDays"
+                      label="Días de vacaciones"
+                      type="number"
+                      value={String(concepts.vacationDays)}
+                      onChange={(value) =>
+                        setConcepts({ ...concepts, vacationDays: Number(value) })
+                      }
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      hint="La prima vacacional es el 25% de esos días."
+                    />
+                    <FormField
+                      id="bonus"
+                      label="Bono o gratificación"
+                      type="number"
+                      value={String(concepts.bonus)}
+                      onChange={(value) =>
+                        setConcepts({ ...concepts, bonus: Number(value) })
+                      }
+                      min={0}
+                      step={0.01}
+                      inputMode="decimal"
+                      prefix="$"
+                    />
+
+                    <p className="payroll-concepts-legend">Deducciones</p>
+                    <FormField
+                      id="loanDeduction"
+                      label="Préstamo"
+                      type="number"
+                      value={String(concepts.loanDeduction)}
+                      onChange={(value) =>
+                        setConcepts({ ...concepts, loanDeduction: Number(value) })
+                      }
+                      min={0}
+                      step={0.01}
+                      inputMode="decimal"
+                      prefix="$"
+                    />
+                    <FormField
+                      id="housingCreditDeduction"
+                      label="Crédito Infonavit"
+                      type="number"
+                      value={String(concepts.housingCreditDeduction)}
+                      onChange={(value) =>
+                        setConcepts({
+                          ...concepts,
+                          housingCreditDeduction: Number(value)
+                        })
+                      }
+                      min={0}
+                      step={0.01}
+                      inputMode="decimal"
+                      prefix="$"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {pendingReplacement && (
+                <div className="replace-warning" role="alert">
+                  <p className="replace-warning-title">
+                    Se reemplazará el recibo de {selectedEmployee?.name}
+                  </p>
+                  <div className="replace-warning-details">
+                    <p className="replace-warning-note">
+                      Recibo actual: #{pendingReplacement.id}
+                      <br />
+                      Neto: {formatCurrency(pendingReplacement.net_salary)}
+                    </p>
+                    <p className="replace-warning-caution">
+                      Al continuar, el empleado verá el nuevo recibo en su portal.
+                      El anterior no se puede recuperar.
+                    </p>
+                  </div>
+                  <div className="replace-warning-actions">
                     <button
                       type="button"
-                      className="payroll-concepts-toggle"
-                      onClick={() => setShowConcepts((current) => !current)}
-                      aria-expanded={showConcepts}
-                      aria-label={`Otros conceptos ${activeConcepts > 0 ? `(${activeConcepts} activo${activeConcepts === 1 ? "" : "s"})` : ""}`}
+                      className="btn btn-line"
+                      onClick={() => setPendingReplacement(null)}
                     >
-                      <span>Otros conceptos</span>
-                      {activeConcepts > 0 && (
-                        <span className="payroll-concepts-badge">{activeConcepts}</span>
-                      )}
-                      <span
-                        className={
-                          activeConcepts > 0
-                            ? "payroll-concepts-hint is-active"
-                            : "payroll-concepts-hint"
-                        }
-                      >
-                        {activeConcepts > 0
-                          ? `${activeConcepts} concepto${
-                              activeConcepts === 1 ? "" : "s"
-                            }`
-                          : showConcepts
-                            ? "Ocultar"
-                            : "Opcional"}
-                      </span>
+                      Cancelar
                     </button>
-
-                    {showConcepts && (
-                      <div className="payroll-concepts-grid">
-                        <p className="payroll-concepts-legend">Percepciones</p>
-                        <FormField
-                          id="overtimeDoubleHours"
-                          label="Horas extra dobles"
-                          type="number"
-                          value={String(concepts.overtimeDoubleHours)}
-                          onChange={(value) =>
-                            setConcepts({ ...concepts, overtimeDoubleHours: Number(value) })
-                          }
-                          min={0}
-                          step={0.5}
-                          inputMode="decimal"
-                          hint="Las primeras 9 de la semana se pagan al doble."
-                        />
-                        <FormField
-                          id="overtimeTripleHours"
-                          label="Horas extra triples"
-                          type="number"
-                          value={String(concepts.overtimeTripleHours)}
-                          onChange={(value) =>
-                            setConcepts({ ...concepts, overtimeTripleHours: Number(value) })
-                          }
-                          min={0}
-                          step={0.5}
-                          inputMode="decimal"
-                          hint="Las que exceden esas 9 horas."
-                        />
-                        <FormField
-                          id="christmasBonusDays"
-                          label="Días de aguinaldo"
-                          type="number"
-                          value={String(concepts.christmasBonusDays)}
-                          onChange={(value) =>
-                            setConcepts({ ...concepts, christmasBonusDays: Number(value) })
-                          }
-                          min={0}
-                          step={1}
-                          inputMode="numeric"
-                          hint="La ley pide 15 días como mínimo."
-                        />
-                        <FormField
-                          id="vacationDays"
-                          label="Días de vacaciones"
-                          type="number"
-                          value={String(concepts.vacationDays)}
-                          onChange={(value) =>
-                            setConcepts({ ...concepts, vacationDays: Number(value) })
-                          }
-                          min={0}
-                          step={1}
-                          inputMode="numeric"
-                          hint="La prima vacacional es el 25% de esos días."
-                        />
-                        <FormField
-                          id="bonus"
-                          label="Bono o gratificación"
-                          type="number"
-                          value={String(concepts.bonus)}
-                          onChange={(value) =>
-                            setConcepts({ ...concepts, bonus: Number(value) })
-                          }
-                          min={0}
-                          step={0.01}
-                          inputMode="decimal"
-                          prefix="$"
-                        />
-
-                        <p className="payroll-concepts-legend">Deducciones</p>
-                        <FormField
-                          id="loanDeduction"
-                          label="Préstamo"
-                          type="number"
-                          value={String(concepts.loanDeduction)}
-                          onChange={(value) =>
-                            setConcepts({ ...concepts, loanDeduction: Number(value) })
-                          }
-                          min={0}
-                          step={0.01}
-                          inputMode="decimal"
-                          prefix="$"
-                        />
-                        <FormField
-                          id="housingCreditDeduction"
-                          label="Crédito Infonavit"
-                          type="number"
-                          value={String(concepts.housingCreditDeduction)}
-                          onChange={(value) =>
-                            setConcepts({
-                              ...concepts,
-                              housingCreditDeduction: Number(value)
-                            })
-                          }
-                          min={0}
-                          step={0.01}
-                          inputMode="decimal"
-                          prefix="$"
-                        />
-                      </div>
-                    )}
                   </div>
-
-                  {pendingReplacement && (
-                    <div className="replace-warning" role="alert">
-                      <p className="replace-warning-title">
-                        Se reemplazará el recibo de {selectedEmployee?.name}
-                      </p>
-                      <div className="replace-warning-details">
-                        <p className="replace-warning-note">
-                          Recibo actual: #{pendingReplacement.id}
-                          <br />
-                          Neto: {formatCurrency(pendingReplacement.net_salary)}
-                        </p>
-                        <p className="replace-warning-caution">
-                          Al continuar, el empleado verá el nuevo recibo en su portal.
-                          El anterior no se puede recuperar.
-                        </p>
-                      </div>
-                      <div className="replace-warning-actions">
-                        <button
-                          type="button"
-                          className="btn btn-line"
-                          onClick={() => setPendingReplacement(null)}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <SubmitButton
-                    label={
-                      pendingReplacement
-                        ? "Reemplazar el recibo"
-                        : "Calcular y emitir recibo"
-                    }
-                    loadingLabel="Calculando…"
-                    isLoading={isCalculating}
-                  />
-                </form>
-
-                <AnimatePresence mode="wait">
-                  {result ? (
-                    <PayrollResultCard key="result" result={result} />
-                  ) : (
-                    <div className="payroll-result-placeholder" key="placeholder">
-                      <Wallet weight="bold" />
-                      <p>
-                        El desglose de ISR, IMSS y neto a pagar aparecerá aquí en cuanto calcules
-                        la nómina.
-                      </p>
-                    </div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="section-title-row">
-                <h2 className="section-title">Recibos recientes</h2>
-                <p className="section-note">Últimos 20 emitidos por el equipo</p>
-              </div>
-
-              {receipts === null && (
-                <div className="skeleton-card skeleton-stack" aria-hidden="true">
-                  <Skeleton height={16} />
-                  <Skeleton height={16} />
-                  <Skeleton height={16} />
                 </div>
               )}
 
-              {receipts !== null && receipts.length === 0 && (
-                <div className="empty-state">
-                  <span className="empty-state-icon" aria-hidden="true">
-                    <Receipt weight="bold" />
-                  </span>
-                  <p className="empty-state-title">Aún no se ha emitido ningún recibo</p>
-                  <p>El primer cálculo que hagas aparecerá aquí y en el portal del empleado.</p>
-                </div>
-              )}
+              <SubmitButton
+                label={
+                  pendingReplacement
+                    ? "Reemplazar el recibo"
+                    : "Calcular y emitir recibo"
+                }
+                loadingLabel="Calculando…"
+                isLoading={isCalculating}
+              />
+            </form>
 
-              {receipts !== null && receipts.length > 0 && (
-                <div className="table-wrap">
-                  <table className="data-table">
-                    <caption className="visually-hidden">
-                      Recibos de nómina emitidos recientemente
-                    </caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Empleado</th>
-                        <th scope="col">Fecha</th>
-                        <th scope="col" className="num">
-                          Bruto
-                        </th>
-                        <th scope="col" className="num">
-                          ISR
-                        </th>
-                        <th scope="col" className="num">
-                          IMSS
-                        </th>
-                        <th scope="col" className="num">
-                          Neto
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {receipts.map((receipt) => (
-                        <tr key={receipt.id}>
-                          <td className="name" data-label="Empleado">
-                            {receipt.employee_name ?? `Empleado #${receipt.employee_id}`}
-                          </td>
-                          <td data-label="Fecha">{formatDateShort(receipt.created_at)}</td>
-                          <td className="num" data-label="Bruto">
-                            {formatCurrency(receipt.gross_salary)}
-                          </td>
-                          <td className="num" data-label="ISR">
-                            − {formatCurrency(receipt.isr_deduction)}
-                          </td>
-                          <td className="num" data-label="IMSS">
-                            − {formatCurrency(receipt.imss_deduction)}
-                          </td>
-                          <td className="num net" data-label="Neto">
-                            {formatCurrency(receipt.net_salary)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            <AnimatePresence mode="wait">
+              {result ? (
+                <PayrollResultCard key="result" result={result} />
+              ) : (
+                <div className="payroll-result-placeholder" key="placeholder">
+                  <Wallet weight="bold" />
+                  <p>
+                    El desglose de ISR, IMSS y neto a pagar aparecerá aquí en cuanto calcules
+                    la nómina.
+                  </p>
                 </div>
               )}
-            </>
+            </AnimatePresence>
+          </div>
+
+          <div className="section-title-row">
+            <h2 className="section-title">Recibos recientes</h2>
+            <p className="section-note">Últimos 20 emitidos por el equipo</p>
+          </div>
+
+          {receipts === null && (
+            <div className="skeleton-card skeleton-stack" aria-hidden="true">
+              <Skeleton height={16} />
+              <Skeleton height={16} />
+              <Skeleton height={16} />
+            </div>
           )}
-        </div>
-      </main>
+
+          {receipts !== null && receipts.length === 0 && (
+            <div className="empty-state">
+              <span className="empty-state-icon" aria-hidden="true">
+                <Receipt weight="bold" />
+              </span>
+              <p className="empty-state-title">Aún no se ha emitido ningún recibo</p>
+              <p>El primer cálculo que hagas aparecerá aquí y en el portal del empleado.</p>
+            </div>
+          )}
+
+          {receipts !== null && receipts.length > 0 && (
+            <div className="table-wrap">
+              <table className="data-table">
+                <caption className="visually-hidden">
+                  Recibos de nómina emitidos recientemente
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Empleado</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col" className="num">
+                      Bruto
+                    </th>
+                    <th scope="col" className="num">
+                      ISR
+                    </th>
+                    <th scope="col" className="num">
+                      IMSS
+                    </th>
+                    <th scope="col" className="num">
+                      Neto
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {receipts.map((receipt) => (
+                    <tr key={receipt.id}>
+                      <td className="name" data-label="Empleado">
+                        {receipt.employee_name ?? `Empleado #${receipt.employee_id}`}
+                      </td>
+                      <td data-label="Fecha">{formatDateShort(receipt.created_at)}</td>
+                      <td className="num" data-label="Bruto">
+                        {formatCurrency(receipt.gross_salary)}
+                      </td>
+                      <td className="num" data-label="ISR">
+                        − {formatCurrency(receipt.isr_deduction)}
+                      </td>
+                      <td className="num" data-label="IMSS">
+                        − {formatCurrency(receipt.imss_deduction)}
+                      </td>
+                      <td className="num net" data-label="Neto">
+                        {formatCurrency(receipt.net_salary)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
