@@ -53,11 +53,6 @@
           var t = localStorage.getItem("cen_theme");
           if (t === "light" || t === "dark") raiz.dataset.theme = t;
         } catch (e) {}
-
-        /* El skin de la landing se activa aqui, antes de pintar, para que una
-           carga directa en "/" no muestre un fotograma con el tema viejo. La
-           navegacion de cliente la cubre el useLayoutEffect de LandingPage. */
-        if (location.pathname === "/") raiz.dataset.skin = "revolut";
       })();
     </script>
     <div id="root"></div>
