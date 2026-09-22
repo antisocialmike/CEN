@@ -695,40 +695,130 @@ p {
 }
 
 .app-loader {
+  --app-loader-lado: 96px;
   position: fixed;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-4);
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
   background: var(--cal);
 }
 
-.app-loader-mark {
+.app-loader-reticula {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: center;
+  mask-image: radial-gradient(circle at center, #000 0, transparent 65%);
+  pointer-events: none;
+}
+
+.app-loader-escena {
   position: relative;
-  width: 52px;
-  height: 52px;
-  display: grid;
-  place-items: center;
+  width: var(--app-loader-lado);
+  height: var(--app-loader-lado);
+}
+
+.app-loader-capa,
+.app-loader-mark {
+  position: absolute;
+  inset: 0;
 }
 
 .app-loader-mark svg {
-  width: 42px;
-  height: 42px;
-}
-
-.app-loader-ring {
   position: absolute;
-  inset: -6px;
-  border: 2px solid transparent;
-  border-top-color: var(--rosa);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.app-loader-brand {
+.app-loader-guias {
+  color: color-mix(in srgb, var(--ink) 18%, transparent);
+  stroke-width: 0.12;
+}
+
+.app-loader-trazo {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 0.4;
+  stroke-linejoin: miter;
+}
+
+.app-loader-trazo.is-barra {
+  stroke: var(--rosa);
+}
+
+.app-loader-nodo {
+  fill: var(--cal);
+  stroke: var(--ink);
+  stroke-width: 0.25;
+}
+
+.app-loader-nodo.is-barra {
+  stroke: var(--rosa);
+}
+
+.app-loader-punta {
+  fill: var(--ink);
+}
+
+.app-loader-halo {
+  fill: var(--rosa);
+  opacity: 0.55;
+  filter: blur(2px);
+}
+
+.app-loader-textos {
+  position: absolute;
+  top: calc(var(--app-loader-lado) * 0.78);
+  left: 50%;
+  translate: -50% 0;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app-loader-nombre {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 6vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.app-loader-nombre .is-acento {
+  color: var(--rosa);
+}
+
+.app-loader-letra {
+  display: inline-block;
+}
+
+.app-loader-linea {
+  display: block;
+  width: 24px;
+  height: 2px;
+  margin-top: var(--s-3);
+  background: var(--rosa);
+}
+
+.app-loader-lema {
+  margin-top: var(--s-3);
   font-size: var(--t-small);
-  font-weight: 500;
   color: var(--ink-3);
+}
+
+@media (max-width: 480px) {
+  .app-loader {
+    --app-loader-lado: 72px;
+  }
 }
 
 .dashboard-shell {
