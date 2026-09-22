@@ -29,14 +29,28 @@ it("login se monta sin pasar por el loader: la transicion desde la landing no pa
   expect(screen.queryByText(/Cargando CEN Payroll/i)).not.toBeInTheDocument();
 });
 
-it("las rutas que no son el embudo principal siguen siendo perezosas", () => {
+it("el arranque en frio de la landing si enseña el splash", () => {
   render(
-    <MemoryRouter initialEntries={["/password-recovery"]}>
+    <MemoryRouter initialEntries={["/"]}>
       <App />
     </MemoryRouter>
   );
 
   expect(screen.getByText(/Cargando CEN Payroll/i)).toBeInTheDocument();
+});
+
+it.each([
+  ["/password-recovery", "Restablecer contraseña"],
+  ["/password-reset-verify", "Verificar código"]
+])("%s se monta sin pasar por el splash", (ruta, titulo) => {
+  render(
+    <MemoryRouter initialEntries={[ruta]}>
+      <App />
+    </MemoryRouter>
+  );
+
+  expect(screen.getByRole("heading", { name: titulo })).toBeInTheDocument();
+  expect(screen.queryByText(/Cargando CEN Payroll/i)).not.toBeInTheDocument();
 });
 
 describe("transicion de login a los paneles", () => {
@@ -69,7 +83,7 @@ describe("transicion de login a los paneles", () => {
     expect(screen.getByText("Portal del empleado")).toBeInTheDocument();
   });
 
-  it("las rutas protegidas que no tienen forma de panel conservan el splash", () => {
+  it("dar de alta no recibe el esqueleto de panel ni pasa por el splash", () => {
     sesion("admin");
 
     render(
@@ -78,8 +92,10 @@ describe("transicion de login a los paneles", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Cargando CEN Payroll/i)).toBeInTheDocument();
+    expect(document.querySelector(".signup-page")).not.toBeNull();
     expect(document.querySelector(".dashboard-shell")).toBeNull();
+    expect(screen.queryByText(/Cargando CEN Payroll/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Cargando tu panel")).not.toBeInTheDocument();
   });
 });
 
@@ -194,3 +210,4 @@ describe("el armazon de panel es unico y compartido", () => {
     expect(screen.queryByText("Panel de administración")).not.toBeInTheDocument();
   });
 });
+
