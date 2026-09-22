@@ -1,7 +1,11 @@
+import re
+import zlib
 from datetime import date, datetime
+from pathlib import Path
 
 import pytest
 
+from server.src.controllers import receipt_pdf
 from server.src.controllers.receipt_pdf import (
     build_receipt_pdf,
     format_amount,
@@ -12,6 +16,8 @@ from server.src.controllers.receipt_pdf import (
     format_range,
     receipt_filename,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture
@@ -114,3 +120,93 @@ def test_response_headers_ask_the_browser_to_download(receipt):
     assert headers["Content-Disposition"] == (
         'attachment; filename="recibo-42-2026-09-01.pdf"'
     )
+
+
+SKIN = ROOT / "client" / "src" / "styles" / "skin-base.css"
+
+
+def _token(nombre: str) -> tuple:
+    css = SKIN.read_text(encoding="utf-8")
+    match = re.search(rf"{re.escape(nombre)}:\s*#([0-9a-fA-F]{{6}})\s*;", css)
+    assert match, f"{nombre} ya no está en {SKIN.name}"
+    crudo = match.group(1)
+    return tuple(int(crudo[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _drawn_text(receipt: dict) -> str:
+    trozos = []
+    for stream in re.finditer(rb"stream\r?\n(.*?)\r?\nendstream",
+                              build_receipt_pdf(receipt), re.S):
+        trozos.append(zlib.decompress(stream.group(1)).decode("cp1252"))
+    return "\n".join(trozos)
+
+
+@pytest.mark.parametrize("constante, token", [
+    (receipt_pdf.INK, "--rv-p-tinta-950"),
+    (receipt_pdf.INK_2, "--rv-p-tinta-700"),
+    (receipt_pdf.INK_3, "--rv-p-tinta-500"),
+    (receipt_pdf.RULE, "--rv-p-hueso-400"),
+    (receipt_pdf.RULE_SOFT, "--rv-p-hueso-200"),
+    (receipt_pdf.MARCA, "--rv-p-jade-700"),
+    (receipt_pdf.NETO, "--rv-p-jade-800"),
+    (receipt_pdf.HUESO, "--rv-p-hueso-100"),
+])
+def test_the_palette_is_the_one_the_app_paints_with(constante, token):
+    assert constante == _token(token)
+
+
+def test_the_logo_repeats_the_geometry_of_logomark():
+    trazos = []
+
+    class Espia(receipt_pdf.ReceiptPDF):
+        def rect(self, x, y, w, h, **kw):
+            trazos.append(("rect", round(x, 2), round(y, 2),
+                           round(w, 2), round(h, 2)))
+
+        def polygon(self, point_list, **kw):
+            trazos.append(("polygon",
+                           [(round(px, 2), round(py, 2))
+                            for px, py in point_list]))
+
+    espia = Espia()
+    espia.add_page()
+    espia.logo(0, 0, 32)          # a escala 1: las cifras son las del SVG
+
+    assert trazos == [
+        ("rect", 0, 0, 32, 32),
+        ("polygon", [(4.5, 4.0), (27.5, 4.0), (27.5, 7.6), (8.1, 7.6),
+                     (8.1, 24.4), (27.5, 24.4), (27.5, 28.0), (4.5, 28.0)]),
+        ("rect", 12, 11.7, 15.5, 3.4),
+        ("rect", 12, 18.1, 15.5, 3.4),
+    ]
+
+
+def test_the_ledger_signs_the_amounts_like_the_app_does(receipt):
+    texto = _drawn_text(receipt)
+
+    assert "$21,000.00" in texto
+    assert "\u2013 $2,612.86" in texto
+    assert "\u2013 $583.00" in texto
+
+
+def _fills(receipt: dict) -> list:
+    colores = []
+    for r, g, b in re.findall(
+        r"([\d.]+) ([\d.]+) ([\d.]+) rg", _drawn_text(receipt)
+    ):
+        colores.append(tuple(round(float(c) * 255) for c in (r, g, b)))
+    return colores
+
+
+def test_the_net_is_the_only_thing_in_the_deep_green(receipt):
+    assert _fills(receipt).count(receipt_pdf.NETO) == 1
+
+
+def test_the_brand_green_is_the_logo_and_the_bar_of_the_net_block(receipt):
+    assert _fills(receipt).count(receipt_pdf.MARCA) == 2
+
+
+def test_a_name_with_typographic_punctuation_survives(receipt):
+    receipt["employee_name"] = "Ana\u2019s O\u2019Brien Mu\u00f1oz"
+
+    assert build_receipt_pdf(receipt).startswith(b"%PDF-")
