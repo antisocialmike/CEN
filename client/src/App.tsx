@@ -6,15 +6,16 @@ import AppLoader from "./components/AppLoader";
 import PageTransition from "./components/PageTransition";
 import RutaDePanel from "./components/RutaDePanel";
 import { claveDeTransicion } from "./routes/claveDeTransicion";
+
 import LoginPage from "./pages/LoginPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
+import PasswordRecoveryPage from "./pages/PasswordRecoveryPage";
+import PasswordResetVerifyPage from "./pages/PasswordResetVerifyPage";
+import SignupPage from "./pages/SignupPage";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
-const SignupPage = lazy(() => import("./pages/SignupPage"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const EmployeeDashboardPage = lazy(() => import("./pages/EmployeeDashboardPage"));
-const PasswordRecoveryPage = lazy(() => import("./pages/PasswordRecoveryPage"));
-const PasswordResetVerifyPage = lazy(() => import("./pages/PasswordResetVerifyPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
 
 export default function App() {
