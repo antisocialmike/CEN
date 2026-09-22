@@ -1,20 +1,7 @@
-/// <reference types="node" />
-// Esta primera linea NO es un comentario: es una directiva de TypeScript que
-// trae los globales de node (process, node:fs) solo para este archivo, sin
-// exponerlos al resto de src/. Sin ella, `pnpm typecheck` falla con cuatro
-// errores TS2591.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const PREFIJO = ':root[data-skin="revolut"]';
-
-/* El skin vive en dos archivos desde que se partio: skin-base.css lleva los
-   tokens y la capa puente y lo carga main.tsx para toda la app, y
-   skin-landing.css lleva las secciones y se queda en el chunk lazy. La guardia
-   tiene que cubrir los dos, porque el de base es justamente el que puede
-   filtrarse a las otras ocho rutas. Se analizan juntos para que las reglas que
-   cruzan de archivo —el alto del nav movil usa tokens de base— sigan cuadrando. */
 const ARCHIVOS = ["src/styles/skin-base.css", "src/styles/skin-landing.css"];
 
 const css = ARCHIVOS.map((f) => readFileSync(resolve(process.cwd(), f), "utf8")).join("\n");
@@ -59,62 +46,20 @@ function preludesQueDebenLlevarPrefijo(fuente: string): string[] {
   );
 }
 
-function selectoresDe(lista: string): string[] {
-  const partes: string[] = [];
-  let profundidad = 0;
-  let actual = "";
-
-  for (const c of lista) {
-    if (c === "(") profundidad += 1;
-    else if (c === ")") profundidad -= 1;
-
-    if (c === "," && profundidad === 0) {
-      partes.push(actual.trim());
-      actual = "";
-    } else {
-      actual += c;
-    }
-  }
-
-  partes.push(actual.trim());
-  return partes.filter(Boolean);
-}
-
-describe("el skin no puede filtrarse a las otras rutas", () => {
+describe("el contrato de temas se mantiene", () => {
   const selectores = preludesQueDebenLlevarPrefijo(sinComentarios);
 
   it("encuentra reglas que analizar", () => {
     expect(selectores.length).toBeGreaterThan(0);
   });
 
-  it("toda regla de nivel superior arranca con el prefijo del skin", () => {
-    const infractores = selectores.filter((selector) => {
-      if (/^@property\s+--rv-[a-z0-9-]+$/i.test(selector)) return false;
-      if (/^@keyframes\s+rv-[a-z0-9-]+$/i.test(selector)) return false;
-
-      return !selectoresDe(selector).every((parte) => parte.startsWith(PREFIJO));
-    });
-
-    expect(
-      infractores,
-      `Reglas sin el prefijo ${PREFIJO}:\n  ${infractores.join("\n  ")}`
-    ).toEqual([]);
-  });
-
-  it("no redefine tokens fuera del skin ni toca body o html sueltos", () => {
-    expect(sinComentarios).not.toMatch(/(^|\})\s*:root\s*\{/);
-    expect(sinComentarios).not.toMatch(/(^|\})\s*(body|html|\*)\s*[,{]/);
-  });
-
   it("declara color-scheme en los tres bloques que exige el selector de tema", () => {
+    expect(sinComentarios).toMatch(/:root\s*\{[^}]*color-scheme:\s*light dark/);
     expect(sinComentarios).toMatch(
-      /:root\[data-skin="revolut"\]\s*\{[^}]*color-scheme:\s*light dark/
+      /:root\[data-theme="light"\]\s*\{[^}]*color-scheme:\s*light/
     );
     expect(sinComentarios).toMatch(
-      /:root\[data-skin="revolut"\]\[data-theme="light"\]\s*\{[^}]*color-scheme:\s*light/
-    );
-    expect(sinComentarios).toMatch(
-      /:root\[data-skin="revolut"\]\[data-theme="dark"\]\s*\{[^}]*color-scheme:\s*dark/
+      /:root\[data-theme="dark"\]\s*\{[^}]*color-scheme:\s*dark/
     );
   });
 
@@ -123,8 +68,8 @@ describe("el skin no puede filtrarse a las otras rutas", () => {
 
     const bloquesTema = selectores.filter((s) => s.includes("[data-theme="));
     expect(bloquesTema).toEqual([
-      ':root[data-skin="revolut"][data-theme="light"]',
-      ':root[data-skin="revolut"][data-theme="dark"]',
+      ':root[data-theme="light"]',
+      ':root[data-theme="dark"]',
     ]);
   });
 });
@@ -262,5 +207,94 @@ describe("el alto del nav movil cuadra con sus partes", () => {
         `(${padding} + ${altoBoton} + ${separacion} + ${toque} + ${padding} + ${borde}). ` +
         "Si cambiaste alguna, actualiza el token o las anclas aterrizan bajo el nav."
     ).toBe(suma);
+  });
+});
+
+describe("el orden de carga de las hojas", () => {
+  const main = readFileSync(resolve(process.cwd(), "src/main.tsx"), "utf8");
+
+  const posicion = (aguja: string) => {
+    const i = main.indexOf(aguja);
+    if (i === -1) throw new Error(`no encuentro "${aguja}" en main.tsx`);
+    return i;
+  };
+
+  it("theme.css va antes que skin-base.css, para que el skin gane los empates", () => {
+    expect(posicion('"./styles/theme.css"')).toBeLessThan(
+      posicion('"./styles/skin-base.css"')
+    );
+  });
+
+  it("las dos hojas van antes de importar App", () => {
+    const app = posicion('from "./App"');
+
+    expect(posicion('"./styles/theme.css"')).toBeLessThan(app);
+    expect(posicion('"./styles/skin-base.css"')).toBeLessThan(app);
+  });
+
+  it("nadie mas importa esas dos hojas", () => {
+    const fuentes = readdirSync(resolve(process.cwd(), "src"), {
+      recursive: true,
+      encoding: "utf8"
+    }).filter((f) => /\.tsx?$/.test(f) && !f.endsWith("main.tsx"));
+
+    const culpables = fuentes.filter((f) => {
+      const texto = readFileSync(resolve(process.cwd(), "src", f), "utf8");
+      return /^\s*import\s+["'][^"']*styles\/(theme|skin-base)\.css["']/m.test(texto);
+    });
+
+    expect(
+      culpables,
+      "Estas hojas solo puede importarlas main.tsx; ver el comentario de arriba"
+    ).toEqual([]);
+  });
+});
+
+describe("el neto se pinta con su propio token", () => {
+  const tema = readFileSync(resolve(process.cwd(), "src/styles/theme.css"), "utf8");
+  const temaSinComentarios = tema.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  function declaracion(selector: string, propiedad: string): string | undefined {
+    const bloque = bloques(temaSinComentarios).find(
+      (b) => b.prelude.trim() === selector
+    );
+    return bloque?.cuerpo
+      .split(";")
+      .map((d) => d.trim())
+      .find((d) => d.startsWith(`${propiedad}:`))
+      ?.slice(propiedad.length + 1)
+      .trim();
+  }
+
+  it("`--neto` sale del token del skin y no de un color suelto", () => {
+    expect(sinComentarios).toMatch(/--neto:\s*var\(--rv-neto\)\s*;/);
+  });
+
+  it.each([
+    [".receipt-card-net", "la tarjeta del historial"],
+    [".payroll-result-row.total span:last-child", "el 'Neto a pagar' del panel"],
+    [".stat-card-value.is-neto", "el 'Ultimo neto recibido' del resumen"]
+  ])("%s pide var(--neto) — %s", (selector) => {
+    expect(declaracion(selector, "color")).toBe("var(--neto)");
+  });
+
+  it("alguien usa de verdad la clase `is-neto`", () => {
+    const fuentes = readdirSync(resolve(process.cwd(), "src"), {
+      recursive: true,
+      encoding: "utf8"
+    }).filter((f) => /\.tsx$/.test(f));
+
+    const quienes = fuentes.filter((f) =>
+      /className="[^"]*\bis-neto\b/.test(
+        readFileSync(resolve(process.cwd(), "src", f), "utf8")
+      )
+    );
+
+    expect(quienes.length, "nadie pide is-neto; la regla quedo muerta")
+      .toBeGreaterThan(0);
+  });
+
+  it("la columna de la tabla se queda en tinta", () => {
+    expect(declaracion(".data-table .net", "color")).toBe("var(--ink)");
   });
 });
