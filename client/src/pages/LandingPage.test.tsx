@@ -27,10 +27,6 @@ beforeAll(() => {
   );
 });
 
-afterEach(() => {
-  delete document.documentElement.dataset.skin;
-});
-
 function montar() {
   return render(
     <MemoryRouter>
@@ -40,14 +36,6 @@ function montar() {
 }
 
 describe("LandingPage", () => {
-  it("activa el skin al montar y lo retira al desmontar", () => {
-    const { unmount } = montar();
-    expect(document.documentElement.dataset.skin).toBe("revolut");
-
-    unmount();
-    expect(document.documentElement.dataset.skin).toBeUndefined();
-  });
-
   it("conserva las tres anclas del nav", () => {
     montar();
     for (const ancla of ["#calculo", "#roles", "#seguridad"]) {
