@@ -1,0 +1,117 @@
+
+.auth-page {
+  display: grid;
+  grid-template-columns: 1fr minmax(480px, 560px);
+  min-height: 100dvh;
+  background: var(--rv-fondo);
+}
+
+.auth-page.is-single {
+  grid-template-columns: 1fr;
+}
+
+.auth-panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: min(400px, 100%);
+  justify-content: center;
+  align-content: center;
+  gap: var(--rv-p-espacio-5);
+  padding: var(--rv-p-espacio-8) var(--rv-gutter);
+}
+
+.auth-panel .auth-mobile-brand {
+  position: absolute;
+  top: var(--rv-p-espacio-6);
+  left: var(--rv-gutter);
+  display: inline-flex;
+}
+
+.auth-panel .theme-toggle {
+  position: absolute;
+  bottom: var(--rv-p-espacio-6);
+  left: var(--rv-gutter);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.auth-card-title {
+  font-size: var(--rv-t-h3);
+  font-weight: 700;
+  margin: 0 0 var(--rv-p-espacio-2);
+}
+
+.auth-card-subtitle {
+  margin: 0 0 var(--rv-p-espacio-6);
+  font-size: var(--rv-t-cuerpo-sm);
+  color: var(--rv-ink-2);
+}
+
+.auth-panel-links {
+  width: 100%;
+}
+
+.auth-panel-links .text-button {
+  color: var(--rv-marca-ink);
+  font-size: var(--rv-t-cuerpo-sm);
+  font-weight: 500;
+}
+
+.auth-panel-foot {
+  margin: var(--rv-p-espacio-3) 0 0;
+  font-size: 13px;
+  color: var(--rv-ink-3);
+}
+
+.rv-escaparate {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--rv-p-espacio-5);
+  padding: var(--rv-p-espacio-8) clamp(32px, 4vw, 56px);
+  background: var(--rv-fondo-alt);
+  border-left: 1px solid var(--rv-borde);
+}
+
+.rv-escaparate-pie {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--rv-ink-3);
+  text-wrap: pretty;
+}
+
+.rv-escaparate-pie b {
+  color: var(--rv-ink-2);
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+
+  .rv-escaparate {
+    display: none;
+  }
+
+  .auth-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--rv-p-espacio-6);
+    padding-block: var(--rv-p-espacio-7);
+  }
+
+  .auth-panel .auth-mobile-brand,
+  .auth-panel .theme-toggle {
+    position: static;
+  }
+}
