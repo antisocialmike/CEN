@@ -1,6 +1,7 @@
 from fpdf import FPDF
 
 COMPANY_NAME = "CEN Payroll"
+COMPANY_EYEBROW = "COMPROBANTE DE NÓMINA"
 DISCLAIMER = (
     "Comprobante interno de nómina. No es un CFDI y no tiene validez fiscal "
     "ante el SAT."
@@ -11,19 +12,31 @@ MONTHS = [
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ]
 
-INK = (20, 16, 14)
-INK_SOFT = (90, 80, 73)
-INK_FAINT = (128, 118, 109)
-RULE = (207, 199, 188)
-RULE_SOFT = (228, 222, 214)
-ROSE = (177, 53, 76)
+INK = (16, 17, 20)
+INK_2 = (74, 78, 87)
+INK_3 = (95, 100, 110)
+RULE = (189, 183, 169)
+RULE_SOFT = (233, 229, 218)
+MARCA = (14, 124, 102)
+NETO = (12, 97, 89)
+HUESO = (244, 242, 236)
+BLANCO = (255, 255, 255)
 
 PAGE_FORMAT = "Letter"
 PAGE_WIDTH = 215.9
 PAGE_HEIGHT = 279.4
 MARGIN = 24.0
 CONTENT = PAGE_WIDTH - MARGIN * 2
-SETTLEMENT_ANCHOR = PAGE_HEIGHT - 88
+SETTLEMENT_ANCHOR = PAGE_HEIGHT - 92
+
+MINUS = "–"
+
+LOGO_SIZE = 9.6
+LOGO_GRID = 32.0
+
+
+def _tracking(em: float, size_pt: float) -> float:
+    return em * size_pt * 25.4 / 72.0
 
 
 def format_amount(amount) -> str:
@@ -31,7 +44,7 @@ def format_amount(amount) -> str:
 
 
 def format_currency(amount) -> str:
-    return "${:,.2f}".format(float(amount))
+    return "$" + format_amount(amount)
 
 
 PERIODICITY_LABELS = {
@@ -63,98 +76,182 @@ def format_date(moment) -> str:
 
 
 class ReceiptPDF(FPDF):
-    def rule(self, color=RULE_SOFT, width=CONTENT) -> None:
+    def tracked(self, text: str, em: float, size_pt: float, height: float,
+                width=0, align="L") -> None:
+        self.set_char_spacing(_tracking(em, size_pt))
+        self.cell(width, height, text, new_x="LMARGIN", new_y="NEXT",
+                  align=align)
+        self.set_char_spacing(0)
+
+    def eyebrow(self, text: str, color=INK_3) -> None:
+        self.set_font("Helvetica", "", 7.5)
+        self.set_text_color(*color)
+        self.tracked(text.upper(), 0.09, 7.5, 4)
+
+    def rule(self, color=RULE, width=CONTENT, thickness=0.2) -> None:
         self.set_draw_color(*color)
-        self.set_line_width(0.2)
+        self.set_line_width(thickness)
         y = self.get_y()
         self.line(MARGIN, y, MARGIN + width, y)
+        self.set_line_width(0.2)
+
+    def logo(self, x: float, y: float, size: float = LOGO_SIZE) -> None:
+        k = size / LOGO_GRID
+
+        self.set_fill_color(*MARCA)
+        self.rect(x, y, size, size, style="F")
+
+        bracket = [
+            (4.5, 4.0), (27.5, 4.0), (27.5, 7.6), (8.1, 7.6),
+            (8.1, 24.4), (27.5, 24.4), (27.5, 28.0), (4.5, 28.0),
+        ]
+        self.set_fill_color(*BLANCO)
+        self.polygon([(x + px * k, y + py * k) for px, py in bracket],
+                     style="F")
+
+        for bar_y in (11.7, 18.1):
+            self.rect(x + 12.0 * k, y + bar_y * k, 15.5 * k, 3.4 * k,
+                      style="F")
 
     def masthead(self, folio: str) -> None:
-        self.set_font("Helvetica", "B", 11)
+        top = self.get_y()
+        self.logo(MARGIN, top)
+
+        text_x = MARGIN + LOGO_SIZE + 4.2
+        self.set_xy(text_x, top + 0.6)
+        self.set_font("Helvetica", "B", 11.5)
         self.set_text_color(*INK)
-        self.cell(CONTENT * 0.5, 6, COMPANY_NAME)
-
-        self.set_font("Helvetica", "", 11)
-        self.set_text_color(*INK_FAINT)
-        self.cell(CONTENT * 0.5, 6, folio, align="R", new_x="LMARGIN",
+        self.set_char_spacing(_tracking(-0.03, 11.5))
+        self.cell(CONTENT * 0.6, 5, COMPANY_NAME, new_x="LMARGIN",
                   new_y="NEXT")
+        self.set_char_spacing(0)
 
-        self.ln(3)
+        self.set_xy(text_x, top + 5.4)
+        self.set_font("Helvetica", "", 7)
+        self.set_text_color(*INK_3)
+        self.set_char_spacing(_tracking(0.09, 7))
+        self.cell(CONTENT * 0.6, 4, COMPANY_EYEBROW)
+        self.set_char_spacing(0)
+
+        self.set_font("Helvetica", "", 8)
+        self.set_text_color(*INK_3)
+        self.set_char_spacing(_tracking(0.06, 8))
+        self.cell(0, 4, folio.upper(), align="R", new_x="LMARGIN",
+                  new_y="NEXT")
+        self.set_char_spacing(0)
+
+        self.set_y(top + LOGO_SIZE + 5)
         self.rule(RULE)
 
     def identity(self, receipt: dict) -> None:
-        self.ln(15)
-        self.set_font("Times", "B", 34)
-        self.set_text_color(*INK)
-        self.cell(0, 14, format_period(receipt["period_start"]),
-                  new_x="LMARGIN", new_y="NEXT")
+        self.ln(13)
+        self.eyebrow("Periodo")
 
-        self.ln(1)
+        self.ln(0.5)
+        self.set_font("Helvetica", "B", 28)
+        self.set_text_color(*INK)
+        self.tracked(format_period(receipt["period_start"]), -0.025, 28, 12)
+
+        self.ln(0.5)
         self.set_font("Helvetica", "", 10.5)
-        self.set_text_color(*INK_FAINT)
+        self.set_text_color(*INK_2)
         self.cell(0, 5, "{}, {}".format(
             PERIODICITY_LABELS.get(receipt.get("periodicity"), "Periodo"),
             format_range(receipt["period_start"], receipt["period_end"]),
         ), new_x="LMARGIN", new_y="NEXT")
 
-        self.ln(4)
+        self.ln(7)
+        self.eyebrow("Empleado")
+
+        self.ln(0.5)
         self.set_font("Helvetica", "", 12.5)
         self.set_text_color(*INK)
-        self.cell(0, 6.5, str(receipt["employee_name"]),
-                  new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 6, str(receipt["employee_name"]), new_x="LMARGIN",
+                  new_y="NEXT")
 
-        self.set_font("Helvetica", "", 10)
-        self.set_text_color(*INK_FAINT)
-        self.cell(0, 5, str(receipt["employee_email"]),
-                  new_x="LMARGIN", new_y="NEXT")
+        self.set_font("Helvetica", "", 9.5)
+        self.set_text_color(*INK_3)
+        self.cell(0, 4.5, str(receipt["employee_email"]), new_x="LMARGIN",
+                  new_y="NEXT")
 
-    def ledger_group(self, title: str, total, items: list) -> None:
-        self.set_font("Helvetica", "B", 11.5)
-        self.set_text_color(*INK)
-        self.cell(CONTENT * 0.62, 8, title)
-        self.cell(CONTENT * 0.38, 8, format_amount(total), align="R",
-                  new_x="LMARGIN", new_y="NEXT")
-        self.rule()
+    def leader(self, from_x: float, to_x: float, y: float) -> None:
+        if to_x - from_x < 3:
+            return
+        self.set_draw_color(*RULE)
+        self.set_line_width(0.15)
+        self.set_dash_pattern(dash=0.5, gap=0.8)
+        self.line(from_x, y, to_x, y)
+        self.set_dash_pattern()
+
+    def ledger_row(self, label: str, amount: str, bold: bool, indent: float,
+                   label_color, amount_color) -> None:
+        y = self.get_y()
+
+        self.set_font("Helvetica", "B" if bold else "", 11 if bold else 10)
+        self.set_text_color(*label_color)
+        label_x = MARGIN + indent
+        self.set_xy(label_x, y)
+        self.cell(self.get_string_width(label), 6, label)
+        label_end = label_x + self.get_string_width(label)
+
+        self.set_font("Helvetica", "B" if bold else "", 11 if bold else 10)
+        self.set_text_color(*amount_color)
+        amount_width = self.get_string_width(amount)
+        amount_x = MARGIN + CONTENT - amount_width
+
+        self.leader(label_end + 1.8, amount_x - 1.8, y + 3.6)
+
+        self.set_xy(amount_x, y)
+        self.cell(amount_width, 6, amount, new_x="LMARGIN", new_y="NEXT")
+
+    def ledger_group(self, title: str, total, items: list,
+                     negative: bool) -> None:
+        sign = MINUS + " " if negative else ""
+
+        self.ledger_row(title, sign + format_currency(total), True, 0,
+                        INK, INK)
+        self.ln(0.5)
+        self.rule(RULE_SOFT)
+        self.ln(1.5)
 
         for label, amount in items:
-            self.ln(1.5)
-            self.set_font("Helvetica", "", 10.5)
-            self.set_text_color(*INK_SOFT)
-            self.set_x(MARGIN + 7)
-            self.cell(CONTENT * 0.62 - 7, 6, label)
-            self.set_text_color(*INK)
-            self.cell(CONTENT * 0.38, 6, format_amount(amount), align="R",
-                      new_x="LMARGIN", new_y="NEXT")
+            self.ledger_row(label, sign + format_currency(amount), False, 6,
+                            INK_2, INK)
 
     def settlement(self, net) -> None:
         self.set_y(max(self.get_y() + 12, SETTLEMENT_ANCHOR))
-        self.rule(RULE)
-        self.ln(9)
         top = self.get_y()
+        height = 26.0
 
-        self.set_font("Helvetica", "", 10.5)
-        self.set_text_color(*INK_FAINT)
-        self.set_x(MARGIN + 8)
-        self.cell(0, 6, "Neto a pagar", new_x="LMARGIN", new_y="NEXT")
+        self.set_fill_color(*HUESO)
+        self.rect(MARGIN, top, CONTENT, height, style="F")
 
-        self.ln(1)
-        self.set_font("Times", "B", 40)
-        self.set_text_color(*INK)
-        self.set_x(MARGIN + 8)
-        self.cell(0, 17, format_currency(net), new_x="LMARGIN", new_y="NEXT")
+        self.set_fill_color(*MARCA)
+        self.rect(MARGIN, top, 1.8, height, style="F")
 
-        self.set_draw_color(*ROSE)
-        self.set_line_width(2.2)
-        self.line(MARGIN + 1.1, top + 1.5, MARGIN + 1.1, self.get_y() - 3)
-        self.set_line_width(0.2)
+        self.set_xy(MARGIN + 8, top + 4.5)
+        self.set_font("Helvetica", "", 8)
+        self.set_text_color(*INK_3)
+        self.set_char_spacing(_tracking(0.09, 8))
+        self.cell(0, 4, "NETO A PAGAR", new_x="LMARGIN", new_y="NEXT")
+        self.set_char_spacing(0)
+
+        self.set_xy(MARGIN + 8, top + 9.5)
+        self.set_font("Helvetica", "B", 30)
+        self.set_text_color(*NETO)
+        self.set_char_spacing(_tracking(-0.04, 30))
+        self.cell(0, 13, format_currency(net), new_x="LMARGIN", new_y="NEXT")
+        self.set_char_spacing(0)
+
+        self.set_y(top + height)
 
     def colophon(self, receipt: dict) -> None:
-        self.set_y(-34)
+        self.set_y(-32)
         self.rule(RULE_SOFT)
         self.ln(4)
 
         self.set_font("Helvetica", "", 8.5)
-        self.set_text_color(*INK_SOFT)
+        self.set_text_color(*INK_2)
         self.cell(0, 4.5, "Emitido el {} por {}".format(
             format_date(receipt["created_at"]), receipt["processed_by"]
         ), new_x="LMARGIN", new_y="NEXT")
@@ -165,7 +262,7 @@ class ReceiptPDF(FPDF):
                 format_currency(base)
             ), new_x="LMARGIN", new_y="NEXT")
 
-        self.set_text_color(*INK_FAINT)
+        self.set_text_color(*INK_3)
         self.multi_cell(CONTENT * 0.78, 4.5, DISCLAIMER)
 
 
@@ -196,20 +293,23 @@ def build_receipt_pdf(receipt: dict) -> bytes:
     total_deductions = sum(float(amount) for _, amount in deductions)
 
     pdf = ReceiptPDF(format=PAGE_FORMAT)
+
+    pdf.core_fonts_encoding = "cp1252"
+
     pdf.set_margins(MARGIN, MARGIN, MARGIN)
     pdf.set_auto_page_break(auto=False)
     pdf.add_page()
 
-    pdf.masthead("Comprobante {}".format(receipt["id"]))
+    pdf.masthead("Recibo {}".format(receipt["id"]))
     pdf.identity(receipt)
 
     pdf.ln(11)
     pdf.rule(RULE)
-    pdf.ln(8)
-    pdf.ledger_group("Percepciones", total_perceptions, perceptions)
+    pdf.ln(7)
+    pdf.ledger_group("Percepciones", total_perceptions, perceptions, False)
 
-    pdf.ln(10)
-    pdf.ledger_group("Deducciones", total_deductions, deductions)
+    pdf.ln(9)
+    pdf.ledger_group("Deducciones", total_deductions, deductions, True)
 
     pdf.settlement(receipt["net_salary"])
     pdf.colophon(receipt)
