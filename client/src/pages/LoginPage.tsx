@@ -1,4 +1,4 @@
-import { FormEvent, startTransition, useState } from "react";
+import { FormEvent, startTransition, useId, useState } from "react";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import { EnvelopeSimple, Lock } from "@phosphor-icons/react";
@@ -8,9 +8,20 @@ import SubmitButton from "../components/SubmitButton";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
 import { login } from "../services/authService";
+import NetoDelPeriodo, { type Partida } from "../components/landing/NetoDelPeriodo";
+import { desglosar } from "../components/landing/calculoNomina";
+import "../styles/skin-acceso.css";
 
+const MUESTRA = desglosar(22000, "mensual");
+
+const PARTIDAS_MUESTRA: Partida[] = [
+  { concepto: "Salario bruto", importe: MUESTRA.bruto, tipo: "percepcion" },
+  { concepto: "ISR retenido", importe: MUESTRA.isr, tipo: "deduccion" },
+  { concepto: "IMSS retenido", importe: MUESTRA.imss, tipo: "deduccion" }
+];
 
 export default function LoginPage() {
+  const idMuestra = useId();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -38,23 +49,6 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <aside className="auth-side">
-        <RouterLink className="brand-logo on-color" to="/">
-          <LogoMark />
-          <div className="brand-logo-text">
-            <span>CEN Payroll</span>
-            <small>Sistema de nómina</small>
-          </div>
-        </RouterLink>
-
-        <div>
-          <p className="auth-side-title">Nómina que cuadra.</p>
-          <p className="auth-side-note">
-            El ISR y el IMSS calculados conforme a la ley, y un recibo guardado por cada periodo.
-          </p>
-        </div>
-      </aside>
-
       <main className="auth-panel">
         <RouterLink className="brand-logo auth-mobile-brand" to="/">
           <LogoMark />
@@ -117,6 +111,22 @@ export default function LoginPage() {
           </p>
         </div>
       </main>
+
+      <aside className="auth-side rv-escaparate" aria-labelledby={idMuestra}>
+        <NetoDelPeriodo
+          neto={MUESTRA.neto}
+          empleado="Ana Gutiérrez"
+          periodo="Julio 2026"
+          folio="128"
+          partidas={PARTIDAS_MUESTRA}
+        />
+
+        <p className="rv-escaparate-pie" id={idMuestra}>
+          <b>Ejemplo con datos de muestra.</b> Al entrar verás tus recibos reales, cada uno
+          con su folio y su periodo. Las cifras salen de las tablas vigentes, no de un
+          porcentaje fijo.
+        </p>
+      </aside>
     </div>
   );
 }
