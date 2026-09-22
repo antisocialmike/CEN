@@ -104,7 +104,7 @@ export default function EmployeeDashboardPage() {
             </span>
             <div>
               <p className="stat-card-label">Último neto recibido</p>
-              <p className="stat-card-value">{formatCurrency(latest.net_salary)}</p>
+              <p className="stat-card-value is-neto">{formatCurrency(latest.net_salary)}</p>
             </div>
           </motion.div>
           <motion.div className="stat-card" variants={blockTravel}>
