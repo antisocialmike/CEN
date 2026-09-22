@@ -1,20 +1,3 @@
-/* Fuentes propias. Antes venian de dos CDN con <link> bloqueantes en el head:
-   uno a fonts.googleapis.com y otro a api.fontshare.com, cada uno con sus dos
-   preconnect. Servidas desde el mismo origen se ahorra la resolucion DNS, el
-   handshake TLS y el viaje de ida y vuelta a por el CSS antes de pedir el
-   archivo.
-
-   Los .woff2 son los oficiales, sin tocar. JetBrains Mono es variable, asi que
-   un solo archivo cubre los pesos 400, 500 y 700.
-
-   Licencias: Archivo Black y JetBrains Mono son SIL Open Font License 1.1 y van
-   versionadas, con su OFL.txt al lado en client/public/fuentes/.
-
-   Satoshi es de Indian Type Foundry, con la ITF Free Font License. Esa licencia
-   permite alojarla en el propio servidor pero no redistribuirla en un
-   repositorio, y este es publico: por eso sus archivos estan en .gitignore y
-   los baja client/scripts/baja-fuentes.mjs al instalar y antes de construir.
-   Si faltan, el build para en vez de publicar el sitio con Helvetica. */
 
 @font-face {
   font-family: "Satoshi";
@@ -46,8 +29,6 @@
   font-weight: 400;
   font-display: swap;
   src: url("/fuentes/archivo-black-400-latin.woff2") format("woff2");
-  /* Solo el subconjunto latino: cubre U+0000-00FF, donde estan todas las
-     tildes, la enye y los signos de apertura del espanol. */
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
     U+2212, U+2215, U+FEFF, U+FFFD;
@@ -63,30 +44,6 @@
     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
     U+2212, U+2215, U+FEFF, U+FFFD;
 }
-
-/* Respaldos con metricas ajustadas, para que el intercambio no mueva el texto.
-
-   Con font-display:swap el navegador pinta primero con la fuente del sistema y
-   luego la sustituye. Si las dos no ocupan lo mismo, todo lo que hay debajo da
-   un salto. Medido en el navegador a 100px, antes de esto:
-
-     Satoshi       contra Helvetica/Arial   ancho  -3.7%   alto  +17.6%
-     Archivo Black contra Impact            ancho +39.3%   alto  +15.8%
-     JetBrains Mono contra ui-monospace     ancho  +9.1%   alto  +10.5%
-
-   Estas caras no traen archivo: toman una fuente que ya esta en el equipo y la
-   deforman hasta que mide lo mismo que la de verdad. size-adjust iguala el
-   ancho medio; ascent-override y descent-override igualan la caja de linea.
-
-     size-adjust      = anchoMedio(real) / anchoMedio(respaldo)
-     ascent-override  = ascenso(real) / size-adjust
-
-   Los numeros salen de medir las seis fuentes con canvas, no de una tabla
-   generica: estan en design/06-QA.md §11.
-
-   La base es Arial y Courier New porque estan en Windows, macOS e iOS, y en
-   Android el sistema las redirige a Roboto y a su monoespaciada. Si no hubiera
-   ninguna, la cara se descarta y se sigue por la pila normal. */
 
 @font-face {
   font-family: "Satoshi respaldo";
@@ -116,82 +73,6 @@
 }
 
 :root {
-  --cal: light-dark(#f4f4f0, #0a0a0a);
-  --cal-2: light-dark(#eae8e3, #121212);
-  --cal-3: light-dark(#dedcd4, #1a1a1a);
-  --surface: light-dark(#ffffff, #121212);
-  --chrome: light-dark(#f4f4f0, #0a0a0a);
-
-  --ink: light-dark(#050505, #eaeaea);
-  --ink-2: light-dark(#41413c, #9c9c97);
-  --ink-3: light-dark(#6d6d66, #72726d);
-  --ink-hover: light-dark(#000000, #ffffff);
-
-  --line: light-dark(#050505, #eaeaea);
-  --line-strong: light-dark(#050505, #ffffff);
-  --line-soft: light-dark(#c6c4bb, #2c2c2c);
-  --bw: 2px;
-  --bw-hair: 1px;
-
-  --rosa: #e61919;
-  --rosa-deep: #ff2a2a;
-  --rosa-wash: light-dark(#ffdedc, #2a0606);
-  --on-rosa: #ffffff;
-  --danger-text: light-dark(#c20f0f, #ff5a5a);
-
-  --ocre: light-dark(#eae8e3, #d8d6cd);
-  --ultramar: light-dark(#050505, #121212);
-  --ok-bg: light-dark(#eae8e3, #161616);
-  --ok-line: light-dark(#050505, #eaeaea);
-  --ok-text: light-dark(#050505, #eaeaea);
-
-    --ink-fixed: #050505;
-
-    --plane-admin: light-dark(#050505, #050505);
-  --plane-admin-ink: #f4f4f0;
-  --plane-admin-ink-soft: rgba(244, 244, 240, 0.72);
-
-  --shadow-deposit: transparent;
-
-    --r-pill: 0;
-  --ring: 0 0 0 2px var(--cal), 0 0 0 4px var(--rosa);
-
-    --s-1: 4px;
-  --s-2: 8px;
-  --s-3: 12px;
-  --s-4: 16px;
-  --s-5: 24px;
-  --s-6: 32px;
-  --s-7: 48px;
-  --s-8: 64px;
-  --s-9: 96px;
-
-  --page: 1240px;
-  --gutter: clamp(20px, 4vw, 56px);
-
-  --font: "Satoshi", "Satoshi respaldo", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Archivo Black", "Archivo Black respaldo", "Satoshi", Impact,
-    sans-serif;
-  --font-mono: "JetBrains Mono", "JetBrains Mono respaldo", ui-monospace, monospace;
-
-  --t-display: clamp(54px, 10.5vw, 158px);
-  --t-h2: clamp(36px, 5.6vw, 76px);
-  --t-h3: clamp(20px, 2.1vw, 27px);
-  --t-body: 16px;
-  --t-small: 13px;
-  --t-micro: 11px;
-
-  --track-macro: -0.04em;
-  --lead-macro: 0.88;
-  --track-micro: 0.08em;
-
-  --ease: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --dur-fast: 120ms;
-  --dur: 180ms;
-  --dur-slow: 260ms;
-
   color-scheme: light dark;
   accent-color: var(--rosa);
 }
@@ -283,8 +164,6 @@ h3 {
   text-wrap: balance;
 }
 
-.mono,
-.eyebrow,
 .user-chip-role,
 .form-field label {
   font-family: var(--font-mono);
@@ -330,7 +209,6 @@ p {
   box-shadow: none;
 }
 
-.money,
 .stat-card-value:not(.is-text),
 .payroll-result-row span:last-child,
 .receipt-card-net,
@@ -456,15 +334,6 @@ p {
   background: var(--cal-2);
 }
 
-.btn-on-color {
-  background: #fff;
-  color: var(--ink-fixed);
-}
-
-.btn-on-color:hover:not(:disabled) {
-  background: var(--cal-2);
-}
-
 .btn-block {
   width: 100%;
 }
@@ -571,50 +440,6 @@ p {
   justify-content: space-between;
   gap: var(--s-7);
   padding: var(--s-8) var(--s-7);
-  color: #fff;
-}
-
-.auth-side-photo {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.auth-side-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: grayscale(1) contrast(1.1);
-}
-
-.auth-side-photo::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--ultramar);
-  mix-blend-mode: multiply;
-  opacity: 0.84;
-}
-
-.auth-side > *:not(.auth-side-photo) {
-  position: relative;
-  z-index: 1;
-}
-
-.auth-side-title {
-  font-family: var(--font-display);
-  font-size: clamp(34px, 4vw, 58px);
-  letter-spacing: var(--track-macro);
-  line-height: var(--lead-macro);
-  text-transform: uppercase;
-  max-width: 13ch;
-}
-
-.auth-side-note {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.82);
-  max-width: 36ch;
-  margin-top: var(--s-4);
 }
 
 .auth-panel {
@@ -818,8 +643,8 @@ p {
 }
 
 .error-banner {
-  background: var(--rosa-wash);
-  border-color: var(--rosa);
+  background: var(--danger-bg);
+  border-color: var(--danger-line);
   color: var(--danger-text);
 }
 
@@ -1134,6 +959,10 @@ p {
   letter-spacing: -0.03em;
 }
 
+.stat-card-value.is-neto {
+  color: var(--neto);
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
@@ -1226,7 +1055,7 @@ p {
   font-size: clamp(30px, 3.4vw, 40px);
   font-weight: 500;
   letter-spacing: -0.045em;
-  color: var(--ink);
+  color: var(--neto);
 }
 
 .payroll-result-footer {
@@ -1336,7 +1165,7 @@ p {
   font-size: 21px;
   font-weight: 500;
   letter-spacing: -0.04em;
-  color: var(--ink);
+  color: var(--neto);
 }
 
 .table-wrap {
@@ -1452,7 +1281,6 @@ p {
 }
 
 @media (max-width: 1080px) {
-
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -1969,8 +1797,8 @@ p {
 .replace-warning {
   margin-bottom: var(--s-4);
   padding: var(--s-4);
-  background: var(--rosa-wash);
-  border: var(--bw) solid var(--rosa);
+  background: var(--danger-bg);
+  border: var(--bw) solid var(--danger-line);
 }
 
 .replace-warning-title {
@@ -2006,8 +1834,8 @@ p {
 .password-warning {
   margin-bottom: var(--s-4);
   padding: var(--s-4);
-  background: var(--rosa-wash);
-  border: var(--bw) solid var(--rosa);
+  background: var(--danger-bg);
+  border: var(--bw) solid var(--danger-line);
 }
 
 .password-warning-title {
@@ -2037,8 +1865,8 @@ p {
 
 .action-confirm {
   padding: var(--s-4);
-  background: var(--rosa-wash);
-  border: var(--bw) solid var(--rosa);
+  background: var(--danger-bg);
+  border: var(--bw) solid var(--danger-line);
   margin-bottom: var(--s-3);
 }
 
