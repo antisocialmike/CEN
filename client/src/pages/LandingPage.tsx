@@ -2,7 +2,6 @@ import {
   startTransition,
   useEffect,
   useId,
-  useLayoutEffect,
   useMemo,
   useState
 } from "react";
@@ -30,7 +29,7 @@ import {
 import { formatCurrency } from "../services/format";
 import { EASE_OUT } from "../motion/variants";
 import "lenis/dist/lenis.css";
-import "../styles/skin-revolut.css";
+import "../styles/skin-landing.css";
 
 const BRUTO_EJEMPLO = 22000;
 const PERIODICIDAD_EJEMPLO: Periodicidad = "mensual";
@@ -166,15 +165,6 @@ function useScrollSuave(activo: boolean) {
   }, [activo]);
 }
 
-function useSkinRevolut() {
-  useLayoutEffect(() => {
-    document.documentElement.dataset.skin = "revolut";
-    return () => {
-      delete document.documentElement.dataset.skin;
-    };
-  }, []);
-}
-
 function Calculadora() {
   const idSueldo = useId();
   const idPeriodo = useId();
@@ -292,7 +282,6 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const reduce = useReducedMotion();
   const seccionActiva = useSeccionVisible();
-  useSkinRevolut();
   useScrollSuave(!reduce);
 
   const irALogin = () => startTransition(() => navigate("/login"));
