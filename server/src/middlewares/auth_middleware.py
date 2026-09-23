@@ -79,6 +79,7 @@ def get_current_user(
         "username": username,
         "role": role,
         "employee_id": payload.get("employee_id"),
+        "company_id": payload.get("company_id"),
     }
 
 

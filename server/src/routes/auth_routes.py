@@ -74,6 +74,12 @@ def login(request: LoginRequest):
             detail="Esta cuenta esta desactivada",
         )
 
+    if employee.get("company_is_active") is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tu empresa esta desactivada",
+        )
+
     payroll_repository.clear_failed_logins(employee["id"])
 
     name = employee.get("name", "")
@@ -81,6 +87,7 @@ def login(request: LoginRequest):
         "sub": employee["email"],
         "role": employee["role"],
         "employee_id": employee["id"],
+        "company_id": employee.get("company_id"),
         "name": name,
     })
     return TokenResponse(

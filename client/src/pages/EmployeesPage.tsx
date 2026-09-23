@@ -18,14 +18,14 @@ import {
   resetEmployeePassword,
   updateEmployee
 } from "../services/employeeService";
-import { getEmployeeId, UserRole } from "../services/authSession";
+import { getEmployeeId, EmployeeRole } from "../services/authSession";
 import { getStatusCode } from "../services/apiError";
 import { formatCurrency } from "../services/format";
 
 interface EditForm {
   name: string;
   email: string;
-  role: UserRole;
+  role: EmployeeRole;
   baseSalary: string;
 }
 
@@ -87,7 +87,7 @@ export default function EmployeesPage() {
       name: employee.name,
       email: employee.email,
       role: employee.role,
-      baseSalary: String(employee.base_salary)
+      baseSalary: employee.base_salary === null ? "" : String(employee.base_salary)
     });
   }
 
@@ -103,8 +103,9 @@ export default function EmployeesPage() {
     const employee = employees?.find((e) => e.id === editingId);
     if (!employee) return;
 
+    const newSalary = form.baseSalary === "" ? null : Number(form.baseSalary);
     const emailChanged = employee.email !== form.email;
-    const salaryChanged = employee.base_salary !== Number(form.baseSalary);
+    const salaryChanged = employee.base_salary !== newSalary;
     const roleChanged = employee.role !== form.role;
 
     if ((emailChanged || salaryChanged || roleChanged) && !pendingEditSave) {
@@ -122,7 +123,7 @@ export default function EmployeesPage() {
         name: form.name,
         email: form.email,
         role: form.role,
-        baseSalary: Number(form.baseSalary)
+        baseSalary: newSalary
       });
       replaceEmployee(updated);
       setSuccessMessage("Se guardaron los cambios de " + updated.name + ".");
@@ -296,7 +297,7 @@ export default function EmployeesPage() {
                     id={"role-" + employee.id}
                     label="Rol"
                     value={form.role}
-                    onChange={(value) => setForm({ ...form, role: value as UserRole })}
+                    onChange={(value) => setForm({ ...form, role: value as EmployeeRole })}
                     options={[
                       { value: "employee", label: "Empleado" },
                       { value: "admin", label: "Administrador" }
@@ -312,7 +313,12 @@ export default function EmployeesPage() {
                     step={0.01}
                     inputMode="decimal"
                     prefix="$"
-                    required
+                    required={form.role === "employee"}
+                    hint={
+                      form.role === "admin"
+                        ? "Déjalo vacío si administra la nómina pero no la cobra."
+                        : undefined
+                    }
                   />
                   {pendingEditSave && (
                     <div className="action-confirm" role="alert">
@@ -362,7 +368,10 @@ export default function EmployeesPage() {
                       )}
                     </p>
                     <p className="employee-row-meta">
-                      {employee.email} · {formatCurrency(employee.base_salary)}
+                      {employee.email} ·{" "}
+                      {employee.base_salary === null
+                        ? "Sin salario en nómina"
+                        : formatCurrency(employee.base_salary)}
                     </p>
                   </div>
                   {confirmingResetId === employee.id ? (

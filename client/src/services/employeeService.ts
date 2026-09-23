@@ -1,10 +1,10 @@
 import httpClient from "./httpClient";
-import { UserRole } from "./authSession";
+import { EmployeeRole } from "./authSession";
 
 export interface NewEmployeeInput {
   name: string;
   email: string;
-  role: UserRole;
+  role: EmployeeRole;
   baseSalary: number;
   password: string;
 }
@@ -13,16 +13,23 @@ export interface EmployeeCreated {
   id: number;
   name: string;
   email: string;
-  role: UserRole;
-  base_salary: number;
+  role: EmployeeRole;
+  // Vacío para los administradores que invita un dueño: operan la nómina, no la cobran.
+  base_salary: number | null;
   is_active: boolean;
+}
+
+export type PayrollEmployee = EmployeeCreated & { base_salary: number };
+
+export function isOnPayroll(employee: EmployeeCreated): employee is PayrollEmployee {
+  return employee.is_active && employee.base_salary !== null;
 }
 
 export interface EmployeeUpdateInput {
   name: string;
   email: string;
-  role: UserRole;
-  baseSalary: number;
+  role: EmployeeRole;
+  baseSalary: number | null;
 }
 
 export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeCreated> {

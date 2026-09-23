@@ -58,7 +58,7 @@ describe("isAuthenticated", () => {
 
   it("es falso si el rol guardado no es valido", () => {
     saveSession(adminSession);
-    localStorage.setItem("cen_user_role", "superadmin");
+    localStorage.setItem("cen_user_role", "root");
 
     expect(getRole()).toBeNull();
     expect(isAuthenticated()).toBe(false);
@@ -128,6 +128,21 @@ describe("getRoleLabel y dashboardPathForRole", () => {
 
     expect(getRoleLabel()).toBe("Empleado");
     expect(dashboardPathForRole()).toBe("/empleado");
+  });
+
+  it("resuelve al superadmin y al dueño", () => {
+    saveSession({ ...adminSession, role: "superadmin" });
+    expect(getRole()).toBe("superadmin");
+    expect(getRoleLabel()).toBe("Superadministrador");
+    expect(dashboardPathForRole()).toBe("/superadmin");
+
+    saveSession({ ...adminSession, role: "owner" });
+    expect(getRoleLabel()).toBe("Dueño");
+    expect(dashboardPathForRole()).toBe("/dueno");
+  });
+
+  it("acepta un rol explícito", () => {
+    expect(dashboardPathForRole("superadmin")).toBe("/superadmin");
   });
 });
 

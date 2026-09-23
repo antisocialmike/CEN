@@ -22,7 +22,7 @@ import {
   lookupReceipt,
   suggestedGrossSalary
 } from "../services/payrollService";
-import { listEmployees, EmployeeCreated } from "../services/employeeService";
+import { isOnPayroll, listEmployees, PayrollEmployee } from "../services/employeeService";
 import { getStatusCode } from "../services/apiError";
 import {
   currentPeriod,
@@ -32,7 +32,7 @@ import {
 } from "../services/format";
 
 export default function AdminDashboardPage() {
-  const [employees, setEmployees] = useState<EmployeeCreated[] | null>(null);
+  const [employees, setEmployees] = useState<PayrollEmployee[] | null>(null);
   const [receipts, setReceipts] = useState<PayrollReceipt[] | null>(null);
   const [employeeId, setEmployeeId] = useState("");
   const [month, setMonth] = useState(currentPeriod());
@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
     listEmployees()
       .then((all) => {
         if (!isMounted) return;
-        const result = all.filter((employee) => employee.is_active);
+        const result = all.filter(isOnPayroll);
         setEmployees(result);
         if (result.length > 0) {
           setEmployeeId(String(result[0].id));

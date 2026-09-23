@@ -40,6 +40,11 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@cen.com")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin1234")
 ADMIN_BASE_SALARY = float(os.getenv("ADMIN_BASE_SALARY", "20000"))
 
+SUPERADMIN_NAME = os.getenv("SUPERADMIN_NAME", "Superadministrador")
+SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL", "")
+SUPERADMIN_PASSWORD = os.getenv("SUPERADMIN_PASSWORD", "")
+SUPERADMIN_MIN_PASSWORD_LENGTH = 12
+
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")

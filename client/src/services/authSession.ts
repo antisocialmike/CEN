@@ -1,4 +1,21 @@
-export type UserRole = "admin" | "employee";
+export type UserRole = "superadmin" | "owner" | "admin" | "employee";
+export type EmployeeRole = Extract<UserRole, "admin" | "employee">;
+
+const USER_ROLES: readonly UserRole[] = ["superadmin", "owner", "admin", "employee"];
+
+const DASHBOARD_PATHS: Record<UserRole, string> = {
+  superadmin: "/superadmin",
+  owner: "/dueno",
+  admin: "/admin",
+  employee: "/empleado"
+};
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  superadmin: "Superadministrador",
+  owner: "Dueño",
+  admin: "Administrador",
+  employee: "Empleado"
+};
 
 const TOKEN_KEY = "cen_access_token";
 const ROLE_KEY = "cen_user_role";
@@ -32,8 +49,8 @@ export function clearPasswordChangeFlag(): void {
   localStorage.setItem(MUST_CHANGE_KEY, "false");
 }
 
-export function dashboardPathForRole(): string {
-  return getRole() === "admin" ? "/admin" : "/empleado";
+export function dashboardPathForRole(role: UserRole | null = getRole()): string {
+  return DASHBOARD_PATHS[role ?? "employee"];
 }
 
 export function getToken(): string | null {
@@ -42,7 +59,7 @@ export function getToken(): string | null {
 
 export function getRole(): UserRole | null {
   const role = localStorage.getItem(ROLE_KEY);
-  return role === "admin" || role === "employee" ? role : null;
+  return USER_ROLES.find((known) => known === role) ?? null;
 }
 
 export function getName(): string {
@@ -99,7 +116,7 @@ export function isAuthenticated(): boolean {
 export function getInitials(): string {
   const parts = getName().trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) {
-    return getRole() === "admin" ? "A" : "E";
+    return getRoleLabel().charAt(0);
   }
   if (parts.length === 1) {
     return parts[0].slice(0, 2).toUpperCase();
@@ -108,5 +125,5 @@ export function getInitials(): string {
 }
 
 export function getRoleLabel(): string {
-  return getRole() === "admin" ? "Administrador" : "Empleado";
+  return ROLE_LABELS[getRole() ?? "employee"];
 }

@@ -1,4 +1,4 @@
-import { FormEvent, startTransition, useId, useState } from "react";
+import { FormEvent, MouseEvent, startTransition, useId, useState } from "react";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import { EnvelopeSimple, Lock } from "@phosphor-icons/react";
@@ -7,7 +7,9 @@ import ErrorMessage from "../components/ErrorMessage";
 import SubmitButton from "../components/SubmitButton";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
+import { useTunel } from "../motion/tunel";
 import { login } from "../services/authService";
+import { dashboardPathForRole } from "../services/authSession";
 import NetoDelPeriodo, { type Partida } from "../components/landing/NetoDelPeriodo";
 import { desglosar } from "../components/landing/calculoNomina";
 import "../styles/skin-acceso.css";
@@ -27,20 +29,39 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const pasarPorTunel = useTunel();
   const [searchParams] = useSearchParams();
 
   const sessionExpired = searchParams.get("sesion") === "expirada";
 
+  // Sigue siendo un enlace (ctrl+clic abre pestaña); solo el clic normal pasa por el tunel.
+  function volverALanding(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    // El logo de la marca es el mismo que cruza el tunel: lo continua en vez de aparecer otro.
+    pasarPorTunel(() => startTransition(() => navigate("/")), {
+      origen: event.currentTarget.querySelector("svg"),
+      compartido: true
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Se toma antes del await: el logo del tunel sale del boton que se presiono.
+    const boton = (event.nativeEvent as SubmitEvent).submitter;
     setErrorMessage(null);
     setIsSubmitting(true);
 
     try {
       const role = await login(email, password);
-      startTransition(() => {
-        navigate(role === "admin" ? "/admin" : "/empleado", { replace: true });
-      });
+      pasarPorTunel(
+        () => {
+          startTransition(() => {
+            navigate(dashboardPathForRole(role), { replace: true });
+          });
+        },
+        { origen: boton }
+      );
     } catch {
       setErrorMessage("Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo.");
       setIsSubmitting(false);
@@ -50,7 +71,7 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <main className="auth-panel">
-        <RouterLink className="brand-logo auth-mobile-brand" to="/">
+        <RouterLink className="brand-logo auth-mobile-brand" to="/" onClick={volverALanding}>
           <LogoMark />
           <div className="brand-logo-text">
             <span>CEN Payroll</span>

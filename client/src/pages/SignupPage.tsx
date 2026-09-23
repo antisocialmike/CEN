@@ -8,13 +8,13 @@ import ErrorMessage from "../components/ErrorMessage";
 import SuccessMessage from "../components/SuccessMessage";
 import SubmitButton from "../components/SubmitButton";
 import { createEmployee } from "../services/employeeService";
-import { UserRole } from "../services/authSession";
+import { EmployeeRole } from "../services/authSession";
 import { getStatusCode } from "../services/apiError";
 
 const emptyForm = {
   name: "",
   email: "",
-  role: "employee" as UserRole,
+  role: "employee" as EmployeeRole,
   baseSalary: "",
   password: ""
 };
@@ -108,7 +108,7 @@ export default function SignupPage() {
             id="role"
             label="Rol"
             value={form.role}
-            onChange={(value) => updateField("role", value as UserRole)}
+            onChange={(value) => updateField("role", value as EmployeeRole)}
             options={[
               { value: "employee", label: "Empleado" },
               { value: "admin", label: "Administrador" }

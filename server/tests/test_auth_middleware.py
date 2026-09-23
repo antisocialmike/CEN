@@ -39,7 +39,10 @@ def test_get_current_user_valid_token():
     )
     credentials = _make_credentials(token)
     user = get_current_user(credentials)
-    assert user == {"username": "juan.perez", "role": "admin", "employee_id": 1}
+    assert user == {
+        "username": "juan.perez", "role": "admin", "employee_id": 1,
+        "company_id": None,
+    }
 
 
 def test_require_role_allows_matching_role():

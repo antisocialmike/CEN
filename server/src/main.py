@@ -11,7 +11,9 @@ from .config.database import close_pool
 from .config.settings import ALLOWED_ORIGINS
 from .routes.auth_routes import router as auth_router
 from .routes.employee_routes import router as employee_router
+from .routes.owner_routes import router as owner_router
 from .routes.payroll_routes import router as payroll_router
+from .routes.superadmin_routes import router as superadmin_router
 
 
 @asynccontextmanager
@@ -42,9 +44,13 @@ async def database_unavailable(request: Request, exc: OperationalError):
 
 @app.exception_handler(UniqueViolation)
 async def duplicated_record(request: Request, exc: UniqueViolation):
+    if exc.diag.constraint_name == "companies_rfc_key":
+        detail = "El RFC ya esta registrado"
+    else:
+        detail = "El correo ya esta registrado"
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
-        content={"detail": "El correo ya esta registrado"},
+        content={"detail": detail},
     )
 
 
@@ -61,6 +67,8 @@ async def overlapping_period(request: Request, exc: ExclusionViolation):
 app.include_router(auth_router)
 app.include_router(employee_router)
 app.include_router(payroll_router)
+app.include_router(superadmin_router)
+app.include_router(owner_router)
 
 
 @app.get("/health")

@@ -152,6 +152,47 @@ describe("edicion", () => {
   });
 });
 
+describe("administradores sin salario", () => {
+  const pablo = {
+    id: 8,
+    name: "Pablo Soto",
+    email: "pablo@cen.com",
+    role: "admin" as const,
+    base_salary: null,
+    is_active: true
+  };
+
+  it("dice que no cobra nómina en vez de mostrar una cifra", async () => {
+    vi.mocked(listEmployees).mockResolvedValue([pablo]);
+    renderPage();
+
+    expect(await screen.findByText(/pablo@cen.com · Sin salario en nómina/)).toBeInTheDocument();
+  });
+
+  it("guarda sus cambios sin inventarle un salario", async () => {
+    vi.mocked(listEmployees).mockResolvedValue([pablo]);
+    vi.mocked(updateEmployee).mockResolvedValue({ ...pablo, name: "Pablo Soto Ruiz" });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("Editar"));
+    expect(screen.getByLabelText(/Salario base mensual/)).toHaveValue(null);
+    const name = screen.getByLabelText("Nombre completo");
+    await user.clear(name);
+    await user.type(name, "Pablo Soto Ruiz");
+    await user.click(screen.getByText("Guardar cambios"));
+
+    await waitFor(() => {
+      expect(updateEmployee).toHaveBeenCalledWith(8, {
+        name: "Pablo Soto Ruiz",
+        email: "pablo@cen.com",
+        role: "admin",
+        baseSalary: null
+      });
+    });
+  });
+});
+
 describe("restablecer contraseña", () => {
   it("pide confirmacion antes de invalidar la contraseña actual", async () => {
     const user = userEvent.setup();

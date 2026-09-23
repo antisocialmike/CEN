@@ -1,8 +1,8 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from .payroll_model import EmployeeRole
+UserRole = Literal["superadmin", "owner", "admin", "employee"]
 
 
 class LoginRequest(BaseModel):
@@ -13,7 +13,7 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    role: EmployeeRole
+    role: UserRole
     name: str = ""
     employee_id: Optional[int] = None
     must_change_password: bool = False

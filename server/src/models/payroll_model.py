@@ -42,7 +42,8 @@ class Employee(BaseModel):
     name: str
     email: str
     role: EmployeeRole
-    base_salary: float
+    # Vacio para los admins que invita un dueno: operan la nomina, no la cobran.
+    base_salary: Optional[float] = None
     is_active: bool = True
 
 
@@ -65,7 +66,13 @@ class EmployeeUpdateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=150)
     email: str = Field(min_length=3, max_length=150)
     role: EmployeeRole
-    base_salary: float = Field(ge=0)
+    base_salary: Optional[float] = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def _employees_have_a_salary(self) -> "EmployeeUpdateRequest":
+        if self.role == "employee" and self.base_salary is None:
+            raise ValueError("Un empleado necesita salario base")
+        return self
 
 
 class PayrollCalculationRequest(BaseModel):

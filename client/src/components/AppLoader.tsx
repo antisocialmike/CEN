@@ -6,7 +6,7 @@ import {
   useMotionValueEvent,
   useReducedMotion
 } from "motion/react";
-import { EASE_OUT } from "../motion/variants";
+import { EASE_OUT, EASE_TUNEL } from "../motion/variants";
 
 // Todas las marcas de tiempo del splash, en segundos, para afinar desde un solo sitio.
 const TIMELINE = {
@@ -26,7 +26,6 @@ const TIMELINE = {
 } as const;
 
 const EASE_TRAZO = [0.65, 0, 0.35, 1] as const;
-const EASE_ZOOM = [0.7, 0, 0.84, 0] as const;
 
 // La misma geometria que LogoMark, con las barras pasadas a path para poder trazarlas.
 const CONTORNO = "M4.5 4H27.5V7.6H8.1V24.4H27.5V28H4.5Z";
@@ -277,7 +276,7 @@ export default function AppLoader({ intro = true, listo = false, alTerminar }: A
             className="app-loader-capa"
             animate={saliendo && conIntro ? { scale: 24, opacity: 0 } : { scale: 1, opacity: 1 }}
             transition={{
-              scale: { duration: salida.zoom, ease: EASE_ZOOM },
+              scale: { duration: salida.zoom, ease: EASE_TUNEL },
               opacity: { delay: salida.zoom * 0.7, duration: salida.zoom * 0.3 }
             }}
           >

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, MouseEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import { Lock, ShieldCheck } from "@phosphor-icons/react";
@@ -7,6 +7,7 @@ import ErrorMessage from "../components/ErrorMessage";
 import SubmitButton from "../components/SubmitButton";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
+import { useTunel } from "../motion/tunel";
 import { changePassword } from "../services/authService";
 import { dashboardPathForRole, mustChangePassword } from "../services/authSession";
 import { getStatusCode } from "../services/apiError";
@@ -19,6 +20,7 @@ export default function ChangePasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingConfirmation, setPendingConfirmation] = useState(false);
   const navigate = useNavigate();
+  const pasarPorTunel = useTunel();
 
   const isForced = mustChangePassword();
 
@@ -34,12 +36,14 @@ export default function ChangePasswordPage() {
     setPendingConfirmation(true);
   }
 
-  async function confirmPasswordChange() {
+  async function confirmPasswordChange(event: MouseEvent<HTMLButtonElement>) {
+    // Se toma antes del await: el logo del tunel sale del boton de confirmar.
+    const boton = event.currentTarget;
     setIsSubmitting(true);
 
     try {
       await changePassword(currentPassword, newPassword);
-      navigate(dashboardPathForRole(), { replace: true });
+      pasarPorTunel(() => navigate(dashboardPathForRole(), { replace: true }), { origen: boton });
     } catch (error) {
       if (getStatusCode(error) === 400) {
         setErrorMessage("La contraseña actual no es correcta, o la nueva es igual a la anterior.");

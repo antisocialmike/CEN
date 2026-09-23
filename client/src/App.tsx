@@ -4,6 +4,7 @@ import { AnimatePresence } from "motion/react";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLoader from "./components/AppLoader";
 import PageTransition from "./components/PageTransition";
+import { TunelProvider } from "./components/TransicionTunel";
 import RutaDePanel from "./components/RutaDePanel";
 import { claveDeTransicion } from "./routes/claveDeTransicion";
 
@@ -17,6 +18,8 @@ const LandingPage = lazy(() => import("./pages/LandingPage"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const EmployeeDashboardPage = lazy(() => import("./pages/EmployeeDashboardPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
+const SuperadminOwnersPage = lazy(() => import("./pages/SuperadminOwnersPage"));
+const SuperadminCompaniesPage = lazy(() => import("./pages/SuperadminCompaniesPage"));
 
 // Se monta junto al contenido de la Suspense: su efecto solo corre cuando ya resolvio lo perezoso.
 function AvisaAlMontar({ alMontar }: { alMontar: () => void }) {
@@ -33,7 +36,7 @@ export default function App() {
   const cerrarSplash = useCallback(() => setSplash(false), []);
 
   return (
-    <>
+    <TunelProvider>
       <Suspense fallback={splash ? null : <AppLoader intro={false} />}>
         <AvisaAlMontar alMontar={marcarListo} />
         <AnimatePresence mode="wait" initial={false}>
@@ -59,6 +62,13 @@ export default function App() {
                 <Route path="/admin/nuevo-empleado" element={<SignupPage />} />
               </Route>
 
+              <Route element={<ProtectedRoute allowedRole="superadmin" />}>
+                <Route element={<RutaDePanel />}>
+                  <Route path="/superadmin" element={<SuperadminOwnersPage />} />
+                  <Route path="/superadmin/empresas" element={<SuperadminCompaniesPage />} />
+                </Route>
+              </Route>
+
               <Route element={<ProtectedRoute allowedRole="employee" />}>
                 <Route element={<RutaDePanel />}>
                   <Route path="/empleado" element={<EmployeeDashboardPage />} />
@@ -71,6 +81,6 @@ export default function App() {
         </AnimatePresence>
       </Suspense>
       {splash && <AppLoader listo={contenidoListo} alTerminar={cerrarSplash} />}
-    </>
+    </TunelProvider>
   );
 }

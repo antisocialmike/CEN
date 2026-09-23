@@ -26,6 +26,9 @@ function renderAt(path: string) {
         <Route element={<ProtectedRoute allowedRole="employee" />}>
           <Route path="/empleado" element={<p>panel de empleado</p>} />
         </Route>
+        <Route element={<ProtectedRoute allowedRole="superadmin" />}>
+          <Route path="/superadmin" element={<p>panel de superadmin</p>} />
+        </Route>
       </Routes>
     </MemoryRouter>
   );
@@ -92,5 +95,28 @@ describe("con la contrasena ya definida", () => {
     renderAt("/cambiar-contrasena");
 
     expect(screen.getByText("cambio de contrasena")).toBeInTheDocument();
+  });
+});
+
+describe("superadmin", () => {
+  it("entra a su panel", () => {
+    saveSession({ ...adminSession, role: "superadmin" });
+    renderAt("/superadmin");
+
+    expect(screen.getByText("panel de superadmin")).toBeInTheDocument();
+  });
+
+  it("no entra al panel de nómina", () => {
+    saveSession({ ...adminSession, role: "superadmin" });
+    renderAt("/admin");
+
+    expect(screen.getByText("panel de superadmin")).toBeInTheDocument();
+  });
+
+  it("un administrador no entra al panel de superadmin", () => {
+    saveSession(adminSession);
+    renderAt("/superadmin");
+
+    expect(screen.getByText("panel de admin")).toBeInTheDocument();
   });
 });

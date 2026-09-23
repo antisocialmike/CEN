@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 from psycopg2 import OperationalError
 
@@ -8,6 +9,20 @@ from server.src.main import app
 from server.src.middlewares.auth_middleware import create_access_token
 
 client = TestClient(app)
+
+ADMIN_COMPANY_ID = 1
+
+
+@pytest.fixture(autouse=True)
+def admin_company():
+    # El admin de estas pruebas administra una sola empresa, la 1. Las
+    # pruebas de aislamiento entre empresas viven en test_company_isolation.
+    with patch(
+        "server.src.middlewares.company_context.company_repository"
+    ) as repository:
+        repository.admin_company_ids.return_value = [ADMIN_COMPANY_ID]
+        repository.admin_has_company.return_value = True
+        yield repository
 
 
 def _admin_token():
@@ -217,7 +232,7 @@ def test_list_recent_receipts_success(mock_list_receipts):
 
     assert response.status_code == 200
     assert len(response.json()["receipts"]) == 1
-    mock_list_receipts.assert_called_once_with(20)
+    mock_list_receipts.assert_called_once_with(ADMIN_COMPANY_ID, 20)
 
 
 def test_list_recent_receipts_requires_admin_role():
@@ -281,6 +296,7 @@ def _receipt_row(employee_id=7):
         "employee_id": employee_id,
         "employee_name": "Ana Lopez",
         "employee_email": "ana@cen.com",
+        "company_id": ADMIN_COMPANY_ID,
         "period_start": date(2026, 9, 1),
         "period_end": date(2026, 9, 30),
         "periodicity": "mensual",
@@ -447,7 +463,9 @@ def test_lookup_finds_an_existing_receipt(mock_lookup):
 
     assert response.status_code == 200
     assert response.json()["receipt"]["id"] == 12
-    assert mock_lookup.call_args[0] == (3, date(2026, 9, 1), date(2026, 9, 30))
+    assert mock_lookup.call_args[0] == (
+        3, date(2026, 9, 1), date(2026, 9, 30), ADMIN_COMPANY_ID
+    )
 
 
 @patch("server.src.routes.payroll_routes.payroll_repository.get_receipt_by_period")

@@ -305,3 +305,44 @@ def test_login_ignores_an_expired_lock(mock_get_employee, isolate_login_counters
     )
 
     assert response.status_code == 200
+
+
+@patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
+def test_login_blocks_employees_of_a_deactivated_company(mock_get_employee):
+    mock_get_employee.return_value = {
+        "id": 5,
+        "email": "ana@norte.mx",
+        "role": "employee",
+        "password_hash": hash_password("clave123"),
+        "is_active": True,
+        "company_id": 2,
+        "company_is_active": False,
+    }
+
+    response = client.post(
+        "/auth/login",
+        json={"email": "ana@norte.mx", "password": "clave123"}
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Tu empresa esta desactivada"
+
+
+@patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
+def test_login_of_accounts_without_company(mock_get_employee):
+    mock_get_employee.return_value = {
+        "id": 20,
+        "email": "laura@grupo.mx",
+        "role": "owner",
+        "password_hash": hash_password("clave123"),
+        "company_id": None,
+        "company_is_active": None,
+    }
+
+    response = client.post(
+        "/auth/login",
+        json={"email": "laura@grupo.mx", "password": "clave123"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "owner"

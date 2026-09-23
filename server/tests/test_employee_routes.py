@@ -1,4 +1,6 @@
 from unittest.mock import patch
+
+import pytest
 from psycopg2 import errors as psycopg2_errors
 from fastapi.testclient import TestClient
 
@@ -6,6 +8,20 @@ from server.src.main import app
 from server.src.middlewares.auth_middleware import create_access_token
 
 client = TestClient(app)
+
+ADMIN_COMPANY_ID = 1
+
+
+@pytest.fixture(autouse=True)
+def admin_company():
+    # El admin de estas pruebas administra una sola empresa, la 1. Las
+    # pruebas de aislamiento entre empresas viven en test_company_isolation.
+    with patch(
+        "server.src.middlewares.company_context.company_repository"
+    ) as repository:
+        repository.admin_company_ids.return_value = [ADMIN_COMPANY_ID]
+        repository.admin_has_company.return_value = True
+        yield repository
 
 
 def _admin_token():
@@ -229,7 +245,7 @@ def test_deactivate_employee_success(mock_set_active):
 
     assert response.status_code == 200
     assert response.json()["is_active"] is False
-    assert mock_set_active.call_args[0] == (3, False)
+    assert mock_set_active.call_args[0] == (3, False, ADMIN_COMPANY_ID)
 
 
 @patch("server.src.routes.employee_routes.payroll_repository.set_employee_active")
@@ -269,7 +285,7 @@ def test_activate_employee_success(mock_set_active):
 
     assert response.status_code == 200
     assert response.json()["is_active"] is True
-    assert mock_set_active.call_args[0] == (3, True)
+    assert mock_set_active.call_args[0] == (3, True, ADMIN_COMPANY_ID)
 
 
 def test_activate_employee_requires_admin_role():
@@ -310,7 +326,8 @@ def test_reset_password_returns_a_temporary_one(mock_reset):
     assert body["employee_id"] == 3
     assert len(body["temporary_password"]) >= 8
 
-    employee_id, password_hash = mock_reset.call_args[0]
+    employee_id, password_hash, company_id = mock_reset.call_args[0]
+    assert company_id == ADMIN_COMPANY_ID
     assert employee_id == 3
     assert password_hash != body["temporary_password"]
     assert password_hash.startswith("$2b$")
@@ -360,3 +377,32 @@ def test_reset_password_requires_admin_role():
     )
 
     assert response.status_code == 403
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.update_employee")
+def test_admins_can_have_no_salary(mock_update):
+    mock_update.return_value = {
+        "id": 4, "name": "Pablo", "email": "pablo@cen.com",
+        "role": "admin", "base_salary": None, "is_active": True
+    }
+
+    response = client.put(
+        "/employees/4",
+        json={"name": "Pablo", "email": "pablo@cen.com", "role": "admin",
+              "base_salary": None},
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["base_salary"] is None
+
+
+def test_employees_need_a_salary():
+    response = client.put(
+        "/employees/4",
+        json={"name": "Ana", "email": "ana@cen.com", "role": "employee",
+              "base_salary": None},
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422

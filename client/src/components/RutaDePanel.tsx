@@ -2,11 +2,17 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import DashboardTopbar from "./DashboardTopbar";
 import EsqueletoPanel from "./EsqueletoPanel";
-import { getRole } from "../services/authSession";
+import { getRole, UserRole } from "../services/authSession";
+
+const CONTEXTOS: Record<UserRole, string> = {
+  superadmin: "Administración de la plataforma",
+  owner: "Panel del dueño",
+  admin: "Panel de administración",
+  employee: "Portal del empleado"
+};
 
 export default function RutaDePanel() {
-  const contexto =
-    getRole() === "admin" ? "Panel de administración" : "Portal del empleado";
+  const contexto = CONTEXTOS[getRole() ?? "employee"];
 
   return (
     <div className="dashboard-shell">

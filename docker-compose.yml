@@ -33,6 +33,9 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@cen.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin1234}
+      SUPERADMIN_NAME: ${SUPERADMIN_NAME:-Superadministrador}
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
       SMTP_SERVER: ${SMTP_SERVER:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}

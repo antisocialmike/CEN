@@ -1,29 +1,46 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 
 from ..controllers.payroll_controller import PayrollService
 from ..controllers.receipt_pdf import (
     build_receipt_pdf,
     build_receipt_response_headers,
 )
-from ..middlewares.auth_middleware import get_current_user, require_role
+from ..middlewares.auth_middleware import get_current_user
+from ..middlewares.company_context import (
+    COMPANY_HEADER,
+    require_admin_company,
+    resolve_admin_company,
+)
 from ..models.payroll_model import (
     PayrollCalculationRequest,
     PeriodLookupRequest,
 )
-from ..repositories.payroll_repository import payroll_repository
+from ..repositories.payroll_repository import (
+    ReceiptOfAnotherCompanyError,
+    payroll_repository,
+)
 
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
 payroll_service = PayrollService()
 
 RECENT_RECEIPTS_LIMIT = 20
 
+RECEIPT_NOT_FOUND = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="Recibo no encontrado",
+)
+
 
 @router.post("/calculate")
 def calculate_payroll(
     request: PayrollCalculationRequest,
-    user: dict = Depends(require_role("admin")),
+    user: dict = Depends(require_admin_company),
 ):
-    employee = payroll_repository.get_employee_by_id(request.employee_id)
+    employee = payroll_repository.get_employee_by_id(
+        request.employee_id, user["company_id"]
+    )
     if employee is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -47,13 +64,20 @@ def calculate_payroll(
             detail=str(error),
         ) from error
 
-    saved = payroll_repository.save_payroll_receipt({
-        "employee_id": request.employee_id,
-        "period_start": request.period_start,
-        "period_end": request.period_end(),
-        "processed_by": user["username"],
-        **breakdown,
-    })
+    try:
+        saved = payroll_repository.save_payroll_receipt({
+            "employee_id": request.employee_id,
+            "company_id": user["company_id"],
+            "period_start": request.period_start,
+            "period_end": request.period_end(),
+            "processed_by": user["username"],
+            **breakdown,
+        })
+    except ReceiptOfAnotherCompanyError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ese periodo ya tiene un recibo emitido por otra empresa",
+        )
     return {
         "receipt_id": saved["id"],
         "created": saved["created"],
@@ -69,17 +93,20 @@ def calculate_payroll(
 @router.post("/lookup")
 def lookup_receipt(
     request: PeriodLookupRequest,
-    user: dict = Depends(require_role("admin")),
+    user: dict = Depends(require_admin_company),
 ):
     receipt = payroll_repository.get_receipt_by_period(
-        request.employee_id, request.period_start, request.period_end()
+        request.employee_id, request.period_start, request.period_end(),
+        user["company_id"],
     )
     return {"receipt": receipt}
 
 
 @router.get("/receipts")
-def list_recent_receipts(user: dict = Depends(require_role("admin"))):
-    receipts = payroll_repository.list_recent_receipts(RECENT_RECEIPTS_LIMIT)
+def list_recent_receipts(user: dict = Depends(require_admin_company)):
+    receipts = payroll_repository.list_recent_receipts(
+        user["company_id"], RECENT_RECEIPTS_LIMIT
+    )
     return {"receipts": receipts}
 
 
@@ -100,20 +127,21 @@ def get_my_receipts(user: dict = Depends(get_current_user)):
 def download_receipt(
     receipt_id: int,
     user: dict = Depends(get_current_user),
+    company_id: Optional[int] = Header(default=None, alias=COMPANY_HEADER),
 ):
     receipt = payroll_repository.get_receipt_by_id(receipt_id)
     if receipt is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recibo no encontrado",
-        )
+        raise RECEIPT_NOT_FOUND
 
     is_owner = receipt["employee_id"] == user.get("employee_id")
-    if user.get("role") != "admin" and not is_owner:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Este recibo no es tuyo",
-        )
+    if not is_owner:
+        if user.get("role") != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Este recibo no es tuyo",
+            )
+        if receipt["company_id"] != resolve_admin_company(user, company_id):
+            raise RECEIPT_NOT_FOUND
 
     return Response(
         content=build_receipt_pdf(receipt),
