@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -16,6 +17,7 @@ import {
   Lock,
   Scales,
   ShieldCheck,
+  SignOut,
   UsersThree
 } from "@phosphor-icons/react";
 import { LogoMark } from "../components/icons";
@@ -27,6 +29,14 @@ import {
   type Periodicidad
 } from "../components/landing/calculoNomina";
 import { formatCurrency } from "../services/format";
+import { logout } from "../services/authService";
+import {
+  dashboardPathForRole,
+  getInitials,
+  getName,
+  getRoleLabel,
+  isAuthenticated
+} from "../services/authSession";
 import { EASE_OUT } from "../motion/variants";
 import "lenis/dist/lenis.css";
 import "../styles/skin-landing.css";
@@ -284,7 +294,20 @@ export default function LandingPage() {
   const seccionActiva = useSeccionVisible();
   useScrollSuave(!reduce);
 
-  const irALogin = () => startTransition(() => navigate("/login"));
+  // Se lee al montar: aqui la sesion solo cambia con el boton de salir de la propia landing.
+  const [conSesion, setConSesion] = useState(isAuthenticated);
+  const botonEntrar = useRef<HTMLButtonElement>(null);
+
+  const entrar = () =>
+    startTransition(() => navigate(conSesion ? dashboardPathForRole() : "/login"));
+  const textoEntrar = conSesion ? "Ir a mi panel" : "Iniciar sesión";
+
+  function cerrarSesion() {
+    logout();
+    setConSesion(false);
+    // El boton de salir desaparece; el de entrar sigue en su lugar y recibe el foco.
+    botonEntrar.current?.focus();
+  }
 
   const ejemplo = useMemo(
     () => desglosar(BRUTO_EJEMPLO, PERIODICIDAD_EJEMPLO),
@@ -308,7 +331,7 @@ export default function LandingPage() {
         Ir al contenido
       </a>
 
-      <header className="rv-nav">
+      <header className="rv-nav" data-sesion={conSesion ? "" : undefined}>
         <div className="rv-wrap rv-nav-inner">
           <Link className="brand-logo" to="/">
             <LogoMark />
@@ -333,12 +356,36 @@ export default function LandingPage() {
 
           <ThemeToggle />
 
+          {conSesion && (
+            <span
+              className="user-chip-avatar rv-nav-avatar"
+              role="img"
+              aria-label={`Sesión de ${getName() || getRoleLabel()}`}
+              title={getName() || getRoleLabel()}
+            >
+              {getInitials()}
+            </span>
+          )}
+
           <button
+            ref={botonEntrar}
             className="btn btn-rosa"
-            onClick={irALogin}
+            onClick={entrar}
           >
-            Iniciar sesión
+            {textoEntrar}
           </button>
+
+          {conSesion && (
+            // aria-label: en pantallas angostas theme.css oculta el texto de .logout-link.
+            <button
+              className="logout-link"
+              aria-label="Cerrar sesión"
+              onClick={cerrarSesion}
+            >
+              <SignOut weight="bold" aria-hidden="true" />
+              <span>Cerrar sesión</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -359,9 +406,9 @@ export default function LandingPage() {
               <div className="rv-hero-acciones">
                 <button
                   className="btn btn-rosa"
-                  onClick={irALogin}
+                  onClick={entrar}
                 >
-                  Iniciar sesión
+                  {textoEntrar}
                 </button>
                 <a className="btn btn-line" href="#calculo">
                   Ver el cálculo
@@ -564,9 +611,9 @@ export default function LandingPage() {
             <p>Entra para calcular la nómina de tu equipo o para consultar tus recibos.</p>
             <button
               className="btn btn-rosa"
-              onClick={irALogin}
+              onClick={entrar}
             >
-              Iniciar sesión
+              {textoEntrar}
               <ArrowRight weight="bold" />
             </button>
           </div>

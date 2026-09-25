@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import DashboardTopbar from "./DashboardTopbar";
 import EsqueletoPanel from "./EsqueletoPanel";
 import { getRole, UserRole } from "../services/authSession";
+import { useAdminCompany, useAdminCompanyStatus } from "./adminCompanyContext";
 
 const CONTEXTOS: Record<UserRole, string> = {
   superadmin: "Administración de la plataforma",
@@ -13,6 +14,8 @@ const CONTEXTOS: Record<UserRole, string> = {
 
 export default function RutaDePanel() {
   const contexto = CONTEXTOS[getRole() ?? "employee"];
+  const empresa = useAdminCompanyStatus();
+  const empresaActiva = useAdminCompany()?.active.id;
 
   return (
     <div className="dashboard-shell">
@@ -22,9 +25,14 @@ export default function RutaDePanel() {
       <DashboardTopbar context={contexto} />
 
       <main className="dashboard-content" id="contenido">
-        <Suspense fallback={<EsqueletoPanel />}>
-          <Outlet />
-        </Suspense>
+        {empresa === "loading" ? (
+          <EsqueletoPanel />
+        ) : (
+          // La clave desmonta la pagina al cambiar de empresa: no queda estado de la anterior.
+          <Suspense key={empresaActiva} fallback={<EsqueletoPanel />}>
+            <Outlet />
+          </Suspense>
+        )}
       </main>
     </div>
   );

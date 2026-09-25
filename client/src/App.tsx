@@ -6,6 +6,7 @@ import AppLoader from "./components/AppLoader";
 import PageTransition from "./components/PageTransition";
 import { TunelProvider } from "./components/TransicionTunel";
 import RutaDePanel from "./components/RutaDePanel";
+import AdminCompanyGate, { AdminCompanyReadyPage } from "./components/AdminCompanyGate";
 import { claveDeTransicion } from "./routes/claveDeTransicion";
 
 import LoginPage from "./pages/LoginPage";
@@ -20,6 +21,8 @@ const EmployeeDashboardPage = lazy(() => import("./pages/EmployeeDashboardPage")
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
 const SuperadminOwnersPage = lazy(() => import("./pages/SuperadminOwnersPage"));
 const SuperadminCompaniesPage = lazy(() => import("./pages/SuperadminCompaniesPage"));
+const OwnerDashboardPage = lazy(() => import("./pages/OwnerDashboardPage"));
+const OwnerCompaniesPage = lazy(() => import("./pages/OwnerCompaniesPage"));
 
 // Se monta junto al contenido de la Suspense: su efecto solo corre cuando ya resolvio lo perezoso.
 function AvisaAlMontar({ alMontar }: { alMontar: () => void }) {
@@ -55,17 +58,28 @@ export default function App() {
               </Route>
 
               <Route element={<ProtectedRoute allowedRole="admin" />}>
-                <Route element={<RutaDePanel />}>
-                  <Route path="/admin" element={<AdminDashboardPage />} />
-                  <Route path="/admin/empleados" element={<EmployeesPage />} />
+                <Route element={<AdminCompanyGate />}>
+                  <Route element={<RutaDePanel />}>
+                    <Route path="/admin" element={<AdminDashboardPage />} />
+                    <Route path="/admin/empleados" element={<EmployeesPage />} />
+                  </Route>
+                  <Route element={<AdminCompanyReadyPage />}>
+                    <Route path="/admin/nuevo-empleado" element={<SignupPage />} />
+                  </Route>
                 </Route>
-                <Route path="/admin/nuevo-empleado" element={<SignupPage />} />
               </Route>
 
               <Route element={<ProtectedRoute allowedRole="superadmin" />}>
                 <Route element={<RutaDePanel />}>
                   <Route path="/superadmin" element={<SuperadminOwnersPage />} />
                   <Route path="/superadmin/empresas" element={<SuperadminCompaniesPage />} />
+                </Route>
+              </Route>
+
+              <Route element={<ProtectedRoute allowedRole="owner" />}>
+                <Route element={<RutaDePanel />}>
+                  <Route path="/dueno" element={<OwnerDashboardPage />} />
+                  <Route path="/dueno/empresas" element={<OwnerCompaniesPage />} />
                 </Route>
               </Route>
 

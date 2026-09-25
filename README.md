@@ -106,6 +106,20 @@ ejecutar. Apuntar a otra API exige reconstruir la imagen:
 VITE_API_BASE_URL=https://api.ejemplo.mx docker compose up --build web
 ```
 
+Postgres solo lee `DB_USER` y `DB_PASSWORD` la primera vez, cuando crea el
+volumen `postgres_data`. Si despues se cambia `DB_PASSWORD` en `.env`, la
+base conserva la clave vieja, la API no puede conectarse y el login
+responde `503`. Para alinear la base con `.env` sin perder datos:
+
+```
+docker compose up -d db
+docker compose exec -T db sh -c 'echo "ALTER ROLE :\"usr\" WITH PASSWORD :'"'"'pw'"'"';" | psql -v usr="$POSTGRES_USER" -v pw="$POSTGRES_PASSWORD" -U "$POSTGRES_USER" -d postgres'
+docker compose restart api
+```
+
+`GET /health` comprueba la conexion a la base, asi que ese caso aparece
+como `api` en estado `unhealthy` en `docker compose ps`.
+
 ## Ejecucion local
 
 ```
@@ -248,7 +262,9 @@ capa.
 - `GET /payroll/my-receipts`: recibos del empleado dueno del token.
 - `GET /payroll/receipts/{id}/pdf`: descarga el comprobante en PDF. Un
   administrador puede bajar cualquiera; un empleado, solo los suyos.
-- `GET /health`: verificacion de disponibilidad del servicio.
+- `GET /health`: verificacion de disponibilidad del servicio y de la base
+  de datos; responde `503` si la base no esta disponible y, mientras tanto,
+  reintenta las migraciones y las cuentas iniciales que quedaron pendientes.
 
 ## Pruebas
 

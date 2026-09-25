@@ -56,6 +56,11 @@ def close_pool() -> None:
             _pool = None
 
 
+def ping() -> None:
+    with db_cursor() as cursor:
+        cursor.execute("SELECT 1")
+
+
 @contextmanager
 def db_cursor() -> Iterator:
     pool = get_pool()

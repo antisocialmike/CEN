@@ -3,19 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Buildings, Plus, UsersThree, X } from "@phosphor-icons/react";
 import { rowVariants, stackVariants, useStill } from "../motion/variants";
-import FormField from "../components/FormField";
 import SelectField from "../components/SelectField";
 import ErrorMessage from "../components/ErrorMessage";
 import SuccessMessage from "../components/SuccessMessage";
 import SubmitButton from "../components/SubmitButton";
 import Skeleton from "../components/Skeleton";
+import CompanyFields from "../components/CompanyFields";
+import { companyMeta, toCompanyInput } from "../services/companyData";
 import {
   assignCompanyOwner,
   Company,
   CompanyInput,
   createCompany,
-  ENTIDADES_FEDERATIVAS,
-  EntidadFederativa,
   listCompanies,
   listOwners,
   Owner,
@@ -32,100 +31,12 @@ const emptyCompany: CompanyInput = {
   entidadFederativa: ""
 };
 
-const ENTIDAD_OPTIONS = [
-  { value: "", label: "Sin definir" },
-  ...ENTIDADES_FEDERATIVAS.map((entidad) => ({ value: entidad.value, label: entidad.label }))
-];
-
-function entidadLabel(value: EntidadFederativa | null): string | null {
-  return ENTIDADES_FEDERATIVAS.find((entidad) => entidad.value === value)?.label ?? null;
-}
-
-function companyMeta(company: Company): string {
-  const parts = [
-    company.trade_name,
-    company.rfc ? "RFC " + company.rfc : "Sin RFC",
-    entidadLabel(company.entidad_federativa)
-  ];
-  return parts.filter(Boolean).join(" · ");
-}
-
-function toInput(company: Company): CompanyInput {
-  return {
-    legalName: company.legal_name,
-    tradeName: company.trade_name ?? "",
-    rfc: company.rfc ?? "",
-    registroPatronal: company.registro_patronal ?? "",
-    entidadFederativa: company.entidad_federativa ?? ""
-  };
-}
-
 function saveErrorMessage(error: unknown): string {
   const status = getStatusCode(error);
   if (status === 409) return "Ese RFC ya pertenece a otra empresa.";
   if (status === 422) return "Revisa el RFC (12 o 13 caracteres) y el registro patronal (letra y 10 dígitos).";
   if (status === 404) return "El dueño elegido ya no está activo. Recarga la página.";
   return "No se pudieron guardar los datos de la empresa. Inténtalo de nuevo.";
-}
-
-interface CompanyFieldsProps {
-  idPrefix: string;
-  value: CompanyInput;
-  onChange: (value: CompanyInput) => void;
-}
-
-function CompanyFields({ idPrefix, value, onChange }: CompanyFieldsProps) {
-  return (
-    <>
-      <FormField
-        id={idPrefix + "-legal-name"}
-        label="Razón social"
-        type="text"
-        value={value.legalName}
-        onChange={(legalName) => onChange({ ...value, legalName })}
-        placeholder="Grupo Norte SA de CV"
-        maxLength={200}
-        required
-      />
-      <FormField
-        id={idPrefix + "-trade-name"}
-        label="Nombre comercial"
-        type="text"
-        value={value.tradeName}
-        onChange={(tradeName) => onChange({ ...value, tradeName })}
-        maxLength={150}
-      />
-      <FormField
-        id={idPrefix + "-rfc"}
-        label="RFC"
-        type="text"
-        value={value.rfc}
-        onChange={(rfc) => onChange({ ...value, rfc: rfc.toUpperCase() })}
-        maxLength={13}
-        hint="Opcional por ahora. 12 caracteres para persona moral, 13 para física."
-      />
-      <FormField
-        id={idPrefix + "-registro-patronal"}
-        label="Registro patronal IMSS"
-        type="text"
-        value={value.registroPatronal}
-        onChange={(registroPatronal) =>
-          onChange({ ...value, registroPatronal: registroPatronal.toUpperCase() })
-        }
-        maxLength={11}
-      />
-      <SelectField
-        id={idPrefix + "-entidad"}
-        label="Estado"
-        value={value.entidadFederativa}
-        onChange={(entidad) =>
-          onChange({ ...value, entidadFederativa: entidad as EntidadFederativa | "" })
-        }
-        options={ENTIDAD_OPTIONS}
-        hint="Define el impuesto estatal sobre nómina."
-      />
-    </>
-  );
 }
 
 export default function SuperadminCompaniesPage() {
@@ -208,7 +119,7 @@ export default function SuperadminCompaniesPage() {
     clearMessages();
     setIsCreating(false);
     setEditingId(company.id);
-    setEditForm(toInput(company));
+    setEditForm(toCompanyInput(company));
   }
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {

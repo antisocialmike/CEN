@@ -16,7 +16,8 @@ INSERT_MIGRATION = "INSERT INTO schema_migrations (filename) VALUES (%s);"
 # Una persona pertenece a la empresa si es su empleado o si la administra con
 # una asignacion activa. Los duenos y el superadmin nunca entran aqui.
 SELECT_EMPLOYEE_BY_ID = (
-    "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active "
+    "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active, "
+    "e.created_at "
     "FROM employees e WHERE e.id = %s "
     "AND e.role IN ('admin', 'employee') AND (e.company_id = %s OR EXISTS ("
     "SELECT 1 FROM company_admins ca WHERE ca.admin_id = e.id "
@@ -83,8 +84,12 @@ ASSIGN_ADMIN = (
 RELEASE_ADMIN = (
     "UPDATE company_admins SET is_active = FALSE WHERE admin_id = %s;"
 )
+# La fecha de baja solo se toca al cambiar de estado: dar de baja dos veces
+# no mueve la primera, y reactivar la borra.
 UPDATE_EMPLOYEE_ACTIVE = (
-    "UPDATE employees SET is_active = %s WHERE id = %s "
+    "UPDATE employees SET is_active = %s, deactivated_at = CASE "
+    "WHEN %s THEN NULL WHEN is_active THEN NOW() ELSE deactivated_at END "
+    "WHERE id = %s "
     "RETURNING id, name, email, role, base_salary, is_active;"
 )
 INSERT_EMPLOYEE = (
@@ -165,6 +170,38 @@ UPSERT_RECEIPT = (
     "updated_at = NOW() "
     "WHERE payroll_receipts.company_id = EXCLUDED.company_id "
     "RETURNING id, (xmax = 0) AS created;"
+)
+# Parametros del costo patronal vigentes en una fecha.
+SELECT_COST_PARAMETERS = (
+    "SELECT key, value FROM employer_cost_parameters "
+    "WHERE valid_from <= %s AND (valid_to IS NULL OR valid_to >= %s);"
+)
+SELECT_CEAV_RATES = (
+    "SELECT minimum_wage, upper_uma, rate FROM ceav_employer_rates "
+    "WHERE valid_from <= %s AND (valid_to IS NULL OR valid_to >= %s);"
+)
+SELECT_STATE_PAYROLL_TAX = (
+    "SELECT s.rate FROM companies c "
+    "JOIN state_payroll_tax_rates s ON s.entidad = c.entidad_federativa "
+    "WHERE c.id = %s AND s.valid_from <= %s "
+    "AND (s.valid_to IS NULL OR s.valid_to >= %s);"
+)
+SELECT_RISK_PREMIUM = (
+    "SELECT rate FROM company_risk_premiums WHERE company_id = %s "
+    "AND valid_from <= %s AND (valid_to IS NULL OR valid_to >= %s);"
+)
+DELETE_EMPLOYER_COST = (
+    "DELETE FROM payroll_employer_costs WHERE receipt_id = %s;"
+)
+INSERT_EMPLOYER_COST = (
+    "INSERT INTO payroll_employer_costs (receipt_id, daily_salary, "
+    "integration_factor, sbc_daily, uma_daily, days, total, missing) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"
+)
+INSERT_EMPLOYER_COST_ITEM = (
+    "INSERT INTO payroll_employer_cost_items (receipt_id, component, "
+    "group_key, description, base, rate, amount, position) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"
 )
 DELETE_RECEIPT_ITEMS = (
     "DELETE FROM payroll_receipt_items WHERE receipt_id = %s;"
@@ -251,7 +288,9 @@ class PayrollRepository:
         with db_cursor() as cursor:
             if self._lock_member(cursor, employee_id, company_id) is None:
                 return None
-            cursor.execute(UPDATE_EMPLOYEE_ACTIVE, (is_active, employee_id))
+            cursor.execute(
+                UPDATE_EMPLOYEE_ACTIVE, (is_active, is_active, employee_id)
+            )
             return dict(cursor.fetchone())
 
     def get_password_hash(self, employee_id: int) -> Optional[str]:
@@ -371,7 +410,62 @@ class PayrollRepository:
                     position,
                 ))
 
+            # El costo patronal se reemplaza junto con el recibo: si se
+            # recalcula un periodo, no queda el costo del calculo anterior.
+            cursor.execute(DELETE_EMPLOYER_COST, (receipt_id,))
+            employer_cost = receipt_data.get("employer_cost")
+            if employer_cost is not None:
+                self._insert_employer_cost(cursor, receipt_id, employer_cost)
+
             return {"id": receipt_id, "created": bool(saved["created"])}
+
+    def _insert_employer_cost(
+        self, cursor, receipt_id: int, employer_cost: dict
+    ) -> None:
+        cursor.execute(INSERT_EMPLOYER_COST, (
+            receipt_id,
+            employer_cost["daily_salary"],
+            employer_cost["integration_factor"],
+            employer_cost["sbc_daily"],
+            employer_cost["uma_daily"],
+            employer_cost["days"],
+            employer_cost["total"],
+            list(employer_cost["missing"]),
+        ))
+        for item in employer_cost["items"]:
+            cursor.execute(INSERT_EMPLOYER_COST_ITEM, (
+                receipt_id,
+                item["component"],
+                item["group_key"],
+                item["description"],
+                item["base"],
+                item["rate"],
+                item["amount"],
+                item["position"],
+            ))
+
+    def employer_cost_parameters(self, company_id: int, on_date) -> dict:
+        """Todo lo vigente en `on_date` para calcular el costo patronal."""
+        with db_cursor() as cursor:
+            cursor.execute(SELECT_COST_PARAMETERS, (on_date, on_date))
+            rates = {
+                row["key"]: row["value"]
+                for row in map(dict, cursor.fetchall())
+            }
+            cursor.execute(SELECT_CEAV_RATES, (on_date, on_date))
+            ceav = [dict(row) for row in cursor.fetchall()]
+            cursor.execute(
+                SELECT_STATE_PAYROLL_TAX, (company_id, on_date, on_date)
+            )
+            isn = cursor.fetchone()
+            cursor.execute(SELECT_RISK_PREMIUM, (company_id, on_date, on_date))
+            risk = cursor.fetchone()
+        return {
+            "rates": rates,
+            "ceav_brackets": ceav,
+            "isn_rate": dict(isn)["rate"] if isn else None,
+            "risk_rate": dict(risk)["rate"] if risk else None,
+        }
 
     def _lock_member(
         self, cursor, employee_id: int, company_id: int

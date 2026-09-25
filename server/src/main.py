@@ -1,14 +1,16 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from psycopg2 import OperationalError
 from psycopg2.errors import ExclusionViolation, UniqueViolation
 
-from .bootstrap import bootstrap_database
+from .bootstrap import bootstrap_database, database_ready
 from .config.database import close_pool
 from .config.settings import ALLOWED_ORIGINS
+from .routes.admin_routes import router as admin_router
+from .routes.analytics_routes import router as analytics_router
 from .routes.auth_routes import router as auth_router
 from .routes.employee_routes import router as employee_router
 from .routes.owner_routes import router as owner_router
@@ -56,11 +58,13 @@ async def duplicated_record(request: Request, exc: UniqueViolation):
 
 @app.exception_handler(ExclusionViolation)
 async def overlapping_period(request: Request, exc: ExclusionViolation):
+    if exc.diag.constraint_name == "company_risk_premiums_no_overlap":
+        detail = "Ya hay una prima de riesgo registrada desde esa fecha"
+    else:
+        detail = "Ese empleado ya tiene un recibo que cubre esos dias"
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
-        content={
-            "detail": "Ese empleado ya tiene un recibo que cubre esos dias"
-        },
+        content={"detail": detail},
     )
 
 
@@ -69,8 +73,13 @@ app.include_router(employee_router)
 app.include_router(payroll_router)
 app.include_router(superadmin_router)
 app.include_router(owner_router)
+app.include_router(analytics_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")
-def health_check():
+def health_check(response: Response):
+    if not database_ready():
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "error", "detail": "Base de datos no disponible"}
     return {"status": "ok"}

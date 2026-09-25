@@ -17,6 +17,7 @@ from ..models.platform_model import (
     AdminInviteRequest,
     CompanyUpdateRequest,
     OwnerCompany,
+    RiskPremiumRequest,
 )
 from ..repositories.company_repository import (
     NotFoundError,
@@ -84,6 +85,20 @@ def _set_active(user: dict, company_id: int, is_active: bool) -> dict:
     ensure_owner_company(user, company_id)
     company_repository.set_company_active(
         company_id, is_active, user["employee_id"]
+    )
+    return _owned_company(user, company_id)
+
+
+@router.put("/companies/{company_id}/risk-premium", response_model=OwnerCompany)
+def set_risk_premium(
+    company_id: int,
+    request: RiskPremiumRequest,
+    user: dict = Depends(require_owner),
+):
+    ensure_owner_company(user, company_id)
+    company_repository.set_risk_premium(
+        company_id, request.rate_percent / 100, request.valid_from,
+        user["employee_id"],
     )
     return _owned_company(user, company_id)
 

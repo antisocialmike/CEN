@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import LandingPage from "./LandingPage";
 import { desglosar } from "../components/landing/calculoNomina";
+import { getToken, saveSession } from "../services/authSession";
 
 beforeAll(() => {
   vi.stubGlobal(
@@ -147,6 +149,83 @@ describe("LandingPage", () => {
   it("el aviso afirma que no hay cookies, y eso tiene que seguir siendo cierto", () => {
     montar();
     expect(screen.getByText(/no usa cookies/i)).toBeInTheDocument();
+  });
+});
+
+describe("la sesion en la landing", () => {
+  const sesionDeAna = {
+    accessToken: "token-abc",
+    role: "employee" as const,
+    name: "Ana Ramírez",
+    employeeId: 7,
+    mustChangePassword: false
+  };
+
+  // Un JWT cuyo exp ya paso: isAuthenticated() lo descarta y limpia la sesion.
+  const tokenVencido = `x.${btoa(JSON.stringify({ exp: 1 }))}.y`;
+
+  function montarConRutas() {
+    return render(
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<p>pantalla de login</p>} />
+          <Route path="/empleado" element={<p>panel de empleado</p>} />
+        </Routes>
+      </MemoryRouter>
+    );
+  }
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("sin sesion los tres botones invitan a entrar y llevan al login", async () => {
+    const usuario = userEvent.setup();
+    montarConRutas();
+
+    const botones = screen.getAllByRole("button", { name: "Iniciar sesión" });
+    expect(botones).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: "Cerrar sesión" })).toBeNull();
+
+    await usuario.click(botones[0]);
+    expect(await screen.findByText("pantalla de login")).toBeInTheDocument();
+  });
+
+  it("con sesion los tres botones llevan al panel y se ven las iniciales", async () => {
+    saveSession(sesionDeAna);
+    const usuario = userEvent.setup();
+    montarConRutas();
+
+    const botones = screen.getAllByRole("button", { name: "Ir a mi panel" });
+    expect(botones).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: "Iniciar sesión" })).toBeNull();
+    expect(screen.getByRole("img", { name: "Sesión de Ana Ramírez" })).toHaveTextContent("AR");
+
+    await usuario.click(botones[1]);
+    expect(await screen.findByText("panel de empleado")).toBeInTheDocument();
+  });
+
+  it("con el token vencido la sesion se limpia y vuelve a pedir entrar", () => {
+    saveSession({ ...sesionDeAna, accessToken: tokenVencido });
+    montarConRutas();
+
+    expect(screen.getAllByRole("button", { name: "Iniciar sesión" })).toHaveLength(3);
+    expect(getToken()).toBeNull();
+  });
+
+  it("cerrar sesion la borra ahi mismo y deja el foco en el boton de entrar", async () => {
+    saveSession(sesionDeAna);
+    const usuario = userEvent.setup();
+    montarConRutas();
+
+    await usuario.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+
+    expect(getToken()).toBeNull();
+    const botones = screen.getAllByRole("button", { name: "Iniciar sesión" });
+    expect(botones).toHaveLength(3);
+    expect(botones[0]).toHaveFocus();
+    expect(screen.queryByRole("img", { name: /Sesión de/ })).toBeNull();
   });
 });
 

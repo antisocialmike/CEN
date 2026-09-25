@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   currentPeriod,
+  formatChange,
   formatCurrency,
+  formatCurrencyCompact,
+  formatMonthShort,
   formatDate,
   formatDateShort,
   formatMonth,
@@ -101,5 +104,22 @@ describe("periodStartsOf", () => {
 
   it("respeta un febrero mas corto", () => {
     expect(periodStartsOf("semanal", "2026-02")).toHaveLength(4);
+  });
+});
+
+describe("formatos del tablero del dueño", () => {
+  it("compacta importes grandes para los ejes", () => {
+    expect(formatCurrencyCompact(1250000)).toMatch(/1\.3\s?M/);
+  });
+
+  it("pone signo a la variación y dice cuando no hay con qué comparar", () => {
+    expect(formatChange("25.0")).toBe("+25.0 %");
+    expect(formatChange("-3.5")).toBe("-3.5 %");
+    expect(formatChange("0.0")).toBe("0.0 %");
+    expect(formatChange(null)).toBe("Sin periodo previo");
+  });
+
+  it("abrevia el mes con su año", () => {
+    expect(formatMonthShort("2026-09-01")).toMatch(/sept? 26/);
   });
 });

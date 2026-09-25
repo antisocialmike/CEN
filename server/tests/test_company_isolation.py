@@ -60,6 +60,21 @@ def admin_of():
         yield configure
 
 
+@pytest.fixture(autouse=True)
+def no_employer_cost_parameters():
+    # Sin parametros el costo patronal queda pendiente; sus cifras se prueban
+    # en test_employer_cost y en test_employer_cost_routes.
+    with patch(
+        "server.src.routes.payroll_routes.payroll_repository"
+        ".employer_cost_parameters",
+        return_value={
+            "rates": {}, "ceav_brackets": [],
+            "isn_rate": None, "risk_rate": None,
+        },
+    ):
+        yield
+
+
 # --- Resolver la empresa activa ---------------------------------------------
 
 def test_an_admin_of_a_single_company_needs_no_header(admin_of):
@@ -340,3 +355,24 @@ def test_only_admins_operate_payroll(role, path):
     response = client.get(path, headers=_headers(role, company=COMPANY_A))
 
     assert response.status_code == 403
+
+
+# --- Las empresas del admin --------------------------------------------------
+
+@patch("server.src.routes.admin_routes.company_repository")
+def test_an_admin_lists_the_companies_it_can_choose(repository):
+    repository.list_admin_companies.return_value = [
+        {"id": COMPANY_A, "legal_name": "Grupo Norte", "trade_name": None},
+    ]
+
+    response = client.get("/admin/companies", headers=_headers(employee_id=10))
+
+    assert response.status_code == 200
+    assert response.json()[0]["legal_name"] == "Grupo Norte"
+    repository.list_admin_companies.assert_called_once_with(10)
+
+
+@pytest.mark.parametrize("role", ["owner", "superadmin", "employee"])
+def test_only_admins_list_admin_companies(role):
+    assert client.get("/admin/companies", headers=_headers(role)).status_code \
+        == 403

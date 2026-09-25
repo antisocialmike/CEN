@@ -70,3 +70,33 @@ export function periodStartsOf(periodicity: string, month: string): string[] {
   }
   return starts;
 }
+
+const currencyCompact = new Intl.NumberFormat("es-MX", {
+  style: "currency",
+  currency: "MXN",
+  notation: "compact",
+  maximumFractionDigits: 1
+});
+const monthShort = new Intl.DateTimeFormat("es-MX", { month: "short", year: "2-digit" });
+const integer = new Intl.NumberFormat("es-MX");
+const percent = new Intl.NumberFormat("es-MX", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero"
+});
+
+export function formatCurrencyCompact(value: number): string {
+  return currencyCompact.format(value);
+}
+
+export function formatMonthShort(value: string): string {
+  return monthShort.format(toLocalDate(value)).replace(/\./g, "");
+}
+
+export function formatInteger(value: number): string {
+  return integer.format(value);
+}
+
+export function formatChange(value: string | null): string {
+  return value === null ? "Sin periodo previo" : `${percent.format(Number(value))} %`;
+}

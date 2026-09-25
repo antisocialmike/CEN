@@ -466,7 +466,9 @@ def test_set_employee_active(repository, cursor):
 
     assert result is not None
     assert result["is_active"] is False
-    assert cursor.execute.call_args[0][1] == (False, 3)
+    query, params = cursor.execute.call_args[0]
+    assert "deactivated_at = CASE" in query
+    assert params == (False, False, 3)
 
 
 def test_reset_password_of_another_company(repository, cursor):

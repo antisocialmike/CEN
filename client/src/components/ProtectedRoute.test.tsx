@@ -29,6 +29,9 @@ function renderAt(path: string) {
         <Route element={<ProtectedRoute allowedRole="superadmin" />}>
           <Route path="/superadmin" element={<p>panel de superadmin</p>} />
         </Route>
+        <Route element={<ProtectedRoute allowedRole="owner" />}>
+          <Route path="/dueno" element={<p>tablero del dueño</p>} />
+        </Route>
       </Routes>
     </MemoryRouter>
   );
@@ -118,5 +121,21 @@ describe("superadmin", () => {
     renderAt("/superadmin");
 
     expect(screen.getByText("panel de admin")).toBeInTheDocument();
+  });
+});
+
+describe("dueño", () => {
+  it("entra a su tablero", () => {
+    saveSession({ ...adminSession, role: "owner" });
+    renderAt("/dueno");
+
+    expect(screen.getByText("tablero del dueño")).toBeInTheDocument();
+  });
+
+  it("no opera la nómina: vuelve a su tablero", () => {
+    saveSession({ ...adminSession, role: "owner" });
+    renderAt("/admin");
+
+    expect(screen.getByText("tablero del dueño")).toBeInTheDocument();
   });
 });

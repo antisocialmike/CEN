@@ -1,3 +1,5 @@
+import { clearActiveCompanyId } from "./activeCompany";
+
 export type UserRole = "superadmin" | "owner" | "admin" | "employee";
 export type EmployeeRole = Extract<UserRole, "admin" | "employee">;
 
@@ -75,6 +77,7 @@ export function clearSession(): void {
   [TOKEN_KEY, ROLE_KEY, NAME_KEY, EMPLOYEE_ID_KEY, MUST_CHANGE_KEY].forEach((key) =>
     localStorage.removeItem(key)
   );
+  clearActiveCompanyId();
 }
 
 function decodeExpiry(token: string): number | null {

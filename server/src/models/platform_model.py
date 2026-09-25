@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -12,6 +13,12 @@ EntidadFederativa = Literal[
 
 RFC_PATTERN = r"^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$"
 REGISTRO_PATRONAL_PATTERN = r"^[A-Z][0-9]{10}$"
+
+
+class AdminCompany(BaseModel):
+    id: int
+    legal_name: str
+    trade_name: Optional[str] = None
 
 
 class CompanySummary(BaseModel):
@@ -78,7 +85,23 @@ class Company(CompanyBase):
     owners: List[OwnerSummary] = []
 
 
+class RiskPremium(BaseModel):
+    rate: Decimal
+    valid_from: date
+
+
+class RiskPremiumRequest(BaseModel):
+    # En por ciento, como la declara la empresa: 0.54355 es la prima media
+    # de la clase I. Entre la minima y la maxima de ley (LSS art. 74).
+    rate_percent: Decimal = Field(
+        ge=Decimal("0.5"), le=Decimal("15"), decimal_places=5
+    )
+    valid_from: date
+
+
 class OwnerCompany(CompanyBase):
+    active_employees: int = 0
+    risk_premium: Optional[RiskPremium] = None
     admins: List[CompanyAdmin] = []
 
 

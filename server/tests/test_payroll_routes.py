@@ -25,6 +25,21 @@ def admin_company():
         yield repository
 
 
+@pytest.fixture(autouse=True)
+def no_employer_cost_parameters():
+    # Sin parametros el costo patronal queda pendiente; sus cifras se prueban
+    # en test_employer_cost y en test_employer_cost_routes.
+    with patch(
+        "server.src.routes.payroll_routes.payroll_repository"
+        ".employer_cost_parameters",
+        return_value={
+            "rates": {}, "ceav_brackets": [],
+            "isn_rate": None, "risk_rate": None,
+        },
+    ):
+        yield
+
+
 def _admin_token():
     return create_access_token(data={"sub": "admin1", "role": "admin"})
 
@@ -207,11 +222,20 @@ def test_get_my_receipts_requires_authentication():
     assert response.status_code == 401
 
 
-def test_health_check():
+@patch("server.src.main.database_ready", return_value=True)
+def test_health_check(mock_ready):
     response = client.get("/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+@patch("server.src.main.database_ready", return_value=False)
+def test_health_check_fails_without_database(mock_ready):
+    response = client.get("/health")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Base de datos no disponible"
 
 
 @patch("server.src.routes.payroll_routes.payroll_repository.list_recent_receipts")

@@ -97,6 +97,12 @@ SELECT_ADMIN_COMPANY_IDS = (
     "WHERE ca.admin_id = %s AND ca.is_active AND c.is_active "
     "ORDER BY c.legal_name;"
 )
+SELECT_ADMIN_COMPANIES = (
+    "SELECT c.id, c.legal_name, c.trade_name FROM company_admins ca "
+    "JOIN companies c ON c.id = ca.company_id "
+    "WHERE ca.admin_id = %s AND ca.is_active AND c.is_active "
+    "ORDER BY c.legal_name;"
+)
 SELECT_ADMIN_COMPANY = (
     "SELECT ca.company_id FROM company_admins ca "
     "JOIN companies c ON c.id = ca.company_id "
@@ -110,6 +116,12 @@ SELECT_OWNER_COMPANY = (
 OWNER_COMPANY_FIELDS = (
     "SELECT c.id, c.legal_name, c.trade_name, c.rfc, c.registro_patronal, "
     "c.entidad_federativa, c.is_active, c.created_at, "
+    "(SELECT COUNT(*) FROM employees x WHERE x.company_id = c.id "
+    "AND x.role = 'employee' AND x.is_active) AS active_employees, "
+    "(SELECT json_build_object('rate', p.rate, 'valid_from', p.valid_from) "
+    "FROM company_risk_premiums p WHERE p.company_id = c.id "
+    "AND p.valid_from <= CURRENT_DATE "
+    "AND (p.valid_to IS NULL OR p.valid_to >= CURRENT_DATE)) AS risk_premium, "
     "COALESCE(json_agg(json_build_object("
     "'id', e.id, 'name', e.name, 'email', e.email, "
     "'is_active', e.is_active, 'assigned_at', ca.created_at) "
@@ -149,6 +161,16 @@ RELEASE_COMPANY_ADMIN = (
     "UPDATE company_admins SET is_active = FALSE "
     "WHERE admin_id = %s AND company_id = %s AND is_active "
     "RETURNING admin_id;"
+)
+# La prima nueva cierra la que estaba abierta un dia antes de empezar.
+CLOSE_OPEN_RISK_PREMIUM = (
+    "UPDATE company_risk_premiums SET valid_to = %s::date - 1 "
+    "WHERE company_id = %s AND valid_to IS NULL AND valid_from < %s;"
+)
+INSERT_RISK_PREMIUM = (
+    "INSERT INTO company_risk_premiums "
+    "(company_id, valid_from, rate, recorded_by) "
+    "VALUES (%s, %s, %s, %s) RETURNING id;"
 )
 INSERT_AUDIT = (
     "INSERT INTO platform_audit_log "
@@ -232,6 +254,9 @@ class CompanyRepository:
             for row in self._fetch_all(SELECT_ADMIN_COMPANY_IDS, (admin_id,))
         ]
 
+    def list_admin_companies(self, admin_id: int) -> list:
+        return self._fetch_all(SELECT_ADMIN_COMPANIES, (admin_id,))
+
     def admin_has_company(self, admin_id: int, company_id: int) -> bool:
         return self._fetch_one(
             SELECT_ADMIN_COMPANY, (admin_id, company_id)
@@ -261,6 +286,27 @@ class CompanyRepository:
                 raise NotFoundError()
             action = "company.activate" if is_active else "company.deactivate"
             self._audit(cursor, actor_id, action, "company", company_id, {})
+
+    def set_risk_premium(
+        self, company_id: int, rate, valid_from, actor_id: int
+    ) -> None:
+        with db_cursor() as cursor:
+            cursor.execute(
+                CLOSE_OPEN_RISK_PREMIUM, (valid_from, company_id, valid_from)
+            )
+            cursor.execute(
+                INSERT_RISK_PREMIUM, (company_id, valid_from, rate, actor_id)
+            )
+            self._audit(
+                cursor, actor_id, "company.risk_premium", "company",
+                company_id,
+                {"rate": str(rate), "valid_from": valid_from.isoformat()},
+            )
+
+    def link_owner(self, owner_id: int, company_id: int) -> None:
+        """Hace dueño de una empresa sin auditoria: solo lo usa el bootstrap."""
+        with db_cursor() as cursor:
+            cursor.execute(INSERT_COMPANY_OWNER, (owner_id, company_id))
 
     def invite_admin(
         self, company_id: int, admin_data: dict, actor_id: int

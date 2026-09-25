@@ -43,7 +43,13 @@ ADMIN_BASE_SALARY = float(os.getenv("ADMIN_BASE_SALARY", "20000"))
 SUPERADMIN_NAME = os.getenv("SUPERADMIN_NAME", "Superadministrador")
 SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL", "")
 SUPERADMIN_PASSWORD = os.getenv("SUPERADMIN_PASSWORD", "")
-SUPERADMIN_MIN_PASSWORD_LENGTH = 12
+
+OWNER_NAME = os.getenv("OWNER_NAME", "Dueño")
+OWNER_EMAIL = os.getenv("OWNER_EMAIL", "")
+OWNER_PASSWORD = os.getenv("OWNER_PASSWORD", "")
+
+# Largo minimo de las contraseñas de las cuentas que crea el bootstrap.
+BOOTSTRAP_MIN_PASSWORD_LENGTH = 12
 
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))

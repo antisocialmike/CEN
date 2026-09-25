@@ -1,7 +1,14 @@
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 
+from ..controllers.employer_cost import (
+    EmployerCostInputs,
+    EmployerCostParameters,
+    EmployerCostService,
+    completed_years,
+)
 from ..controllers.payroll_controller import PayrollService
 from ..controllers.receipt_pdf import (
     build_receipt_pdf,
@@ -24,8 +31,31 @@ from ..repositories.payroll_repository import (
 
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
 payroll_service = PayrollService()
+employer_cost_service = EmployerCostService()
 
 RECENT_RECEIPTS_LIMIT = 20
+
+
+def _employer_cost(
+    request: PayrollCalculationRequest, employee: dict, company_id: int,
+    breakdown: dict,
+) -> dict:
+    params = payroll_repository.employer_cost_parameters(
+        company_id, request.period_start
+    )
+    return employer_cost_service.calculate(
+        EmployerCostInputs(
+            period_salary=Decimal(str(request.gross_salary)),
+            periodicity=request.periodicity,
+            days=Decimal(request.paid_days()),
+            years_completed=completed_years(
+                employee.get("created_at"), request.period_end()
+            ),
+            total_perceptions=Decimal(str(breakdown["total_perceptions"])),
+        ),
+        EmployerCostParameters(**params),
+    )
+
 
 RECEIPT_NOT_FOUND = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND,
@@ -64,6 +94,10 @@ def calculate_payroll(
             detail=str(error),
         ) from error
 
+    employer_cost = _employer_cost(
+        request, employee, user["company_id"], breakdown
+    )
+
     try:
         saved = payroll_repository.save_payroll_receipt({
             "employee_id": request.employee_id,
@@ -71,6 +105,7 @@ def calculate_payroll(
             "period_start": request.period_start,
             "period_end": request.period_end(),
             "processed_by": user["username"],
+            "employer_cost": employer_cost,
             **breakdown,
         })
     except ReceiptOfAnotherCompanyError:
@@ -86,6 +121,12 @@ def calculate_payroll(
         "period_start": request.period_start.isoformat(),
         "period_end": request.period_end().isoformat(),
         "data": breakdown,
+        "employer_cost": {
+            "total": employer_cost["total"],
+            "sbc_daily": employer_cost["sbc_daily"],
+            "missing": employer_cost["missing"],
+            "items": employer_cost["items"],
+        },
         "processed_by": user["username"],
     }
 

@@ -6,6 +6,7 @@ import ThemeToggle from "./ThemeToggle";
 import { useTunel } from "../motion/tunel";
 import { logout } from "../services/authService";
 import { getInitials, getName, getRoleLabel } from "../services/authSession";
+import { companyLabel, useAdminCompany } from "./adminCompanyContext";
 
 interface DashboardTopbarProps {
   context: string;
@@ -16,6 +17,7 @@ export default function DashboardTopbar({ context }: DashboardTopbarProps) {
   const pasarPorTunel = useTunel();
   const name = getName();
   const roleLabel = getRoleLabel();
+  const adminCompany = useAdminCompany();
 
   // Sigue siendo un enlace (ctrl+clic abre pestaña); solo el clic normal pasa por el tunel.
   function volverALanding(event: MouseEvent<HTMLAnchorElement>) {
@@ -47,6 +49,25 @@ export default function DashboardTopbar({ context }: DashboardTopbarProps) {
           <small>{context}</small>
         </div>
       </Link>
+
+      {adminCompany && adminCompany.companies.length > 1 && (
+        <label className="company-switch">
+          <span className="visually-hidden">Empresa con la que trabajas</span>
+          <select
+            value={adminCompany.active.id}
+            onChange={(event) => adminCompany.choose(Number(event.target.value))}
+          >
+            {adminCompany.companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {companyLabel(company)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {adminCompany && adminCompany.companies.length === 1 && (
+        <span className="company-switch is-static">{companyLabel(adminCompany.active)}</span>
+      )}
 
       <div className="dashboard-topbar-right">
         <span className="user-chip">

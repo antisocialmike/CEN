@@ -889,6 +889,61 @@ p {
   gap: var(--s-3);
 }
 
+.company-switch {
+  display: inline-flex;
+  align-items: center;
+  max-width: 240px;
+  min-height: 40px;
+  border-radius: var(--r-pill);
+  background: var(--cal-2);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dashboard-topbar > .company-switch {
+  margin-left: auto;
+}
+
+.company-switch.is-static {
+  padding: 0 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.company-switch select {
+  max-width: 100%;
+  min-height: 40px;
+  padding: 0 34px 0 16px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.company-switch select:focus-visible {
+  box-shadow: var(--ring);
+}
+
+.company-choice-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: var(--s-5) 0 0;
+  padding: 0;
+}
+
+.company-choice-list .btn {
+  justify-content: flex-start;
+  white-space: normal;
+  text-align: left;
+}
+
 .user-chip {
   display: flex;
   align-items: center;
@@ -1874,6 +1929,27 @@ p {
 
   .dashboard-topbar .brand-logo-text small {
     display: none;
+  }
+}
+
+/* En pantallas angostas la empresa baja a su propio renglón: no cabe junto al resto. */
+@media (max-width: 640px) {
+  .dashboard-topbar:has(> .company-switch) {
+    flex-wrap: wrap;
+    height: auto;
+    padding-block: 12px;
+    row-gap: var(--s-2);
+  }
+
+  .dashboard-topbar > .company-switch {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+    margin-left: 0;
+  }
+
+  .company-switch select {
+    width: 100%;
   }
 }
 

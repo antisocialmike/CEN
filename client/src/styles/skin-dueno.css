@@ -1,0 +1,620 @@
+/* Tablero del dueño.
+ *
+ * Los dos colores de las gráficas son los mismos que usa la app para
+ * percepciones (jade) y deducciones (ámbar), ajustados un paso para pasar el
+ * validador de paletas sobre --surface en claro (#ffffff) y en oscuro
+ * (#1e212a): banda de luminosidad, croma, separación para daltonismo y
+ * contraste de 3:1. Solo pintan marcas; el texto va siempre en tinta.
+ */
+:root {
+  --viz-percepcion: light-dark(#00836b, #12a582);
+  --viz-deduccion: light-dark(#b45309, #c47a08);
+
+  /* Grupos del costo patronal: paleta categorica en este orden (violeta,
+     naranja, azul, magenta), validada sobre las tarjetas en claro y oscuro.
+     El magenta claro queda bajo 3:1: cada grafica lleva leyenda y tabla. */
+  --viz-imss: light-dark(#4a3aa7, #9085e9);
+  --viz-sar: light-dark(#eb6834, #d95926);
+  --viz-infonavit: light-dark(#2a78d6, #3987e5);
+  --viz-isn: light-dark(#e87ba4, #d55181);
+}
+
+.owner-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--s-4) var(--s-6);
+  margin-bottom: var(--s-6);
+}
+
+.owner-filters .form-field {
+  min-width: 240px;
+  margin-bottom: 0;
+}
+
+.owner-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+/* La leyenda imita a la etiqueta de SelectField para que los dos filtros se lean iguales. */
+.owner-presets legend {
+  width: 100%;
+  margin-bottom: var(--s-2);
+  font-size: var(--rv-t-cuerpo-sm);
+  font-weight: 500;
+  color: var(--rv-ink-2);
+}
+
+.owner-presets label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: var(--bw) solid var(--line-strong);
+  border-radius: var(--r-pill);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.owner-presets label:hover {
+  background: var(--cal-2);
+  color: var(--ink);
+}
+
+.owner-presets label.is-selected {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--cal);
+}
+
+.owner-presets input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.owner-presets label:has(input:focus-visible) {
+  box-shadow: var(--ring);
+}
+
+.owner-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  transition: opacity var(--dur) var(--ease);
+}
+
+.owner-body.is-refreshing {
+  opacity: 0.55;
+}
+
+.kpi-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+
+.kpi-detail {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.owner-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin: var(--s-4) 0 0;
+  padding: var(--s-3) var(--s-4);
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--cal-2);
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+.owner-notices li {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.owner-notices svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.kpi-row > div {
+  display: flex;
+}
+
+.kpi-card {
+  flex: 1;
+  border-bottom: 1px solid var(--line);
+}
+
+.kpi-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.kpi-delta svg {
+  width: 14px;
+  height: 14px;
+}
+
+.owner-card {
+  padding: var(--s-6);
+  border: var(--bw) solid var(--line);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.owner-card h2 {
+  font-size: 20px;
+}
+
+.owner-card-note {
+  margin-top: var(--s-2);
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+
+.owner-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-5);
+}
+
+.owner-headcount {
+  margin: var(--s-3) 0 var(--s-4);
+  color: var(--ink-2);
+}
+
+.owner-headcount strong {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.owner-compact-table {
+  min-width: 0;
+}
+
+.owner-card.is-inactive {
+  border-style: dashed;
+}
+
+.owner-company-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.owner-company-head h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.owner-subtitle {
+  margin: var(--s-6) 0 var(--s-3);
+  font-size: 15px;
+}
+
+.owner-risk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.owner-risk .owner-card-note {
+  margin-top: 0;
+}
+
+.owner-admins {
+  margin: 0;
+  padding: 0;
+}
+
+.owner-admin-form,
+.owner-admin-actions {
+  margin-top: var(--s-4);
+}
+
+/* --- Gráficas -------------------------------------------------------------- */
+
+.viz-trend {
+  margin-top: var(--s-4);
+}
+
+.viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  margin: 0 0 var(--s-3);
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.viz-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.viz-key-rect {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.viz-key-line {
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.viz-key-line.is-empty {
+  background: transparent;
+}
+
+/* El ancho no depende del SVG: si dependiera, el SVG de respaldo (640px)
+   ensancharia el contenedor y el ResizeObserver nunca veria el ancho real. */
+.viz-trend-plot {
+  position: relative;
+  width: 100%;
+  contain: inline-size;
+  border-radius: 4px;
+}
+
+.viz-trend-plot svg {
+  display: block;
+  overflow: visible;
+}
+
+.viz-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.viz-tick {
+  fill: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.viz-area {
+  opacity: 0.12;
+}
+
+.viz-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.viz-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.viz-crosshair {
+  stroke: var(--ink-3);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.viz-tooltip {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  min-width: 200px;
+  padding: var(--s-3) var(--s-4);
+  transform: translateX(-50%);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  pointer-events: none;
+}
+
+.viz-tooltip-title {
+  margin-bottom: var(--s-2);
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.viz-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.viz-tooltip-row strong {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.viz-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  margin: var(--s-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.viz-bar-label {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s-2);
+  margin-bottom: 6px;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.viz-bar-label span {
+  color: var(--ink-3);
+}
+
+.viz-bar-track {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.viz-bar {
+  height: 14px;
+  border-radius: 0 4px 4px 0;
+  transition: filter var(--dur-fast) var(--ease);
+}
+
+.viz-bar-row:hover .viz-bar {
+  filter: brightness(1.12);
+}
+
+.viz-bar-value {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.viz-columns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--s-2);
+  height: 220px;
+  margin: var(--s-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.viz-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.viz-column-value {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.viz-column-slot {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.viz-column-bar {
+  width: 100%;
+  max-width: 24px;
+  border-radius: 4px 4px 0 0;
+}
+
+.viz-column-label {
+  font-size: 11.5px;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--ink-3);
+}
+
+.viz-stack {
+  position: relative;
+  margin-top: var(--s-4);
+}
+
+.viz-stack-columns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--s-1);
+  height: 240px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.viz-stack-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.viz-stack-column.is-active {
+  background: var(--cal-2);
+}
+
+.viz-stack-slot {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+/* Los segmentos se separan con 2px del color de la tarjeta, no con un borde. */
+.viz-stack-bar {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  width: 100%;
+  max-width: 24px;
+}
+
+.viz-stack-segment {
+  min-height: 2px;
+}
+
+.viz-stack-segment:last-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.viz-stack-tooltip {
+  top: 40px;
+}
+
+.viz-table {
+  margin-top: var(--s-4);
+}
+
+.viz-table summary {
+  width: fit-content;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.viz-table .table-wrap {
+  margin-top: var(--s-3);
+}
+
+.viz-table .data-table {
+  min-width: 420px;
+}
+
+/* theme.css vuelve tarjetas cualquier .data-table por debajo de 720px y esconde
+   sus encabezados: sirve para los recibos, no para estas tablas de cifras, que
+   sin encabezado no se entienden. Aqui siguen siendo tablas y se deslizan dentro
+   de su marco. */
+@media (max-width: 720px) {
+  .owner-card .table-wrap {
+    overflow-x: auto;
+    border: var(--bw) solid var(--line);
+    background: var(--surface);
+  }
+
+  .owner-card .data-table {
+    display: table;
+    min-width: 420px;
+  }
+
+  .owner-card .data-table.owner-compact-table {
+    min-width: 0;
+  }
+
+  .owner-card .data-table thead {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .owner-card .data-table tbody {
+    display: table-row-group;
+  }
+
+  .owner-card .data-table tbody tr {
+    display: table-row;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  .owner-card .data-table th,
+  .owner-card .data-table td {
+    padding: 12px var(--s-4);
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 900px) {
+  .owner-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpi-card .stat-card-value {
+    font-size: 19px;
+  }
+
+  .owner-card {
+    padding: var(--s-4);
+  }
+
+  .owner-filters .form-field {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owner-body,
+  .viz-bar {
+    transition: none;
+  }
+}

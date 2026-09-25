@@ -1,5 +1,5 @@
 import { FormEvent, MouseEvent, startTransition, useId, useState } from "react";
-import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import { EnvelopeSimple, Lock } from "@phosphor-icons/react";
 import FormField from "../components/FormField";
@@ -8,8 +8,9 @@ import SubmitButton from "../components/SubmitButton";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
 import { useTunel } from "../motion/tunel";
+import { getErrorDetail, getStatusCode } from "../services/apiError";
 import { login } from "../services/authService";
-import { dashboardPathForRole } from "../services/authSession";
+import { dashboardPathForRole, isAuthenticated } from "../services/authSession";
 import NetoDelPeriodo, { type Partida } from "../components/landing/NetoDelPeriodo";
 import { desglosar } from "../components/landing/calculoNomina";
 import "../styles/skin-acceso.css";
@@ -22,6 +23,24 @@ const PARTIDAS_MUESTRA: Partida[] = [
   { concepto: "IMSS retenido", importe: MUESTRA.imss, tipo: "deduccion" }
 ];
 
+// Solo un 401 significa credenciales malas; lo demas no es culpa de quien escribe.
+function mensajeDeError(error: unknown): string {
+  const status = getStatusCode(error);
+  if (status === 401) {
+    return "Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo.";
+  }
+  if (status === 403 || status === 429) {
+    return getErrorDetail(error) ?? "No puedes entrar con esta cuenta por ahora.";
+  }
+  if (status === 503) {
+    return "El sistema no puede acceder a sus datos en este momento. Inténtalo en unos minutos.";
+  }
+  if (status === undefined) {
+    return "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.";
+  }
+  return "No se pudo iniciar sesión. Inténtalo de nuevo.";
+}
+
 export default function LoginPage() {
   const idMuestra = useId();
   const [email, setEmail] = useState("");
@@ -31,6 +50,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const pasarPorTunel = useTunel();
   const [searchParams] = useSearchParams();
+  // Se toma al montar: el login recien hecho guarda la sesion antes de su tunel y no debe cortarlo.
+  const [yaTeniaSesion] = useState(isAuthenticated);
 
   const sessionExpired = searchParams.get("sesion") === "expirada";
 
@@ -62,10 +83,15 @@ export default function LoginPage() {
         },
         { origen: boton }
       );
-    } catch {
-      setErrorMessage("Correo o contraseña incorrectos. Revísalos e inténtalo de nuevo.");
+    } catch (error) {
+      setErrorMessage(mensajeDeError(error));
       setIsSubmitting(false);
     }
+  }
+
+  // Con sesion no hay nada que pedir: al panel. Si toca cambiar la contrasena, ProtectedRoute lo desvia.
+  if (yaTeniaSesion) {
+    return <Navigate to={dashboardPathForRole()} replace />;
   }
 
   return (
