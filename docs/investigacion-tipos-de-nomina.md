@@ -188,6 +188,8 @@ Según el texto de la Ley de Hacienda para el Estado de SLP que pude leer (arts.
 
 ### 7.2 Cambios propuestos para el MVP (02 + 09)
 
+> **Estado (fase 6, 26-09-2026):** implementado tal como se describe abajo, más el tipo de jornada (migración 014).
+
 **Base de datos (migración 013)**
 
 - `employees.tipo_regimen CHAR(2) NOT NULL DEFAULT '02' CHECK (tipo_regimen IN ('02','09'))`. Los empleados que ya existen quedan como 02 sin tener que migrar datos.
@@ -234,7 +236,7 @@ Según el texto de la Ley de Hacienda para el Estado de SLP que pude leer (arts.
 
 > **Estado (fase 5, 25-09-2026):**
 > - Los puntos 1 a 4 están corregidos: el subsidio y la UMA se leen con vigencia (2025 y 2026, migración 013), el IMSS se calcula sobre el SBC y el caso de salario mínimo ya existe.
-> - El 5 (jornada) pasa a la fase 6.
+> - El 5 (jornada) quedó resuelto en la fase 6.
 > - El 6 sigue pendiente de confirmar con un contador.
 
 1. **Monto del subsidio.** `ISR_SUBSIDIO_MONTO = 536.22` ([payroll_controller.py:31](../server/src/controllers/payroll_controller.py)). De febrero a diciembre de 2026 son $535.65; en enero, $536.21. El código resta $0.57 de más al mes a quien tiene subsidio.

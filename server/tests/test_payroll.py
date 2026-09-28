@@ -406,3 +406,87 @@ def test_la_periodicidad_viaja_en_el_resultado():
 def test_el_sbc_se_redondea_como_el_costo_patronal():
     # La ruta le pasa al calculo el SBC en Decimal ya redondeado.
     assert _sbc(10000) == float(Decimal("349.77"))
+
+
+# --- Asimilados a salarios (tipo de regimen 09) -----------------------------
+
+def _asimilado(inputs):
+    return _process({**inputs, "tipo_regimen": "09"})
+
+
+def test_un_asimilado_paga_isr_sin_subsidio_y_no_cotiza_al_imss():
+    result = _asimilado({"gross_salary": 10000})
+
+    # 420.95 + (10,000 - 7,168.52) x 10.88% = 729.02: sin restar subsidio.
+    assert result["isr_deduction"] == 729.02
+    assert result["imss_deduction"] == 0.0
+    assert result["net_salary"] == 9270.98
+    assert result["tipo_regimen"] == "09"
+    assert list(_items_by_concept(result)) == ["sueldo", "isr"]
+
+
+def test_su_percepcion_se_llama_honorarios_asimilados():
+    result = _asimilado({"gross_salary": 10000})
+
+    assert _items_by_concept(result)["sueldo"]["description"] == (
+        "Honorarios asimilados a salarios del periodo"
+    )
+
+
+def test_el_salario_minimo_no_aplica_a_un_asimilado():
+    result = _asimilado({"gross_salary": 9451.20})
+
+    # 420.95 + (9,451.20 - 7,168.52) x 10.88% = 669.31, sin subsidio.
+    assert result["isr_deduction"] == 669.31
+    assert result["imss_employer_paid"] == 0.0
+
+
+@pytest.mark.parametrize("concepto", [
+    "overtime_double_hours",
+    "overtime_triple_hours",
+    "christmas_bonus_days",
+    "vacation_days",
+    "housing_credit_deduction",
+])
+def test_un_asimilado_no_tiene_prestaciones_de_la_relacion_laboral(concepto):
+    with pytest.raises(ValueError, match="asimilado"):
+        _asimilado({"gross_salary": 10000, concepto: 1})
+
+
+def test_un_asimilado_si_puede_tener_bono_y_prestamo():
+    result = _asimilado({
+        "gross_salary": 10000, "bonus": 2000, "loan_deduction": 500,
+    })
+
+    conceptos = _items_by_concept(result)
+    assert conceptos["bono"]["taxable"] == 2000.0
+    assert conceptos["prestamo"]["amount"] == 500.0
+
+
+def test_sin_tipo_de_regimen_la_nomina_es_de_sueldos():
+    assert _process({"gross_salary": 10000})["tipo_regimen"] == "02"
+
+
+@pytest.mark.parametrize("campo, valor", [
+    ("tipo_regimen", "05"), ("tipo_jornada", "04"),
+])
+def test_un_regimen_o_una_jornada_que_no_se_manejan_se_rechazan(campo, valor):
+    with pytest.raises(ValueError, match="no reconocido"):
+        _process({"gross_salary": 10000, campo: valor})
+
+
+# --- Jornada (LFT art. 61) --------------------------------------------------
+
+@pytest.mark.parametrize("jornada, importe", [
+    # 21,000 / 30 = 700 diarios; 9 horas dobles.
+    ("01", 1575.0),   # 700 / 8 = 87.50 la hora
+    ("02", 1800.0),   # 700 / 7 = 100.00 la hora
+    ("03", 1680.0),   # 700 / 7.5 = 93.33 la hora
+])
+def test_la_hora_extra_sale_de_la_jornada_de_cada_quien(jornada, importe):
+    result = _process({
+        "gross_salary": 21000, "overtime_double_hours": 9,
+        "tipo_jornada": jornada,
+    })
+
+    assert _items_by_concept(result)["horas_extra"]["amount"] == importe

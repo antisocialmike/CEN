@@ -89,3 +89,15 @@ it("ofrece descargar el comprobante", () => {
 
   expect(screen.getByText("Descargar comprobante")).toBeInTheDocument();
 });
+
+it("un recibo de asimilado dice que son honorarios", () => {
+  render(<ReceiptCard receipt={{ ...receipt, tipo_regimen: "09" }} />);
+
+  expect(screen.getByText(/Honorarios asimilados a salarios/)).toBeInTheDocument();
+});
+
+it("un recibo de sueldos no lo dice", () => {
+  render(<ReceiptCard receipt={receipt} />);
+
+  expect(screen.queryByText(/asimilados/)).not.toBeInTheDocument();
+});

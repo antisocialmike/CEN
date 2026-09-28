@@ -27,6 +27,7 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
             </p>
             <p className="receipt-card-date">
               Recibo #{receipt.id} · {formatRange(receipt.period_start, receipt.period_end)}
+              {receipt.tipo_regimen === "09" && " · Honorarios asimilados a salarios"}
             </p>
           </span>
         </span>

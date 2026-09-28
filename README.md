@@ -212,6 +212,17 @@ A quien en el periodo solo cobra el **salario minimo** no se le retiene
 ISR (LISR art. 96), y su cuota del IMSS la paga el patron (LSS art. 36):
 aparece en el costo patronal, no en el recibo.
 
+**Tipos de nomina.** Cada persona cobra por sueldos y salarios (clave SAT
+02) o como asimilada a salarios por honorarios (09). Al asimilado se le
+retiene ISR con la misma tarifa pero sin subsidio ni exenciones, no cotiza
+al IMSS y no tiene horas extra, aguinaldo, prima vacacional ni credito
+Infonavit, porque no hay relacion laboral. En su costo patronal no hay IMSS,
+SAR ni INFONAVIT, y el ISN depende de si el estado grava a los asimilados.
+El recibo guarda con que regimen se calculo.
+
+La **jornada** (diurna 8 h, nocturna 7 h, mixta 7.5 h; LFT art. 61) define
+cuantas horas tiene el dia al pagar las horas extra.
+
 ### Lo que este modelo simplifica
 
 El calculo es fiel en su estructura pero no sustituye a un sistema
@@ -229,7 +240,6 @@ fiscal certificado. En concreto:
 - El limite del subsidio para el empleo se compara contra la base gravable
   del periodo; el decreto habla de "ingresos". Conviene confirmarlo con un
   contador.
-- El salario por hora de las horas extra supone una jornada de 8 horas.
 - La exencion de horas extra usa cuatro semanas por mes como
   aproximacion, y no distingue a quien percibe el salario minimo, que
   por ley tiene la exencion completa.

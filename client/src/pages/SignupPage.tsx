@@ -7,7 +7,13 @@ import SelectField from "../components/SelectField";
 import ErrorMessage from "../components/ErrorMessage";
 import SuccessMessage from "../components/SuccessMessage";
 import SubmitButton from "../components/SubmitButton";
-import { createEmployee } from "../services/employeeService";
+import {
+  createEmployee,
+  TIPO_JORNADA_LABELS,
+  TIPO_REGIMEN_LABELS,
+  TipoJornada,
+  TipoRegimen
+} from "../services/employeeService";
 import { EmployeeRole } from "../services/authSession";
 import { getStatusCode } from "../services/apiError";
 
@@ -16,7 +22,9 @@ const emptyForm = {
   email: "",
   role: "employee" as EmployeeRole,
   baseSalary: "",
-  password: ""
+  password: "",
+  tipoRegimen: "02" as TipoRegimen,
+  tipoJornada: "01" as TipoJornada
 };
 
 export default function SignupPage() {
@@ -42,7 +50,9 @@ export default function SignupPage() {
         email: form.email,
         role: form.role,
         baseSalary: Number(form.baseSalary),
-        password: form.password
+        password: form.password,
+        tipoRegimen: form.tipoRegimen,
+        tipoJornada: form.tipoJornada
       });
       setSuccessMessage(
         `${created.name} ya puede entrar con ${created.email}. Comparte con esa persona su contraseña temporal.`
@@ -119,6 +129,34 @@ export default function SignupPage() {
                 : "Solo podrá consultar sus propios recibos."
             }
           />
+          <SelectField
+            id="tipoRegimen"
+            label="Tipo de nómina"
+            value={form.tipoRegimen}
+            onChange={(value) => updateField("tipoRegimen", value as TipoRegimen)}
+            options={Object.entries(TIPO_REGIMEN_LABELS).map(([value, label]) => ({
+              value,
+              label
+            }))}
+            hint={
+              form.tipoRegimen === "09"
+                ? "Sin relación laboral: se le retiene ISR sin subsidio, no cotiza al IMSS y no tiene horas extra, aguinaldo ni prima vacacional."
+                : "Trabajador con relación laboral: ISR con subsidio, IMSS y prestaciones de ley."
+            }
+          />
+          {form.tipoRegimen === "02" && (
+            <SelectField
+              id="tipoJornada"
+              label="Jornada"
+              value={form.tipoJornada}
+              onChange={(value) => updateField("tipoJornada", value as TipoJornada)}
+              options={Object.entries(TIPO_JORNADA_LABELS).map(([value, label]) => ({
+                value,
+                label
+              }))}
+              hint="Las horas de cada día: con ellas se paga cada hora extra."
+            />
+          )}
           <FormField
             id="baseSalary"
             label="Salario base mensual"

@@ -17,7 +17,7 @@ INSERT_MIGRATION = "INSERT INTO schema_migrations (filename) VALUES (%s);"
 # una asignacion activa. Los duenos y el superadmin nunca entran aqui.
 SELECT_EMPLOYEE_BY_ID = (
     "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active, "
-    "e.created_at "
+    "e.tipo_regimen, e.tipo_jornada, e.created_at "
     "FROM employees e WHERE e.id = %s "
     "AND e.role IN ('admin', 'employee') AND (e.company_id = %s OR EXISTS ("
     "SELECT 1 FROM company_admins ca WHERE ca.admin_id = e.id "
@@ -43,7 +43,8 @@ CLEAR_FAILED_LOGINS = (
 RESET_PASSWORD = (
     "UPDATE employees SET password_hash = %s, must_change_password = TRUE, "
     "failed_login_attempts = 0, locked_until = NULL WHERE id = %s "
-    "RETURNING id, name, email, role, base_salary, is_active;"
+    "RETURNING id, name, email, role, base_salary, is_active, "
+    "tipo_regimen, tipo_jornada;"
 )
 SELECT_PASSWORD_HASH = (
     "SELECT password_hash FROM employees WHERE id = %s;"
@@ -61,7 +62,8 @@ EMPLOYEES_OF_COMPANY = (
 # El id desempata a los homonimos para que la paginacion no los baraje.
 EMPLOYEES_ORDER = "ORDER BY e.is_active DESC, e.name ASC, e.id ASC"
 SELECT_EMPLOYEES = (
-    "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active "
+    "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active, "
+    "e.tipo_regimen, e.tipo_jornada "
     + EMPLOYEES_OF_COMPANY
     + EMPLOYEES_ORDER
 )
@@ -81,8 +83,10 @@ LOCK_MEMBER = (
 )
 UPDATE_EMPLOYEE = (
     "UPDATE employees SET name = %s, email = %s, role = %s, "
-    "base_salary = %s, company_id = %s WHERE id = %s "
-    "RETURNING id, name, email, role, base_salary, is_active;"
+    "base_salary = %s, tipo_regimen = %s, tipo_jornada = %s, "
+    "company_id = %s WHERE id = %s "
+    "RETURNING id, name, email, role, base_salary, is_active, "
+    "tipo_regimen, tipo_jornada;"
 )
 ASSIGN_ADMIN = (
     "INSERT INTO company_admins (admin_id, company_id, assigned_by) "
@@ -98,12 +102,13 @@ UPDATE_EMPLOYEE_ACTIVE = (
     "UPDATE employees SET is_active = %s, deactivated_at = CASE "
     "WHEN %s THEN NULL WHEN is_active THEN NOW() ELSE deactivated_at END "
     "WHERE id = %s "
-    "RETURNING id, name, email, role, base_salary, is_active;"
+    "RETURNING id, name, email, role, base_salary, is_active, "
+    "tipo_regimen, tipo_jornada;"
 )
 INSERT_EMPLOYEE = (
-    "INSERT INTO employees (name, email, role, base_salary, password_hash, "
-    "must_change_password, company_id) "
-    "VALUES (%s, %s, %s, %s, %s, TRUE, %s) RETURNING id;"
+    "INSERT INTO employees (name, email, role, base_salary, tipo_regimen, "
+    "tipo_jornada, password_hash, must_change_password, company_id) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE, %s) RETURNING id;"
 )
 SELECT_FIRST_COMPANY = "SELECT id FROM companies ORDER BY id LIMIT 1;"
 RECEIPT_ITEMS_JSON = (
@@ -119,7 +124,7 @@ SELECT_RECEIPTS_BY_EMPLOYEE = (
     "r.gross_salary, r.isr_deduction, "
     "r.imss_deduction, r.net_salary, r.total_perceptions, "
     "r.total_deductions, r.taxable_base, r.periodicity, r.paid_days, "
-    "r.processed_by, r.created_at, "
+    "r.tipo_regimen, r.processed_by, r.created_at, "
     "r.updated_at, "
     + RECEIPT_ITEMS_JSON
     + "FROM payroll_receipts r "
@@ -133,7 +138,7 @@ SELECT_RECEIPTS_PAGE = (
     "r.period_start, r.period_end, r.periodicity, r.paid_days, "
     "r.gross_salary, r.isr_deduction, r.imss_deduction, r.net_salary, "
     "r.total_perceptions, r.total_deductions, r.taxable_base, "
-    "r.processed_by, r.created_at, r.updated_at, "
+    "r.tipo_regimen, r.processed_by, r.created_at, r.updated_at, "
     + RECEIPT_ITEMS_JSON
     + "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
@@ -151,7 +156,7 @@ SELECT_RECEIPT_BY_ID = (
     "r.gross_salary, r.isr_deduction, "
     "r.imss_deduction, r.net_salary, r.total_perceptions, "
     "r.total_deductions, r.taxable_base, r.periodicity, r.paid_days, "
-    "r.processed_by, r.created_at, "
+    "r.tipo_regimen, r.processed_by, r.created_at, "
     + RECEIPT_ITEMS_JSON
     + "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
@@ -168,8 +173,8 @@ UPSERT_RECEIPT = (
     "INSERT INTO payroll_receipts (employee_id, period_start, period_end, "
     "periodicity, paid_days, gross_salary, isr_deduction, imss_deduction, "
     "net_salary, total_perceptions, total_deductions, taxable_base, "
-    "processed_by, company_id) "
-    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+    "tipo_regimen, processed_by, company_id) "
+    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
     "ON CONFLICT (employee_id, period_start, period_end) DO UPDATE SET "
     "periodicity = EXCLUDED.periodicity, "
     "paid_days = EXCLUDED.paid_days, "
@@ -180,6 +185,7 @@ UPSERT_RECEIPT = (
     "total_perceptions = EXCLUDED.total_perceptions, "
     "total_deductions = EXCLUDED.total_deductions, "
     "taxable_base = EXCLUDED.taxable_base, "
+    "tipo_regimen = EXCLUDED.tipo_regimen, "
     "processed_by = EXCLUDED.processed_by, "
     "updated_at = NOW() "
     "WHERE payroll_receipts.company_id = EXCLUDED.company_id "
@@ -195,7 +201,7 @@ SELECT_CEAV_RATES = (
     "WHERE valid_from <= %s AND (valid_to IS NULL OR valid_to >= %s);"
 )
 SELECT_STATE_PAYROLL_TAX = (
-    "SELECT s.rate FROM companies c "
+    "SELECT s.rate, s.taxes_assimilated FROM companies c "
     "JOIN state_payroll_tax_rates s ON s.entidad = c.entidad_federativa "
     "WHERE c.id = %s AND s.valid_from <= %s "
     "AND (s.valid_to IS NULL OR s.valid_to >= %s);"
@@ -289,6 +295,8 @@ class PayrollRepository:
                 employee_data["email"],
                 role,
                 employee_data["base_salary"],
+                employee_data.get("tipo_regimen", "02"),
+                employee_data.get("tipo_jornada", "01"),
                 company_id if role == "employee" else None,
                 employee_id,
             ))
@@ -360,6 +368,8 @@ class PayrollRepository:
                 employee_data["email"],
                 role,
                 employee_data["base_salary"],
+                employee_data.get("tipo_regimen", "02"),
+                employee_data.get("tipo_jornada", "01"),
                 employee_data["password_hash"],
                 company_id if role == "employee" else None,
             ))
@@ -413,6 +423,7 @@ class PayrollRepository:
                     receipt_data["total_perceptions"],
                     receipt_data["total_deductions"],
                     receipt_data["taxable_base"],
+                    receipt_data.get("tipo_regimen", "02"),
                     receipt_data["processed_by"],
                     receipt_data["company_id"],
                 ),
@@ -491,6 +502,9 @@ class PayrollRepository:
             "rates": rates,
             "ceav_brackets": ceav,
             "isn_rate": dict(isn)["rate"] if isn else None,
+            "isn_taxes_assimilated": (
+                dict(isn)["taxes_assimilated"] if isn else None
+            ),
             "risk_rate": dict(risk)["rate"] if risk else None,
         }
 

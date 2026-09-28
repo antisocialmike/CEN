@@ -11,6 +11,8 @@ from ..controllers.employer_cost import (
     completed_years,
 )
 from ..controllers.payroll_controller import (
+    ASIMILADOS,
+    SUELDOS,
     MissingPayrollParameter,
     PayrollParameters,
     PayrollService,
@@ -45,9 +47,13 @@ payroll_service = PayrollService()
 employer_cost_service = EmployerCostService()
 
 
-def _parameters(request: PayrollCalculationRequest, company_id: int, years: int):
+def _parameters(
+    request: PayrollCalculationRequest, company_id: int, years: int,
+    assimilated: bool,
+):
     """Lo vigente al inicio del periodo, la misma fecha que usa el costo patronal:
-    los parametros del calculo, los del costo patronal y el SBC que comparten."""
+    los parametros del calculo, los del costo patronal y el SBC que comparten.
+    Un asimilado no cotiza, asi que no tiene SBC."""
     raw = payroll_repository.employer_cost_parameters(
         company_id, request.period_start
     )
@@ -56,7 +62,7 @@ def _parameters(request: PayrollCalculationRequest, company_id: int, years: int)
         payroll_params = PayrollParameters.from_rows(
             raw["rates"], payroll_repository.isr_brackets(request.period_start)
         )
-        sbc = employer_cost_service.contribution_base(
+        sbc = Decimal(0) if assimilated else employer_cost_service.contribution_base(
             cost_params, request.gross_salary, request.periodicity, years
         )
     except (MissingPayrollParameter, MissingParameter) as error:
@@ -86,6 +92,7 @@ def _employer_cost(
             worker_imss_paid_by_employer=Decimal(
                 str(breakdown["imss_employer_paid"])
             ),
+            assimilated=breakdown["tipo_regimen"] == ASIMILADOS,
         ),
         cost_params,
     )
@@ -117,9 +124,11 @@ def calculate_payroll(
             detail="No se puede calcular nomina de una cuenta desactivada",
         )
 
+    # El regimen y la jornada son de la persona, no de la peticion.
+    regimen = employee.get("tipo_regimen") or SUELDOS
     years = completed_years(employee.get("created_at"), request.period_end())
     payroll_params, cost_params, sbc = _parameters(
-        request, user["company_id"], years
+        request, user["company_id"], years, regimen == ASIMILADOS
     )
 
     try:
@@ -127,6 +136,8 @@ def calculate_payroll(
             {
                 **request.model_dump(exclude={"employee_id", "period_start"}),
                 "paid_days": request.paid_days(),
+                "tipo_regimen": regimen,
+                "tipo_jornada": employee.get("tipo_jornada"),
             },
             payroll_params,
             float(sbc),

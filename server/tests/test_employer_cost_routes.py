@@ -194,7 +194,9 @@ def test_employer_cost_parameters_read_what_is_in_force(cursor):
         [{"key": "uma_diaria", "value": Decimal("117.31")}],
         [{"minimum_wage": True, "upper_uma": None, "rate": Decimal("0.0315")}],
     ]
-    cursor.fetchone.side_effect = [{"rate": Decimal("0.03")}, None]
+    cursor.fetchone.side_effect = [
+        {"rate": Decimal("0.03"), "taxes_assimilated": True}, None,
+    ]
 
     params = PayrollRepository().employer_cost_parameters(
         COMPANY, date(2026, 9, 1)
@@ -203,6 +205,7 @@ def test_employer_cost_parameters_read_what_is_in_force(cursor):
     assert params["rates"] == {"uma_diaria": Decimal("117.31")}
     assert params["ceav_brackets"][0]["minimum_wage"] is True
     assert params["isn_rate"] == Decimal("0.03")
+    assert params["isn_taxes_assimilated"] is True
     assert params["risk_rate"] is None
     isn_query, isn_params = cursor.execute.call_args_list[2][0]
     assert "entidad_federativa" in isn_query

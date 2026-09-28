@@ -15,7 +15,12 @@ import {
   activateEmployee,
   deactivateEmployee,
   EmployeeCreated,
+  isAssimilated,
   listEmployeesPage,
+  TIPO_JORNADA_LABELS,
+  TIPO_REGIMEN_LABELS,
+  TipoJornada,
+  TipoRegimen,
   resetEmployeePassword,
   updateEmployee
 } from "../services/employeeService";
@@ -29,6 +34,8 @@ interface EditForm {
   email: string;
   role: EmployeeRole;
   baseSalary: string;
+  tipoRegimen: TipoRegimen;
+  tipoJornada: TipoJornada;
 }
 
 interface IssuedPassword {
@@ -79,7 +86,9 @@ export default function EmployeesPage() {
       name: employee.name,
       email: employee.email,
       role: employee.role,
-      baseSalary: employee.base_salary === null ? "" : String(employee.base_salary)
+      baseSalary: employee.base_salary === null ? "" : String(employee.base_salary),
+      tipoRegimen: employee.tipo_regimen ?? "02",
+      tipoJornada: employee.tipo_jornada ?? "01"
     });
   }
 
@@ -99,8 +108,10 @@ export default function EmployeesPage() {
     const emailChanged = employee.email !== form.email;
     const salaryChanged = employee.base_salary !== newSalary;
     const roleChanged = employee.role !== form.role;
+    // Cambiar el tipo de nomina cambia lo que se le retiene: pide confirmacion.
+    const regimeChanged = (employee.tipo_regimen ?? "02") !== form.tipoRegimen;
 
-    if ((emailChanged || salaryChanged || roleChanged) && !pendingEditSave) {
+    if ((emailChanged || salaryChanged || roleChanged || regimeChanged) && !pendingEditSave) {
       setPendingEditSave(true);
       return;
     }
@@ -115,7 +126,9 @@ export default function EmployeesPage() {
         name: form.name,
         email: form.email,
         role: form.role,
-        baseSalary: newSalary
+        baseSalary: newSalary,
+        tipoRegimen: form.tipoRegimen,
+        tipoJornada: form.tipoJornada
       });
       replaceEmployee(updated);
       setSuccessMessage("Se guardaron los cambios de " + updated.name + ".");
@@ -313,6 +326,33 @@ export default function EmployeesPage() {
                         : undefined
                     }
                   />
+                  <SelectField
+                    id={"regimen-" + employee.id}
+                    label="Tipo de nómina"
+                    value={form.tipoRegimen}
+                    onChange={(value) => setForm({ ...form, tipoRegimen: value as TipoRegimen })}
+                    options={Object.entries(TIPO_REGIMEN_LABELS).map(([value, label]) => ({
+                      value,
+                      label
+                    }))}
+                    hint={
+                      form.tipoRegimen === "09"
+                        ? "Sin IMSS ni subsidio, y sin horas extra, aguinaldo ni prima vacacional."
+                        : undefined
+                    }
+                  />
+                  {form.tipoRegimen === "02" && (
+                    <SelectField
+                      id={"jornada-" + employee.id}
+                      label="Jornada"
+                      value={form.tipoJornada}
+                      onChange={(value) => setForm({ ...form, tipoJornada: value as TipoJornada })}
+                      options={Object.entries(TIPO_JORNADA_LABELS).map(([value, label]) => ({
+                        value,
+                        label
+                      }))}
+                    />
+                  )}
                   {pendingEditSave && (
                     <div className="action-confirm" role="alert">
                       <p className="action-confirm-message">Se guardarán cambios importantes.</p>
@@ -358,6 +398,9 @@ export default function EmployeesPage() {
                       )}
                       {employee.role === "admin" && (
                         <span className="employee-tag is-role">Administrador</span>
+                      )}
+                      {isAssimilated(employee) && (
+                        <span className="employee-tag is-role">Asimilado</span>
                       )}
                     </p>
                     <p className="employee-row-meta">

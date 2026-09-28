@@ -34,6 +34,8 @@ export interface PayrollItem {
 }
 
 export interface PayrollBreakdown {
+  // "09" = honorarios asimilados a salarios; los recibos viejos no lo traen.
+  tipo_regimen?: "02" | "09";
   gross_salary: number;
   isr_deduction: number;
   imss_deduction: number;
@@ -82,6 +84,7 @@ export interface PayrollReceipt {
   period_start: string;
   period_end: string;
   periodicity: Periodicity;
+  tipo_regimen?: "02" | "09";
   paid_days: number;
   gross_salary: number;
   isr_deduction: number;

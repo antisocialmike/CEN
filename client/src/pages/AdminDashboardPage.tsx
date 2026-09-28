@@ -22,7 +22,12 @@ import {
   lookupReceipt,
   suggestedGrossSalary
 } from "../services/payrollService";
-import { isOnPayroll, listEmployees, PayrollEmployee } from "../services/employeeService";
+import {
+  isAssimilated,
+  isOnPayroll,
+  listEmployees,
+  PayrollEmployee
+} from "../services/employeeService";
 import { getStatusCode } from "../services/apiError";
 import { useListaPaginada } from "../routes/listaPaginada";
 import {
@@ -52,6 +57,9 @@ export default function AdminDashboardPage() {
   const navigate = useNavigate();
 
   const selectedEmployee = employees?.find((item) => String(item.id) === employeeId);
+  // Un asimilado no tiene relacion laboral: sin horas extra, aguinaldo,
+  // prima vacacional ni credito Infonavit, que la API ademas rechaza.
+  const assimilated = selectedEmployee ? isAssimilated(selectedEmployee) : false;
   const periodOptions = periodStartsOf(periodicity, month);
 
   const activeConcepts = countActiveConcepts(concepts);
@@ -276,6 +284,11 @@ export default function AdminDashboardPage() {
                   employees.length === 1 ? "persona registrada" : "personas registradas"
                 } en la nómina.`}
               />
+              {assimilated && (
+                <p className="form-note">
+                  Asimilado a salarios: se le retiene ISR sin subsidio y no cotiza al IMSS.
+                </p>
+              )}
               <SelectField
                 id="periodicity"
                 label="Periodicidad"
@@ -376,58 +389,62 @@ export default function AdminDashboardPage() {
                 {showConcepts && (
                   <div className="payroll-concepts-grid">
                     <p className="payroll-concepts-legend">Percepciones</p>
-                    <FormField
-                      id="overtimeDoubleHours"
-                      label="Horas extra dobles"
-                      type="number"
-                      value={String(concepts.overtimeDoubleHours)}
-                      onChange={(value) =>
-                        setConcepts({ ...concepts, overtimeDoubleHours: Number(value) })
-                      }
-                      min={0}
-                      step={0.5}
-                      inputMode="decimal"
-                      hint="Las primeras 9 de la semana se pagan al doble."
-                    />
-                    <FormField
-                      id="overtimeTripleHours"
-                      label="Horas extra triples"
-                      type="number"
-                      value={String(concepts.overtimeTripleHours)}
-                      onChange={(value) =>
-                        setConcepts({ ...concepts, overtimeTripleHours: Number(value) })
-                      }
-                      min={0}
-                      step={0.5}
-                      inputMode="decimal"
-                      hint="Las que exceden esas 9 horas."
-                    />
-                    <FormField
-                      id="christmasBonusDays"
-                      label="Días de aguinaldo"
-                      type="number"
-                      value={String(concepts.christmasBonusDays)}
-                      onChange={(value) =>
-                        setConcepts({ ...concepts, christmasBonusDays: Number(value) })
-                      }
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      hint="La ley pide 15 días como mínimo."
-                    />
-                    <FormField
-                      id="vacationDays"
-                      label="Días de vacaciones"
-                      type="number"
-                      value={String(concepts.vacationDays)}
-                      onChange={(value) =>
-                        setConcepts({ ...concepts, vacationDays: Number(value) })
-                      }
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      hint="La prima vacacional es el 25% de esos días."
-                    />
+                    {!assimilated && (
+                      <>
+                        <FormField
+                          id="overtimeDoubleHours"
+                          label="Horas extra dobles"
+                          type="number"
+                          value={String(concepts.overtimeDoubleHours)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, overtimeDoubleHours: Number(value) })
+                          }
+                          min={0}
+                          step={0.5}
+                          inputMode="decimal"
+                          hint="Las primeras 9 de la semana se pagan al doble."
+                        />
+                        <FormField
+                          id="overtimeTripleHours"
+                          label="Horas extra triples"
+                          type="number"
+                          value={String(concepts.overtimeTripleHours)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, overtimeTripleHours: Number(value) })
+                          }
+                          min={0}
+                          step={0.5}
+                          inputMode="decimal"
+                          hint="Las que exceden esas 9 horas."
+                        />
+                        <FormField
+                          id="christmasBonusDays"
+                          label="Días de aguinaldo"
+                          type="number"
+                          value={String(concepts.christmasBonusDays)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, christmasBonusDays: Number(value) })
+                          }
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          hint="La ley pide 15 días como mínimo."
+                        />
+                        <FormField
+                          id="vacationDays"
+                          label="Días de vacaciones"
+                          type="number"
+                          value={String(concepts.vacationDays)}
+                          onChange={(value) =>
+                            setConcepts({ ...concepts, vacationDays: Number(value) })
+                          }
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          hint="La prima vacacional es el 25% de esos días."
+                        />
+                      </>
+                    )}
                     <FormField
                       id="bonus"
                       label="Bono o gratificación"
@@ -456,22 +473,24 @@ export default function AdminDashboardPage() {
                       inputMode="decimal"
                       prefix="$"
                     />
-                    <FormField
-                      id="housingCreditDeduction"
-                      label="Crédito Infonavit"
-                      type="number"
-                      value={String(concepts.housingCreditDeduction)}
-                      onChange={(value) =>
-                        setConcepts({
-                          ...concepts,
-                          housingCreditDeduction: Number(value)
-                        })
-                      }
-                      min={0}
-                      step={0.01}
-                      inputMode="decimal"
-                      prefix="$"
-                    />
+                    {!assimilated && (
+                      <FormField
+                        id="housingCreditDeduction"
+                        label="Crédito Infonavit"
+                        type="number"
+                        value={String(concepts.housingCreditDeduction)}
+                        onChange={(value) =>
+                          setConcepts({
+                            ...concepts,
+                            housingCreditDeduction: Number(value)
+                          })
+                        }
+                        min={0}
+                        step={0.01}
+                        inputMode="decimal"
+                        prefix="$"
+                      />
+                    )}
                   </div>
                 )}
               </div>

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { isOnPayroll } from "./employeeService";
 
-const base = { id: 1, name: "Ana", email: "ana@cen.com", role: "employee" as const };
+const base = {
+  id: 1,
+  name: "Ana",
+  email: "ana@cen.com",
+  role: "employee" as const,
+  tipo_regimen: "02" as const,
+  tipo_jornada: "01" as const
+};
 
 describe("isOnPayroll", () => {
   it("incluye a quien está activo y tiene salario", () => {

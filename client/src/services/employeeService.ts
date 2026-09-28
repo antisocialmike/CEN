@@ -2,12 +2,29 @@ import httpClient from "./httpClient";
 import { EmployeeRole } from "./authSession";
 import { Pagina, POR_PAGINA } from "./pagina";
 
+// Claves del SAT (c_TipoRegimen y c_TipoJornada), las mismas que guarda la API.
+export type TipoRegimen = "02" | "09";
+export type TipoJornada = "01" | "02" | "03";
+
+export const TIPO_REGIMEN_LABELS: Record<TipoRegimen, string> = {
+  "02": "Sueldos y salarios",
+  "09": "Asimilados a salarios (honorarios)"
+};
+
+export const TIPO_JORNADA_LABELS: Record<TipoJornada, string> = {
+  "01": "Diurna (8 horas)",
+  "02": "Nocturna (7 horas)",
+  "03": "Mixta (7.5 horas)"
+};
+
 export interface NewEmployeeInput {
   name: string;
   email: string;
   role: EmployeeRole;
   baseSalary: number;
   password: string;
+  tipoRegimen: TipoRegimen;
+  tipoJornada: TipoJornada;
 }
 
 export interface EmployeeCreated {
@@ -18,6 +35,13 @@ export interface EmployeeCreated {
   // Vacío para los administradores que invita un dueño: operan la nómina, no la cobran.
   base_salary: number | null;
   is_active: boolean;
+  tipo_regimen: TipoRegimen;
+  tipo_jornada: TipoJornada;
+}
+
+// Sin relacion laboral: no cotiza al IMSS ni tiene prestaciones de la LFT.
+export function isAssimilated(employee: Pick<EmployeeCreated, "tipo_regimen">): boolean {
+  return employee.tipo_regimen === "09";
 }
 
 export type PayrollEmployee = EmployeeCreated & { base_salary: number };
@@ -31,6 +55,8 @@ export interface EmployeeUpdateInput {
   email: string;
   role: EmployeeRole;
   baseSalary: number | null;
+  tipoRegimen: TipoRegimen;
+  tipoJornada: TipoJornada;
 }
 
 export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeCreated> {
@@ -39,7 +65,9 @@ export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeC
     email: input.email,
     role: input.role,
     base_salary: input.baseSalary,
-    password: input.password
+    password: input.password,
+    tipo_regimen: input.tipoRegimen,
+    tipo_jornada: input.tipoJornada
   });
   return response.data;
 }
@@ -64,7 +92,9 @@ export async function updateEmployee(
     name: input.name,
     email: input.email,
     role: input.role,
-    base_salary: input.baseSalary
+    base_salary: input.baseSalary,
+    tipo_regimen: input.tipoRegimen,
+    tipo_jornada: input.tipoJornada
   });
   return response.data;
 }

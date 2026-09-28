@@ -6,6 +6,10 @@ from pydantic import BaseModel, Field, model_validator
 
 EmployeeRole = Literal["admin", "employee"]
 Periodicity = Literal["mensual", "quincenal", "semanal"]
+# Claves de los catalogos del SAT (c_TipoRegimen y c_TipoJornada): 02 Sueldos,
+# 09 Asimilados honorarios; 01 Diurna, 02 Nocturna, 03 Mixta.
+TipoRegimen = Literal["02", "09"]
+TipoJornada = Literal["01", "02", "03"]
 
 
 def period_start_is_valid(periodicity: str, start: date) -> bool:
@@ -45,6 +49,8 @@ class Employee(BaseModel):
     # Vacio para los admins que invita un dueno: operan la nomina, no la cobran.
     base_salary: Optional[float] = None
     is_active: bool = True
+    tipo_regimen: TipoRegimen = "02"
+    tipo_jornada: TipoJornada = "01"
 
 
 class EmployeeCreateRequest(BaseModel):
@@ -53,6 +59,8 @@ class EmployeeCreateRequest(BaseModel):
     role: EmployeeRole
     base_salary: float = Field(ge=0)
     password: str = Field(min_length=8, max_length=72)
+    tipo_regimen: TipoRegimen = "02"
+    tipo_jornada: TipoJornada = "01"
 
 
 class PasswordResetResponse(BaseModel):
@@ -67,6 +75,8 @@ class EmployeeUpdateRequest(BaseModel):
     email: str = Field(min_length=3, max_length=150)
     role: EmployeeRole
     base_salary: Optional[float] = Field(default=None, ge=0)
+    tipo_regimen: TipoRegimen = "02"
+    tipo_jornada: TipoJornada = "01"
 
     @model_validator(mode="after")
     def _employees_have_a_salary(self) -> "EmployeeUpdateRequest":

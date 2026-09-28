@@ -19,6 +19,10 @@ Simplificaciones que conviene saber:
 - La antiguedad sale de la fecha de alta de la cuenta.
 - La cuota obrera de quien gana el salario minimo se suma aqui (LSS art. 36),
   sin distinguir la Zona Libre de la Frontera Norte.
+
+Los asimilados a salarios no tienen relacion laboral: IMSS, SAR e INFONAVIT
+no les aplican (no quedan como pendientes: no existen). El ISN depende de si
+la ley del estado grava los honorarios asimilados.
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -32,6 +36,9 @@ IMSS = "imss"
 SAR = "sar"
 INFONAVIT = "infonavit"
 ISN = "isn"
+
+# Lo que solo existe con una relacion laboral (LSS art. 12).
+SOCIAL_SECURITY = (IMSS, SAR, INFONAVIT)
 
 # Dias que dividen al salario del periodo para obtener el diario (LSS art. 29 fr. II).
 DAILY_DIVISOR = {"mensual": 30, "quincenal": 15, "semanal": 7}
@@ -73,6 +80,8 @@ class EmployerCostParameters:
     rates: dict = field(default_factory=dict)
     ceav_brackets: list = field(default_factory=list)
     isn_rate: Optional[Decimal] = None
+    # Si el ISN del estado grava a los asimilados; None = no confirmado.
+    isn_taxes_assimilated: Optional[bool] = None
     risk_rate: Optional[Decimal] = None
 
     def get(self, key: str) -> Decimal:
@@ -91,6 +100,8 @@ class EmployerCostInputs:
     total_perceptions: Decimal
     # Cuota obrera del IMSS que la ley pone a cargo del patron (salario minimo).
     worker_imss_paid_by_employer: Decimal = Decimal(0)
+    # Honorarios asimilados a salarios (tipo de regimen 09).
+    assimilated: bool = False
 
 
 @dataclass
@@ -227,9 +238,14 @@ class StatePayrollTax(EmployerCostComponent):
     description = "Impuesto sobre nóminas"
     group = ISN
 
-    def compute(self, ctx: CostContext) -> ComponentAmount:
+    def compute(self, ctx: CostContext) -> Optional[ComponentAmount]:
         if ctx.params.isn_rate is None:
             raise MissingParameter("isn")
+        if ctx.inputs.assimilated:
+            if ctx.params.isn_taxes_assimilated is None:
+                raise MissingParameter("isn_asimilados")
+            if not ctx.params.isn_taxes_assimilated:
+                return None
         return ComponentAmount(
             Decimal(ctx.inputs.total_perceptions), Decimal(ctx.params.isn_rate)
         )
@@ -327,17 +343,19 @@ class EmployerCostService:
         missing: List[str] = []
 
         factor = Decimal(1)
-        try:
-            factor = self.integration_factor(params, inputs.years_completed)
-        except MissingParameter as error:
-            missing.append(error.name)
-
         sbc = None
-        try:
-            if not missing:
-                sbc = self.sbc(params, daily, factor)
-        except MissingParameter as error:
-            missing.append(error.name)
+        # Sin relacion laboral no hay SBC: nada de lo que depende de el aplica.
+        if not inputs.assimilated:
+            try:
+                factor = self.integration_factor(params, inputs.years_completed)
+            except MissingParameter as error:
+                missing.append(error.name)
+
+            try:
+                if not missing:
+                    sbc = self.sbc(params, daily, factor)
+            except MissingParameter as error:
+                missing.append(error.name)
 
         ctx = CostContext(
             params=params, inputs=inputs, sbc=sbc,
@@ -346,6 +364,8 @@ class EmployerCostService:
 
         items = []
         for position, component in enumerate(self.components):
+            if inputs.assimilated and component.group in SOCIAL_SECURITY:
+                continue
             try:
                 result = component.compute(ctx)
             except MissingParameter as error:

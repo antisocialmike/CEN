@@ -281,8 +281,10 @@ def test_save_payroll_receipt_creates_a_new_one(repository, cursor):
     assert upsert[1] == date(2026, 9, 1)
     assert upsert[2] == date(2026, 9, 30)
     assert upsert[3] == "mensual"
-    assert upsert[12] == "admin@cen.com"
-    assert upsert[13] == COMPANY
+    # Sin tipo de regimen en el desglose, el recibo es de sueldos.
+    assert upsert[12] == "02"
+    assert upsert[13] == "admin@cen.com"
+    assert upsert[14] == COMPANY
 
 
 def test_save_payroll_receipt_replaces_the_items(repository, cursor):
@@ -419,7 +421,7 @@ def test_update_employee_returns_the_saved_row(repository, cursor):
     assert result is not None
     assert result["base_salary"] == 19000
     assert cursor.execute.call_args_list[1][0][1] == (
-        "Ana", "ana@cen.com", "employee", 19000, COMPANY, 3
+        "Ana", "ana@cen.com", "employee", 19000, "02", "01", COMPANY, 3
     )
 
 
@@ -433,7 +435,7 @@ def test_update_employee_to_admin_assigns_the_company(repository, cursor):
 
     lock, update, assign = cursor.execute.call_args_list
     assert "FOR UPDATE OF e" in lock[0][0]
-    assert update[0][1][4] is None
+    assert update[0][1][6] is None
     assert "INSERT INTO company_admins" in assign[0][0]
     assert assign[0][1] == (3, COMPANY, 7)
 

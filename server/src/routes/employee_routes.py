@@ -63,6 +63,8 @@ def create_employee(
         "email": request.email,
         "role": request.role,
         "base_salary": request.base_salary,
+        "tipo_regimen": request.tipo_regimen,
+        "tipo_jornada": request.tipo_jornada,
         "password_hash": hash_password(request.password),
     }, user["company_id"], user.get("employee_id"))
     return Employee(
@@ -71,6 +73,8 @@ def create_employee(
         email=request.email,
         role=request.role,
         base_salary=request.base_salary,
+        tipo_regimen=request.tipo_regimen,
+        tipo_jornada=request.tipo_jornada,
     )
 
 
@@ -92,6 +96,8 @@ def update_employee(
             "email": request.email,
             "role": request.role,
             "base_salary": request.base_salary,
+            "tipo_regimen": request.tipo_regimen,
+            "tipo_jornada": request.tipo_jornada,
         }, user["company_id"], user.get("employee_id"))
     except SharedAdminError:
         raise SHARED_ADMIN

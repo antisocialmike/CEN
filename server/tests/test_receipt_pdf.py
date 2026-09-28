@@ -210,3 +210,19 @@ def test_a_name_with_typographic_punctuation_survives(receipt):
     receipt["employee_name"] = "Ana\u2019s O\u2019Brien Mu\u00f1oz"
 
     assert build_receipt_pdf(receipt).startswith(b"%PDF-")
+
+
+def test_an_assimilated_receipt_says_so(receipt):
+    receipt["tipo_regimen"] = "09"
+
+    texto = _drawn_text(receipt)
+
+    assert "Honorarios asimilados a salarios" in texto
+    assert "PRESTADOR DE SERVICIOS" in texto
+
+
+def test_a_salary_receipt_keeps_its_employee(receipt):
+    texto = _drawn_text(receipt)
+
+    assert "EMPLEADO" in texto
+    assert "asimilados" not in texto

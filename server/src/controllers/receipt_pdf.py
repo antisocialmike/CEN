@@ -47,6 +47,9 @@ def format_currency(amount) -> str:
     return "$" + format_amount(amount)
 
 
+# Clave del SAT (c_TipoRegimen) de los honorarios asimilados a salarios.
+ASSIMILATED = "09"
+
 PERIODICITY_LABELS = {
     "mensual": "Mensual",
     "quincenal": "Quincenal",
@@ -155,13 +158,18 @@ class ReceiptPDF(FPDF):
         self.ln(0.5)
         self.set_font("Helvetica", "", 10.5)
         self.set_text_color(*INK_2)
-        self.cell(0, 5, "{}, {}".format(
+        line = "{}, {}".format(
             PERIODICITY_LABELS.get(receipt.get("periodicity"), "Periodo"),
             format_range(receipt["period_start"], receipt["period_end"]),
-        ), new_x="LMARGIN", new_y="NEXT")
+        )
+        assimilated = receipt.get("tipo_regimen") == ASSIMILATED
+        if assimilated:
+            line += " · Honorarios asimilados a salarios"
+        self.cell(0, 5, line, new_x="LMARGIN", new_y="NEXT")
 
         self.ln(7)
-        self.eyebrow("Empleado")
+        # Un asimilado no es empleado: presta servicios sin relacion laboral.
+        self.eyebrow("Prestador de servicios" if assimilated else "Empleado")
 
         self.ln(0.5)
         self.set_font("Helvetica", "", 12.5)

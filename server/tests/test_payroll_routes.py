@@ -663,3 +663,85 @@ def test_minimum_wage_retains_nothing_and_the_employer_pays_the_imss(
         if item["component"] == "imss_obrero_patron"
     )
     assert quota["amount"] == Decimal("235.54")
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_an_assimilated_is_calculated_without_imss_nor_subsidy(
+    mock_get_employee, mock_save
+):
+    mock_get_employee.return_value = {
+        "id": 1, "name": "Juan", "is_active": True, "tipo_regimen": "09",
+    }
+    mock_save.return_value = {"id": 55, "created": True}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert [item["concept"] for item in data["items"]] == ["sueldo", "isr"]
+    assert data["isr_deduction"] == 729.02
+    saved = mock_save.call_args[0][0]
+    assert saved["tipo_regimen"] == "09"
+    # Ni IMSS, ni SAR, ni INFONAVIT: solo puede quedar el ISN, aqui pendiente.
+    assert [
+        item for item in saved["employer_cost"]["items"]
+        if item["group_key"] in ("imss", "sar", "infonavit")
+    ] == []
+    assert saved["employer_cost"]["sbc_daily"] is None
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_an_assimilated_cannot_get_overtime(mock_get_employee, mock_save):
+    mock_get_employee.return_value = {
+        "id": 1, "name": "Juan", "is_active": True, "tipo_regimen": "09",
+    }
+
+    response = client.post(
+        "/payroll/calculate",
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 10000,
+            "overtime_double_hours": 4
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 400
+    assert "asimilado" in response.json()["detail"]
+    mock_save.assert_not_called()
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_the_overtime_uses_the_workday_of_the_person(mock_get_employee, mock_save):
+    mock_get_employee.return_value = {
+        "id": 1, "name": "Juan", "is_active": True,
+        "tipo_regimen": "02", "tipo_jornada": "02",
+    }
+    mock_save.return_value = {"id": 55, "created": True}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 21000,
+            "overtime_double_hours": 9
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    horas = next(
+        item for item in response.json()["data"]["items"]
+        if item["concept"] == "horas_extra"
+    )
+    # Nocturna: 700 diarios / 7 horas = 100 la hora, x 2 x 9.
+    assert horas["amount"] == 1800.0

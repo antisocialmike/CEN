@@ -248,3 +248,39 @@ def test_the_contribution_base_is_the_sbc_of_the_employer_cost():
 
     assert base == service.calculate(_inputs("9451.20"), _params())["sbc_daily"]
     assert base == D("330.58")
+
+
+# --- Asimilados a salarios ----------------------------------------------------
+
+def _asimilado(monthly: str) -> EmployerCostInputs:
+    inputs = _inputs(monthly)
+    inputs.assimilated = True
+    return inputs
+
+
+def test_an_assimilated_has_no_social_security():
+    params = _params()
+    params.isn_taxes_assimilated = False
+
+    result = service.calculate(_asimilado("20000"), params)
+
+    assert result["items"] == []
+    assert result["sbc_daily"] is None
+    assert result["missing"] == []
+    assert result["total"] == D("0.00")
+
+
+def test_the_state_says_if_its_payroll_tax_reaches_the_assimilated():
+    params = _params()
+    params.isn_taxes_assimilated = True
+
+    result = service.calculate(_asimilado("20000"), params)
+
+    assert _amounts(result) == {"isn": D("600.00")}
+
+
+def test_if_nobody_confirmed_it_the_payroll_tax_stays_pending():
+    result = service.calculate(_asimilado("20000"), _params())
+
+    assert result["items"] == []
+    assert result["missing"] == ["isn_asimilados"]

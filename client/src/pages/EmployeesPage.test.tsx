@@ -11,7 +11,9 @@ import {
   updateEmployee
 } from "../services/employeeService";
 
-vi.mock("../services/employeeService", () => ({
+// Las etiquetas y isAssimilated son las de verdad; solo se simulan las llamadas.
+vi.mock("../services/employeeService", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../services/employeeService")>()),
   listEmployeesPage: vi.fn(),
   updateEmployee: vi.fn(),
   deactivateEmployee: vi.fn(),
@@ -25,7 +27,9 @@ const ana = {
   email: "ana@cen.com",
   role: "employee" as const,
   base_salary: 18000,
-  is_active: true
+  is_active: true,
+  tipo_regimen: "02" as const,
+  tipo_jornada: "01" as const
 };
 
 const luis = {
@@ -34,7 +38,9 @@ const luis = {
   email: "luis@cen.com",
   role: "admin" as const,
   base_salary: 25000,
-  is_active: false
+  is_active: false,
+  tipo_regimen: "02" as const,
+  tipo_jornada: "01" as const
 };
 
 const anaReset = {
@@ -128,7 +134,9 @@ describe("edicion", () => {
         name: "Ana Lopez",
         email: "ana@cen.com",
         role: "employee",
-        baseSalary: 21000
+        baseSalary: 21000,
+        tipoRegimen: "02",
+        tipoJornada: "01"
       });
     });
     expect(await screen.findByText(/Se guardaron los cambios/)).toBeInTheDocument();
@@ -164,7 +172,9 @@ describe("administradores sin salario", () => {
     email: "pablo@cen.com",
     role: "admin" as const,
     base_salary: null,
-    is_active: true
+    is_active: true,
+    tipo_regimen: "02" as const,
+    tipo_jornada: "01" as const
   };
 
   it("dice que no cobra nómina en vez de mostrar una cifra", async () => {
@@ -192,7 +202,9 @@ describe("administradores sin salario", () => {
         name: "Pablo Soto Ruiz",
         email: "pablo@cen.com",
         role: "admin",
-        baseSalary: null
+        baseSalary: null,
+        tipoRegimen: "02",
+        tipoJornada: "01"
       });
     });
   });
@@ -401,5 +413,75 @@ describe("paginacion", () => {
 
     expect(await screen.findByText("Persona de la página 1")).toBeInTheDocument();
     expect(listEmployeesPage).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("tipo de nomina y jornada", () => {
+  const rosa = {
+    id: 9,
+    name: "Rosa Diaz",
+    email: "rosa@cen.com",
+    role: "employee" as const,
+    base_salary: 15000,
+    is_active: true,
+    tipo_regimen: "09" as const,
+    tipo_jornada: "01" as const
+  };
+
+  it("marca en la lista a quien cobra como asimilado", async () => {
+    vi.mocked(listEmployeesPage).mockResolvedValue(pagina([ana, rosa]));
+    renderPage();
+
+    await screen.findByText("Rosa Diaz");
+    expect(screen.getAllByText("Asimilado")).toHaveLength(1);
+  });
+
+  it("la jornada solo se pregunta a quien cobra sueldo", async () => {
+    vi.mocked(listEmployeesPage).mockResolvedValue(pagina([ana]));
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("Editar"));
+    expect(screen.getByLabelText("Jornada")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Tipo de nómina"), "09");
+    expect(screen.queryByLabelText("Jornada")).not.toBeInTheDocument();
+  });
+
+  it("cambiar el tipo de nomina pide confirmacion y se guarda", async () => {
+    vi.mocked(listEmployeesPage).mockResolvedValue(pagina([ana]));
+    vi.mocked(updateEmployee).mockResolvedValue({ ...ana, tipo_regimen: "09" });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("Editar"));
+    await user.selectOptions(screen.getByLabelText("Tipo de nómina"), "09");
+    await user.click(screen.getByText("Guardar cambios"));
+
+    expect(await screen.findByText(/Se guardarán cambios importantes/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => {
+      expect(updateEmployee).toHaveBeenCalledWith(3, expect.objectContaining({
+        tipoRegimen: "09"
+      }));
+    });
+  });
+
+  it("una jornada nocturna se guarda con su clave", async () => {
+    vi.mocked(listEmployeesPage).mockResolvedValue(pagina([ana]));
+    vi.mocked(updateEmployee).mockResolvedValue({ ...ana, tipo_jornada: "02" });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("Editar"));
+    await user.selectOptions(screen.getByLabelText("Jornada"), "02");
+    await user.click(screen.getByText("Guardar cambios"));
+
+    await waitFor(() => {
+      expect(updateEmployee).toHaveBeenCalledWith(3, expect.objectContaining({
+        tipoJornada: "02"
+      }));
+    });
   });
 });

@@ -439,3 +439,79 @@ def test_employees_need_a_salary():
     )
 
     assert response.status_code == 422
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.create_employee")
+def test_create_an_assimilated_with_its_workday(mock_create_employee):
+    mock_create_employee.return_value = 11
+
+    response = client.post(
+        "/employees",
+        json={
+            "name": "Rosa Diaz", "email": "rosa@cen.com", "role": "employee",
+            "base_salary": 15000, "password": "clave123",
+            "tipo_regimen": "09", "tipo_jornada": "01",
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tipo_regimen"] == "09"
+    data = mock_create_employee.call_args[0][0]
+    assert (data["tipo_regimen"], data["tipo_jornada"]) == ("09", "01")
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.create_employee")
+def test_without_regime_the_person_is_on_salary(mock_create_employee):
+    mock_create_employee.return_value = 12
+
+    response = client.post(
+        "/employees",
+        json={
+            "name": "Rosa Diaz", "email": "rosa@cen.com", "role": "employee",
+            "base_salary": 15000, "password": "clave123",
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    body = response.json()
+    assert (body["tipo_regimen"], body["tipo_jornada"]) == ("02", "01")
+
+
+@pytest.mark.parametrize("campo, valor", [
+    ("tipo_regimen", "05"), ("tipo_jornada", "08"),
+])
+def test_unsupported_regime_or_workday_is_rejected(campo, valor):
+    response = client.post(
+        "/employees",
+        json={
+            "name": "Rosa Diaz", "email": "rosa@cen.com", "role": "employee",
+            "base_salary": 15000, "password": "clave123", campo: valor,
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.update_employee")
+def test_update_changes_the_regime_and_workday(mock_update):
+    mock_update.return_value = {
+        "id": 3, "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 18000, "is_active": True,
+        "tipo_regimen": "02", "tipo_jornada": "03",
+    }
+
+    response = client.put(
+        "/employees/3",
+        json={
+            "name": "Ana", "email": "ana@cen.com", "role": "employee",
+            "base_salary": 18000, "tipo_regimen": "02", "tipo_jornada": "03",
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tipo_jornada"] == "03"
+    data = mock_update.call_args[0][1]
+    assert (data["tipo_regimen"], data["tipo_jornada"]) == ("02", "03")

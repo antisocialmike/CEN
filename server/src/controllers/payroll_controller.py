@@ -8,13 +8,37 @@ IMSS si estan aqui: las fija la LSS y no se actualizan cada anio.
 La cuota obrera se calcula sobre el SBC que tambien usa el costo patronal
 (employer_cost.EmployerCostService.contribution_base): trabajador y empresa
 cotizan sobre la misma base.
+
+Dos tipos de nomina (claves del catalogo c_TipoRegimen del SAT):
+- 02 Sueldos: la de siempre.
+- 09 Asimilados honorarios: misma tarifa de ISR, pero sin subsidio para el
+  empleo (el decreto es solo para el art. 94 primer parrafo y fr. I), sin
+  IMSS y sin las exenciones del art. 93, que son para trabajadores. Sin
+  relacion laboral tampoco hay horas extra, aguinaldo, prima vacacional ni
+  credito Infonavit.
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-HORAS_DE_JORNADA = 8
 DIAS_TARIFA_MENSUAL = 30.4
+
+SUELDOS = "02"
+ASIMILADOS = "09"
+TIPOS_DE_REGIMEN = (SUELDOS, ASIMILADOS)
+
+# Jornada maxima por dia, la que divide el salario diario en horas (LFT art. 61).
+HORAS_POR_JORNADA = {"01": 8.0, "02": 7.0, "03": 7.5}
+DIURNA = "01"
+
+# Lo que un asimilado no puede tener: son prestaciones de la relacion laboral.
+CONCEPTOS_SOLO_DE_TRABAJADORES = (
+    "overtime_double_hours",
+    "overtime_triple_hours",
+    "christmas_bonus_days",
+    "vacation_days",
+    "housing_credit_deduction",
+)
 
 MENSUAL = "mensual"
 QUINCENAL = "quincenal"
@@ -165,13 +189,18 @@ def scale_isr_table(table: Tuple[tuple, ...], factor: float) -> list:
 
 
 class ISRStrategy(TaxCalculationStrategy):
-    def __init__(self, parameters: PayrollParameters, periodicity: str = MENSUAL):
+    def __init__(
+        self, parameters: PayrollParameters, periodicity: str = MENSUAL,
+        with_subsidy: bool = True,
+    ):
         self.factor = (
             PERIODICITIES[periodicity]["tarifa_dias"] / DIAS_TARIFA_MENSUAL
         )
         self.table = scale_isr_table(parameters.isr_table, self.factor)
         self.subsidio_limite = parameters.subsidio_limite_mensual * self.factor
-        self.subsidio = parameters.subsidio_mensual * self.factor
+        self.subsidio = (
+            parameters.subsidio_mensual * self.factor if with_subsidy else 0.0
+        )
 
     def calculate(self, base_salary: float) -> float:
         isr_causado = 0.0
@@ -237,35 +266,55 @@ class PayrollService:
         if paid_days <= 0:
             raise ValueError("Los dias pagados deben ser mayores que cero")
 
+        regimen = inputs.get("tipo_regimen") or SUELDOS
+        if regimen not in TIPOS_DE_REGIMEN:
+            raise ValueError("Tipo de regimen no reconocido")
+        jornada = inputs.get("tipo_jornada") or DIURNA
+        if jornada not in HORAS_POR_JORNADA:
+            raise ValueError("Tipo de jornada no reconocido")
+        assimilated = regimen == ASIMILADOS
+
         self._reject_negatives(inputs)
+        if assimilated:
+            self._reject_labor_concepts(inputs)
 
         perceptions = self._perceptions(
-            gross_salary, inputs, paid_days, periodicity, parameters.uma_diaria
+            gross_salary, inputs, paid_days, periodicity,
+            parameters.uma_diaria, HORAS_POR_JORNADA[jornada], assimilated,
         )
         taxable_base = sum(item.taxable for item in perceptions)
 
-        minimum_wage = self._earns_minimum_wage(
+        # El salario minimo (LISR 96 y LSS 36) es cosa de trabajadores.
+        minimum_wage = not assimilated and self._earns_minimum_wage(
             gross_salary, periodicity, parameters
         )
-        imss_quota = IMSSStrategy(parameters).calculate(float(sbc_daily), paid_days)
+        imss_quota = (
+            0.0 if assimilated
+            else IMSSStrategy(parameters).calculate(float(sbc_daily), paid_days)
+        )
 
         deductions = self._deductions(
-            ISRStrategy(parameters, periodicity),
+            ISRStrategy(parameters, periodicity, with_subsidy=not assimilated),
             taxable_base,
             imss_quota,
             minimum_wage,
             only_salary=len(perceptions) == 1,
             inputs=inputs,
+            assimilated=assimilated,
         )
 
         total_perceptions = _round(sum(item.amount for item in perceptions))
         total_deductions = _round(sum(item.amount for item in deductions))
 
         isr = next(item.amount for item in deductions if item.concept == "isr")
-        imss = next(item.amount for item in deductions if item.concept == "imss")
+        # Un asimilado no lleva renglon de IMSS: no cotiza.
+        imss = next(
+            (item.amount for item in deductions if item.concept == "imss"), 0.0
+        )
 
         return {
             "periodicity": periodicity,
+            "tipo_regimen": regimen,
             "paid_days": paid_days,
             "gross_salary": gross_salary,
             "isr_deduction": isr,
@@ -286,6 +335,16 @@ class PayrollService:
         daily = _round(gross_salary / PERIODICITIES[periodicity]["dias_nominales"])
         return daily <= parameters.salario_minimo_general
 
+    def _reject_labor_concepts(self, inputs: dict) -> None:
+        if any(
+            float(inputs.get(field) or 0) > 0
+            for field in CONCEPTOS_SOLO_DE_TRABAJADORES
+        ):
+            raise ValueError(
+                "Un asimilado a salarios no tiene horas extra, aguinaldo, prima "
+                "vacacional ni credito Infonavit: no hay relacion laboral"
+            )
+
     def _reject_negatives(self, inputs: dict) -> None:
         if float(inputs.get("gross_salary", 0)) < 0:
             raise ValueError("El salario no puede ser negativo")
@@ -302,8 +361,10 @@ class PayrollService:
             if float(inputs.get(field) or 0) < 0:
                 raise ValueError("Los conceptos de nomina no pueden ser negativos")
 
-    def _hourly_wage(self, gross_salary: float, paid_days: float) -> float:
-        return self._daily_wage(gross_salary, paid_days) / HORAS_DE_JORNADA
+    def _hourly_wage(
+        self, gross_salary: float, paid_days: float, hours_per_day: float
+    ) -> float:
+        return self._daily_wage(gross_salary, paid_days) / hours_per_day
 
     def _daily_wage(self, gross_salary: float, paid_days: float) -> float:
         return gross_salary / paid_days
@@ -315,19 +376,25 @@ class PayrollService:
         paid_days: float,
         periodicity: str,
         uma_diaria: float,
+        hours_per_day: float,
+        assimilated: bool,
     ) -> List[PayrollItem]:
         items = [
             PayrollItem(
                 kind=PERCEPTION,
                 concept="sueldo",
-                description="Sueldo del periodo",
+                description=(
+                    "Honorarios asimilados a salarios del periodo"
+                    if assimilated else "Sueldo del periodo"
+                ),
                 amount=_round(gross_salary),
                 taxable=_round(gross_salary),
             )
         ]
 
         overtime = self._overtime(
-            gross_salary, inputs, paid_days, periodicity, uma_diaria
+            gross_salary, inputs, paid_days, periodicity, uma_diaria,
+            hours_per_day,
         )
         if overtime is not None:
             items.append(overtime)
@@ -365,13 +432,14 @@ class PayrollService:
         paid_days: float,
         periodicity: str,
         uma_diaria: float,
+        hours_per_day: float,
     ):
         double_hours = float(inputs.get("overtime_double_hours") or 0)
         triple_hours = float(inputs.get("overtime_triple_hours") or 0)
         if double_hours <= 0 and triple_hours <= 0:
             return None
 
-        hourly = self._hourly_wage(gross_salary, paid_days)
+        hourly = self._hourly_wage(gross_salary, paid_days, hours_per_day)
         amount = _round(
             hourly * FACTOR_HORA_DOBLE * double_hours
             + hourly * FACTOR_HORA_TRIPLE * triple_hours
@@ -455,6 +523,7 @@ class PayrollService:
         minimum_wage: bool,
         only_salary: bool,
         inputs: dict,
+        assimilated: bool = False,
     ) -> List[PayrollItem]:
         # A quien en el periodo solo cobra el salario minimo no se le retiene
         # ISR (LISR art. 96), y su cuota del IMSS la paga el patron (LSS art. 36).
@@ -473,7 +542,9 @@ class PayrollService:
                 amount=isr_calc.calculate(taxable_base),
             )
 
-        if minimum_wage:
+        if assimilated:
+            imss = None
+        elif minimum_wage:
             imss = PayrollItem(
                 kind=DEDUCTION,
                 concept="imss",
@@ -488,7 +559,7 @@ class PayrollService:
                 amount=imss_quota,
             )
 
-        items = [isr, imss]
+        items = [isr] + ([imss] if imss is not None else [])
 
         loan = float(inputs.get("loan_deduction") or 0)
         if loan > 0:
