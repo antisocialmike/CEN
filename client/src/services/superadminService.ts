@@ -125,3 +125,34 @@ export async function unassignCompanyOwner(companyId: number, ownerId: number): 
   );
   return response.data;
 }
+
+export interface ActiveCount {
+  active: number;
+  inactive: number;
+}
+
+// El tablero de la plataforma: solo conteos, nunca montos de nomina.
+export interface PlatformSummary {
+  companies: ActiveCount;
+  users: Record<"owner" | "admin" | "employee", ActiveCount>;
+  orphaned: {
+    total: number;
+    // Solo las primeras; `total` dice cuantas son en realidad.
+    companies: { id: number; legal_name: string; is_active: boolean }[];
+  };
+  // Los ultimos doce meses, del mas viejo al mas nuevo.
+  signups: { month: string; companies: number; owners: number }[];
+  activity: {
+    id: number;
+    action: string;
+    target_type: "owner" | "company";
+    target_name: string | null;
+    actor_name: string;
+    created_at: string;
+  }[];
+}
+
+export async function getPlatformSummary(): Promise<PlatformSummary> {
+  const response = await httpClient.get<PlatformSummary>("/superadmin/summary");
+  return response.data;
+}

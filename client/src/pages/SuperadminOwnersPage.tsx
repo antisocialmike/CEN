@@ -1,7 +1,7 @@
 import { FormEvent, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Buildings, EnvelopeSimple, UserCirclePlus, UsersThree } from "@phosphor-icons/react";
+import { ArrowLeft, EnvelopeSimple, UserCirclePlus, UsersThree } from "@phosphor-icons/react";
 import { rowVariants, stackVariants, useStill } from "../motion/variants";
 import FormField from "../components/FormField";
 import ErrorMessage from "../components/ErrorMessage";
@@ -187,9 +187,9 @@ export default function SuperadminOwnersPage() {
           </div>
         </div>
         <div className="dashboard-panel-actions">
-          <button className="btn btn-line" onClick={() => navigate("/superadmin/empresas")}>
-            <Buildings weight="bold" />
-            Empresas
+          <button className="btn btn-line" onClick={() => navigate("/superadmin")}>
+            <ArrowLeft weight="bold" />
+            Volver al panel
           </button>
           {!isCreating && (
             <button

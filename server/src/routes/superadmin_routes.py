@@ -1,7 +1,12 @@
+from datetime import date
 from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from ..controllers.payroll_analytics import (
+    build_platform_summary,
+    default_period,
+)
 from ..middlewares.auth_middleware import (
     generate_temporary_password,
     hash_password,
@@ -24,6 +29,7 @@ from ..models.platform_model import (
     OwnerPasswordResetResponse,
     OwnerUpdateRequest,
 )
+from ..repositories.analytics_repository import analytics_repository
 from ..repositories.company_repository import (
     NotFoundError,
     OrphanedCompanyError,
@@ -65,6 +71,17 @@ def _company_or_404(company_id: int) -> dict:
     if company is None:
         raise COMPANY_NOT_FOUND
     return company
+
+
+@router.get("/summary")
+def platform_summary(user: dict = Depends(require_superadmin)):
+    """El tablero de la plataforma: empresas, personas por rol, empresas sin
+    dueno activo, altas de los ultimos doce meses y la bitacora reciente.
+    Solo conteos: ni un monto de nomina de ninguna empresa."""
+    start, end = default_period(date.today())
+    return build_platform_summary(
+        analytics_repository.platform_summary(start, end)
+    )
 
 
 @router.get("/owners", response_model=Union[Page[Owner], List[Owner]])

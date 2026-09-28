@@ -20,6 +20,7 @@ const AdminSummaryPage = lazy(() => import("./pages/AdminSummaryPage"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const EmployeeDashboardPage = lazy(() => import("./pages/EmployeeDashboardPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
+const SuperadminSummaryPage = lazy(() => import("./pages/SuperadminSummaryPage"));
 const SuperadminOwnersPage = lazy(() => import("./pages/SuperadminOwnersPage"));
 const SuperadminCompaniesPage = lazy(() => import("./pages/SuperadminCompaniesPage"));
 const OwnerDashboardPage = lazy(() => import("./pages/OwnerDashboardPage"));
@@ -79,7 +80,8 @@ export default function App() {
 
               <Route element={<ProtectedRoute allowedRole="superadmin" />}>
                 <Route element={<RutaDePanel />}>
-                  <Route path="/superadmin" element={<SuperadminOwnersPage />} />
+                  <Route path="/superadmin" element={<SuperadminSummaryPage />} />
+                  <Route path="/superadmin/duenos" element={<SuperadminOwnersPage />} />
                   <Route path="/superadmin/empresas" element={<SuperadminCompaniesPage />} />
                 </Route>
               </Route>

@@ -202,3 +202,29 @@ def build_admin_summary(raw: dict, month: date) -> dict:
             for key in ("02", "09")
         ],
     }
+
+
+def build_platform_summary(raw: dict) -> dict:
+    """El tablero del superadmin. Los tres roles salen siempre, aunque sea en
+    cero, igual que los tipos de nomina del resumen del admin."""
+    users = {row["role"]: row for row in raw["users"]}
+    orphaned = raw["orphaned"]
+    return {
+        "companies": raw["companies"],
+        "users": {
+            role: {
+                "active": users.get(role, {}).get("active", 0),
+                "inactive": users.get(role, {}).get("inactive", 0),
+            }
+            for role in ("owner", "admin", "employee")
+        },
+        "orphaned": {
+            "total": orphaned[0]["total"] if orphaned else 0,
+            "companies": [
+                {key: row[key] for key in ("id", "legal_name", "is_active")}
+                for row in orphaned
+            ],
+        },
+        "signups": raw["signups"],
+        "activity": raw["activity"],
+    }

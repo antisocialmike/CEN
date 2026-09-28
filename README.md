@@ -292,6 +292,10 @@ capa.
   paginado y con el nombre del empleado. Requiere rol `admin`.
 - `GET /payroll/my-receipts`: recibos del empleado dueno del token, paginados
   (`page`, `page_size`).
+- `GET /superadmin/summary`: tablero de la plataforma, solo con conteos:
+  empresas y personas por rol (activas e inactivas), empresas sin dueno
+  activo, altas de empresas y duenos por mes y los ultimos movimientos de la
+  bitacora. Requiere rol `superadmin`.
 - `GET /admin/summary`: resumen de la empresa activa para su admin: quien
   sigue sin recibo en el mes en curso, totales del ultimo mes con recibos,
   ultimas altas y bajas y cuantos hay en cada tipo de nomina.

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Buildings, Plus, UsersThree, X } from "@phosphor-icons/react";
+import { ArrowLeft, Buildings, Plus, X } from "@phosphor-icons/react";
 import { rowVariants, stackVariants, useStill } from "../motion/variants";
 import SelectField from "../components/SelectField";
 import ErrorMessage from "../components/ErrorMessage";
@@ -198,8 +198,8 @@ export default function SuperadminCompaniesPage() {
         </div>
         <div className="dashboard-panel-actions">
           <button className="btn btn-line" onClick={() => navigate("/superadmin")}>
-            <UsersThree weight="bold" />
-            Dueños
+            <ArrowLeft weight="bold" />
+            Volver al panel
           </button>
           {!isCreating && (
             <button className="btn btn-rosa" onClick={openCreate}>
@@ -219,7 +219,7 @@ export default function SuperadminCompaniesPage() {
         <div className="empty-state">
           <p className="empty-state-title">Primero da de alta a un dueño</p>
           <p>Cada empresa nace con al menos un dueño activo.</p>
-          <button className="btn btn-rosa" onClick={() => navigate("/superadmin")}>
+          <button className="btn btn-rosa" onClick={() => navigate("/superadmin/duenos")}>
             Ir a dueños
           </button>
         </div>

@@ -231,6 +231,51 @@ ADMIN_MOVEMENTS = (
     "ORDER BY happened_at DESC, id DESC LIMIT %s;"
 )
 ADMIN_PENDING_SHOWN = 8
+# El tablero del superadmin: solo conteos de la plataforma. Ninguna consulta
+# toca los recibos: el superadmin no ve la nomina de las empresas.
+PLATFORM_COMPANIES = (
+    "SELECT COUNT(*) FILTER (WHERE c.is_active) AS active, "
+    "COUNT(*) FILTER (WHERE NOT c.is_active) AS inactive "
+    "FROM companies c;"
+)
+PLATFORM_USERS = (
+    "SELECT e.role, COUNT(*) FILTER (WHERE e.is_active) AS active, "
+    "COUNT(*) FILTER (WHERE NOT e.is_active) AS inactive "
+    "FROM employees e WHERE e.role IN ('owner', 'admin', 'employee') "
+    "GROUP BY e.role;"
+)
+# Sin dueno activo: la regla del 409 lo impide para las empresas activas, pero
+# quedan las que nacieron antes de ella (la "Empresa principal" de la 009).
+PLATFORM_ORPHANED = (
+    "SELECT c.id, c.legal_name, c.is_active, COUNT(*) OVER () AS total "
+    "FROM companies c WHERE NOT EXISTS ("
+    "SELECT 1 FROM company_owners co JOIN employees o ON o.id = co.owner_id "
+    "WHERE co.company_id = c.id AND o.is_active) "
+    "ORDER BY c.is_active DESC, c.legal_name ASC, c.id ASC LIMIT %s;"
+)
+PLATFORM_SIGNUPS = (
+    "SELECT m.month::date AS month, "
+    "(SELECT COUNT(*) FROM companies c "
+    "WHERE date_trunc('month', c.created_at) = m.month) AS companies, "
+    "(SELECT COUNT(*) FROM employees e WHERE e.role = 'owner' "
+    "AND date_trunc('month', e.created_at) = m.month) AS owners "
+    "FROM generate_series(date_trunc('month', %s::date), "
+    "date_trunc('month', %s::date), interval '1 month') AS m(month) "
+    "ORDER BY m.month;"
+)
+# El objetivo es un dueno o una empresa segun target_type; el nombre sale de
+# la tabla que toca.
+PLATFORM_ACTIVITY = (
+    "SELECT l.id, l.action, l.target_type, l.created_at, "
+    "a.name AS actor_name, COALESCE(o.name, c.legal_name) AS target_name "
+    "FROM platform_audit_log l JOIN employees a ON a.id = l.actor_id "
+    "LEFT JOIN employees o ON l.target_type = 'owner' AND o.id = l.target_id "
+    "LEFT JOIN companies c ON l.target_type = 'company' "
+    "AND c.id = l.target_id "
+    "ORDER BY l.created_at DESC, l.id DESC LIMIT %s;"
+)
+PLATFORM_ORPHANED_SHOWN = 5
+PLATFORM_ACTIVITY_SHOWN = 10
 ADMIN_MOVEMENTS_SHOWN = 5
 SELECT_OWNER_COMPANY_IDS = (
     "SELECT company_id FROM company_owners WHERE owner_id = %s "
@@ -331,6 +376,28 @@ class AnalyticsRepository:
                 "last_month": dict(last_month) if last_month else None,
                 "movements": many(
                     ADMIN_MOVEMENTS, company + company + (ADMIN_MOVEMENTS_SHOWN,)
+                ),
+            }
+
+    def platform_summary(self, start: date, end: date) -> dict:
+        with db_cursor() as cursor:
+            cursor.execute(CONSISTENT_SNAPSHOT)
+
+            def many(query: str, params: tuple) -> list:
+                cursor.execute(query, params)
+                return [dict(row) for row in cursor.fetchall()]
+
+            cursor.execute(PLATFORM_COMPANIES, ())
+            companies = dict(cursor.fetchone())
+            return {
+                "companies": companies,
+                "users": many(PLATFORM_USERS, ()),
+                "orphaned": many(
+                    PLATFORM_ORPHANED, (PLATFORM_ORPHANED_SHOWN,)
+                ),
+                "signups": many(PLATFORM_SIGNUPS, (start, end)),
+                "activity": many(
+                    PLATFORM_ACTIVITY, (PLATFORM_ACTIVITY_SHOWN,)
                 ),
             }
 

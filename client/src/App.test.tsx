@@ -153,6 +153,11 @@ describe("clave de transicion entre rutas del mismo armazon", () => {
     expect(claveDeTransicion("/admin")).toBe(claveDeTransicion("/admin/nomina"));
   });
 
+  it("las rutas del panel del superadmin comparten clave", () => {
+    expect(claveDeTransicion("/superadmin")).toBe(claveDeTransicion("/superadmin/duenos"));
+    expect(claveDeTransicion("/superadmin")).toBe(claveDeTransicion("/superadmin/empresas"));
+  });
+
   it("dar de alta no la comparte: es otra forma de pagina", () => {
     expect(claveDeTransicion("/admin/nuevo-usuario")).not.toBe(
       claveDeTransicion("/admin")
