@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  currentDate,
   currentPeriod,
   formatChange,
   formatCurrency,
@@ -49,6 +50,20 @@ describe("formatDate", () => {
 describe("formatDateShort", () => {
   it("devuelve dia y mes abreviado", () => {
     expect(formatDateShort("2026-09-01")).toMatch(/01/);
+  });
+});
+
+describe("currentDate", () => {
+  it("devuelve el dia de hoy en formato AAAA-MM-DD", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 8));
+    expect(currentDate()).toBe("2026-09-08");
+  });
+
+  it("usa la fecha local aunque en UTC ya sea el dia siguiente", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 5, 23, 30));
+    expect(currentDate()).toBe("2026-01-05");
   });
 });
 

@@ -64,6 +64,7 @@ class Employee(BaseModel):
     is_active: bool = True
     tipo_regimen: TipoRegimen = "02"
     tipo_jornada: TipoJornada = "01"
+    hire_date: Optional[date] = None
 
 
 class EmployeeCreateRequest(BaseModel):
@@ -74,6 +75,7 @@ class EmployeeCreateRequest(BaseModel):
     password: str = Field(min_length=8, max_length=72)
     tipo_regimen: TipoRegimen = "02"
     tipo_jornada: TipoJornada = "01"
+    hire_date: Optional[date] = None
 
 
 class PasswordResetResponse(BaseModel):
@@ -90,6 +92,7 @@ class EmployeeUpdateRequest(BaseModel):
     base_salary: Optional[float] = Field(default=None, ge=0)
     tipo_regimen: TipoRegimen = "02"
     tipo_jornada: TipoJornada = "01"
+    hire_date: Optional[date] = None
 
     @model_validator(mode="after")
     def _employees_have_a_salary(self) -> "EmployeeUpdateRequest":

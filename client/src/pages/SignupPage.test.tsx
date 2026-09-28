@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import SignupPage from "./SignupPage";
 import { createEmployee } from "../services/employeeService";
+import { currentDate } from "../services/format";
 
 // Las etiquetas son las de verdad; solo se simula la llamada a la API.
 vi.mock("../services/employeeService", async (importOriginal) => ({
@@ -37,6 +38,40 @@ beforeEach(() => {
     is_active: true,
     tipo_regimen: "09",
     tipo_jornada: "01"
+  });
+});
+
+describe("fecha de ingreso en el alta", () => {
+  it("arranca en hoy y viaja al alta", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(screen.getByLabelText("Fecha de ingreso")).toHaveValue(currentDate());
+    await llenar(user);
+    await user.click(screen.getByRole("button", { name: "Dar de alta" }));
+
+    await waitFor(() => {
+      expect(createEmployee).toHaveBeenCalledWith(
+        expect.objectContaining({ hireDate: currentDate() })
+      );
+    });
+  });
+
+  it("se puede dar de alta a alguien que entro antes", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await llenar(user);
+    fireEvent.change(screen.getByLabelText("Fecha de ingreso"), {
+      target: { value: "2018-01-08" }
+    });
+    await user.click(screen.getByRole("button", { name: "Dar de alta" }));
+
+    await waitFor(() => {
+      expect(createEmployee).toHaveBeenCalledWith(
+        expect.objectContaining({ hireDate: "2018-01-08" })
+      );
+    });
   });
 });
 

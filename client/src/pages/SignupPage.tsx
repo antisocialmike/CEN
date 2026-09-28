@@ -1,7 +1,13 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
-import { ArrowLeft, EnvelopeSimple, Lock, UsersThree } from "@phosphor-icons/react";
+import {
+  ArrowLeft,
+  CalendarBlank,
+  EnvelopeSimple,
+  Lock,
+  UsersThree
+} from "@phosphor-icons/react";
 import FormField from "../components/FormField";
 import SelectField from "../components/SelectField";
 import ErrorMessage from "../components/ErrorMessage";
@@ -16,6 +22,7 @@ import {
 } from "../services/employeeService";
 import { EmployeeRole } from "../services/authSession";
 import { getStatusCode } from "../services/apiError";
+import { currentDate } from "../services/format";
 
 const emptyForm = {
   name: "",
@@ -24,11 +31,16 @@ const emptyForm = {
   baseSalary: "",
   password: "",
   tipoRegimen: "02" as TipoRegimen,
-  tipoJornada: "01" as TipoJornada
+  tipoJornada: "01" as TipoJornada,
+  hireDate: ""
 };
 
+function newForm(): typeof emptyForm {
+  return { ...emptyForm, hireDate: currentDate() };
+}
+
 export default function SignupPage() {
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(newForm);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,12 +64,13 @@ export default function SignupPage() {
         baseSalary: Number(form.baseSalary),
         password: form.password,
         tipoRegimen: form.tipoRegimen,
-        tipoJornada: form.tipoJornada
+        tipoJornada: form.tipoJornada,
+        hireDate: form.hireDate
       });
       setSuccessMessage(
         `${created.name} ya puede entrar con ${created.email}. Comparte con esa persona su contraseña temporal.`
       );
-      setForm(emptyForm);
+      setForm(newForm());
     } catch (error) {
       if (getStatusCode(error) === 409) {
         setErrorMessage("Ese correo ya está registrado. Usa otro o busca a la persona en la lista.");
@@ -157,6 +170,16 @@ export default function SignupPage() {
               hint="Las horas de cada día: con ellas se paga cada hora extra."
             />
           )}
+          <FormField
+            id="hireDate"
+            label="Fecha de ingreso"
+            type="date"
+            value={form.hireDate}
+            onChange={(value) => updateField("hireDate", value)}
+            icon={<CalendarBlank weight="bold" />}
+            hint="De aquí sale su antigüedad: los días de vacaciones y el salario base de cotización."
+            required
+          />
           <FormField
             id="baseSalary"
             label="Salario base mensual"

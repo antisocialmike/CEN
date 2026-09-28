@@ -491,7 +491,7 @@ def test_calculate_payroll_with_every_concept(mock_get_employee, mock_save):
 
     saved = mock_save.call_args[0][0]
     assert len(saved["items"]) == 9
-    assert saved["total_perceptions"] == data["total_perceptions"]
+    assert float(saved["total_perceptions"]) == data["total_perceptions"]
 
 
 @patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")

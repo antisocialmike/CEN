@@ -25,6 +25,7 @@ export interface NewEmployeeInput {
   password: string;
   tipoRegimen: TipoRegimen;
   tipoJornada: TipoJornada;
+  hireDate: string;
 }
 
 export interface EmployeeCreated {
@@ -37,6 +38,7 @@ export interface EmployeeCreated {
   is_active: boolean;
   tipo_regimen: TipoRegimen;
   tipo_jornada: TipoJornada;
+  hire_date?: string | null;
 }
 
 // Sin relacion laboral: no cotiza al IMSS ni tiene prestaciones de la LFT.
@@ -57,6 +59,7 @@ export interface EmployeeUpdateInput {
   baseSalary: number | null;
   tipoRegimen: TipoRegimen;
   tipoJornada: TipoJornada;
+  hireDate: string | null;
 }
 
 export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeCreated> {
@@ -67,7 +70,8 @@ export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeC
     base_salary: input.baseSalary,
     password: input.password,
     tipo_regimen: input.tipoRegimen,
-    tipo_jornada: input.tipoJornada
+    tipo_jornada: input.tipoJornada,
+    hire_date: input.hireDate
   });
   return response.data;
 }
@@ -94,7 +98,8 @@ export async function updateEmployee(
     role: input.role,
     base_salary: input.baseSalary,
     tipo_regimen: input.tipoRegimen,
-    tipo_jornada: input.tipoJornada
+    tipo_jornada: input.tipoJornada,
+    hire_date: input.hireDate
   });
   return response.data;
 }

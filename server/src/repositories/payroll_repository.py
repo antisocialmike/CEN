@@ -17,7 +17,7 @@ INSERT_MIGRATION = "INSERT INTO schema_migrations (filename) VALUES (%s);"
 # una asignacion activa. Los duenos y el superadmin nunca entran aqui.
 SELECT_EMPLOYEE_BY_ID = (
     "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active, "
-    "e.tipo_regimen, e.tipo_jornada, e.created_at "
+    "e.tipo_regimen, e.tipo_jornada, e.hire_date, e.created_at "
     "FROM employees e WHERE e.id = %s "
     "AND e.role IN ('admin', 'employee') AND (e.company_id = %s OR EXISTS ("
     "SELECT 1 FROM company_admins ca WHERE ca.admin_id = e.id "
@@ -48,7 +48,7 @@ RESET_PASSWORD = (
     "failed_login_attempts = 0, locked_until = NULL, "
     "token_version = token_version + 1 WHERE id = %s "
     "RETURNING id, name, email, role, base_salary, is_active, "
-    "tipo_regimen, tipo_jornada;"
+    "tipo_regimen, tipo_jornada, hire_date;"
 )
 SELECT_PASSWORD_HASH = (
     "SELECT password_hash FROM employees WHERE id = %s;"
@@ -67,7 +67,7 @@ EMPLOYEES_OF_COMPANY = (
 EMPLOYEES_ORDER = "ORDER BY e.is_active DESC, e.name ASC, e.id ASC"
 SELECT_EMPLOYEES = (
     "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active, "
-    "e.tipo_regimen, e.tipo_jornada "
+    "e.tipo_regimen, e.tipo_jornada, e.hire_date "
     + EMPLOYEES_OF_COMPANY
     + EMPLOYEES_ORDER
 )
@@ -88,9 +88,10 @@ LOCK_MEMBER = (
 UPDATE_EMPLOYEE = (
     "UPDATE employees SET name = %s, email = %s, role = %s, "
     "base_salary = %s, tipo_regimen = %s, tipo_jornada = %s, "
+    "hire_date = COALESCE(%s, hire_date), "
     "company_id = %s WHERE id = %s "
     "RETURNING id, name, email, role, base_salary, is_active, "
-    "tipo_regimen, tipo_jornada;"
+    "tipo_regimen, tipo_jornada, hire_date;"
 )
 ASSIGN_ADMIN = (
     "INSERT INTO company_admins (admin_id, company_id, assigned_by) "
@@ -107,12 +108,13 @@ UPDATE_EMPLOYEE_ACTIVE = (
     "WHEN %s THEN NULL WHEN is_active THEN NOW() ELSE deactivated_at END "
     "WHERE id = %s "
     "RETURNING id, name, email, role, base_salary, is_active, "
-    "tipo_regimen, tipo_jornada;"
+    "tipo_regimen, tipo_jornada, hire_date;"
 )
 INSERT_EMPLOYEE = (
     "INSERT INTO employees (name, email, role, base_salary, tipo_regimen, "
-    "tipo_jornada, password_hash, must_change_password, company_id) "
-    "VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE, %s) RETURNING id;"
+    "tipo_jornada, hire_date, password_hash, must_change_password, "
+    "company_id) VALUES (%s, %s, %s, %s, %s, %s, "
+    "COALESCE(%s, CURRENT_DATE), %s, TRUE, %s) RETURNING id;"
 )
 SELECT_FIRST_COMPANY = "SELECT id FROM companies ORDER BY id LIMIT 1;"
 RECEIPT_ITEMS_JSON = (
@@ -298,6 +300,7 @@ class PayrollRepository:
                 employee_data["base_salary"],
                 employee_data.get("tipo_regimen", "02"),
                 employee_data.get("tipo_jornada", "01"),
+                employee_data.get("hire_date"),
                 company_id if role == "employee" else None,
                 employee_id,
             ))
@@ -371,6 +374,7 @@ class PayrollRepository:
                 employee_data["base_salary"],
                 employee_data.get("tipo_regimen", "02"),
                 employee_data.get("tipo_jornada", "01"),
+                employee_data.get("hire_date"),
                 employee_data["password_hash"],
                 company_id if role == "employee" else None,
             ))

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import EmployeesPage from "./EmployeesPage";
@@ -29,7 +29,8 @@ const ana = {
   base_salary: 18000,
   is_active: true,
   tipo_regimen: "02" as const,
-  tipo_jornada: "01" as const
+  tipo_jornada: "01" as const,
+  hire_date: "2019-06-03"
 };
 
 const luis = {
@@ -136,10 +137,33 @@ describe("edicion", () => {
         role: "employee",
         baseSalary: 21000,
         tipoRegimen: "02",
-        tipoJornada: "01"
+        tipoJornada: "01",
+        hireDate: "2019-06-03"
       });
     });
     expect(await screen.findByText(/Se guardaron los cambios/)).toBeInTheDocument();
+  });
+
+  it("corregir la fecha de ingreso pide confirmacion y la envia", async () => {
+    vi.mocked(updateEmployee).mockResolvedValue({ ...ana, hire_date: "2015-02-01" });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Editar"))[0]);
+    const fecha = screen.getByLabelText("Fecha de ingreso");
+    expect(fecha).toHaveValue("2019-06-03");
+    fireEvent.change(fecha, { target: { value: "2015-02-01" } });
+    await user.click(screen.getByText("Guardar cambios"));
+
+    expect(await screen.findByText(/Se guardarán cambios importantes/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => {
+      expect(updateEmployee).toHaveBeenCalledWith(
+        3,
+        expect.objectContaining({ hireDate: "2015-02-01" })
+      );
+    });
   });
 
   it("explica que el correo ya esta tomado", async () => {
@@ -204,7 +228,8 @@ describe("administradores sin salario", () => {
         role: "admin",
         baseSalary: null,
         tipoRegimen: "02",
-        tipoJornada: "01"
+        tipoJornada: "01",
+        hireDate: null
       });
     });
   });

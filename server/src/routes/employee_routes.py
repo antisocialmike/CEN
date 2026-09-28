@@ -1,3 +1,4 @@
+from datetime import date
 from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -58,6 +59,7 @@ def create_employee(
     request: EmployeeCreateRequest,
     user: dict = Depends(require_admin_company),
 ):
+    hire_date = request.hire_date or date.today()
     employee_id = payroll_repository.create_employee({
         "name": request.name,
         "email": request.email,
@@ -65,6 +67,7 @@ def create_employee(
         "base_salary": request.base_salary,
         "tipo_regimen": request.tipo_regimen,
         "tipo_jornada": request.tipo_jornada,
+        "hire_date": hire_date,
         "password_hash": hash_password(request.password),
     }, user["company_id"], user.get("employee_id"))
     return Employee(
@@ -75,6 +78,7 @@ def create_employee(
         base_salary=request.base_salary,
         tipo_regimen=request.tipo_regimen,
         tipo_jornada=request.tipo_jornada,
+        hire_date=hire_date,
     )
 
 
@@ -98,6 +102,7 @@ def update_employee(
             "base_salary": request.base_salary,
             "tipo_regimen": request.tipo_regimen,
             "tipo_jornada": request.tipo_jornada,
+            "hire_date": request.hire_date,
         }, user["company_id"], user.get("employee_id"))
     except SharedAdminError:
         raise SHARED_ADMIN

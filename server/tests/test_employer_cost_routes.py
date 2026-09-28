@@ -57,7 +57,7 @@ def isr_2026():
 def test_payroll_saves_its_employer_cost(mock_employee, mock_params, mock_save):
     mock_employee.return_value = {
         "id": 5, "name": "Ana", "is_active": True,
-        "created_at": datetime(2026, 3, 1, tzinfo=timezone.utc),
+        "hire_date": date(2026, 3, 1),
     }
     mock_params.return_value = {
         "rates": PAYROLL_RATES_2026, "ceav_brackets": CEAV_2026,
@@ -80,6 +80,36 @@ def test_payroll_saves_its_employer_cost(mock_employee, mock_params, mock_save):
     assert saved["missing"] == []
     assert response.json()["employer_cost"]["total"] == 3029.04
     assert response.json()["data"]["imss_deduction"] == 0.0
+
+
+@pytest.mark.parametrize("hire_date, factor", [
+    (date(2026, 3, 1), Decimal("1.049315")),
+    (date(2020, 1, 15), Decimal("1.056164")),
+])
+@patch(PAYROLL + ".save_payroll_receipt")
+@patch(PAYROLL + ".employer_cost_parameters")
+@patch(PAYROLL + ".get_employee_by_id")
+def test_seniority_comes_from_the_hire_date_not_the_account(
+    mock_employee, mock_params, mock_save, hire_date, factor
+):
+    mock_employee.return_value = {
+        "id": 5, "name": "Ana", "is_active": True, "hire_date": hire_date,
+        "created_at": datetime(2026, 9, 1, tzinfo=timezone.utc),
+    }
+    mock_params.return_value = {
+        "rates": PAYROLL_RATES_2026, "ceav_brackets": CEAV_2026,
+        "isn_rate": Decimal("0.03"), "risk_rate": Decimal("0.0054355"),
+    }
+    mock_save.return_value = {"id": 9, "created": True}
+
+    response = client.post("/payroll/calculate", json={
+        "employee_id": 5, "period_start": "2026-09-01", "gross_salary": 21000,
+    }, headers=_headers("admin", 3))
+
+    assert response.status_code == 200
+    saved = mock_save.call_args[0][0]["employer_cost"]
+    assert saved["integration_factor"] == factor
+    assert saved["sbc_daily"] == (Decimal(700) * factor).quantize(Decimal("0.01"))
 
 
 @patch(PAYROLL + ".save_payroll_receipt")

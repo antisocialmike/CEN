@@ -36,6 +36,7 @@ interface EditForm {
   baseSalary: string;
   tipoRegimen: TipoRegimen;
   tipoJornada: TipoJornada;
+  hireDate: string;
 }
 
 interface IssuedPassword {
@@ -88,7 +89,8 @@ export default function EmployeesPage() {
       role: employee.role,
       baseSalary: employee.base_salary === null ? "" : String(employee.base_salary),
       tipoRegimen: employee.tipo_regimen ?? "02",
-      tipoJornada: employee.tipo_jornada ?? "01"
+      tipoJornada: employee.tipo_jornada ?? "01",
+      hireDate: employee.hire_date ?? ""
     });
   }
 
@@ -110,8 +112,12 @@ export default function EmployeesPage() {
     const roleChanged = employee.role !== form.role;
     // Cambiar el tipo de nomina cambia lo que se le retiene: pide confirmacion.
     const regimeChanged = (employee.tipo_regimen ?? "02") !== form.tipoRegimen;
+    const hireDateChanged = (employee.hire_date ?? "") !== form.hireDate;
 
-    if ((emailChanged || salaryChanged || roleChanged || regimeChanged) && !pendingEditSave) {
+    if (
+      (emailChanged || salaryChanged || roleChanged || regimeChanged || hireDateChanged) &&
+      !pendingEditSave
+    ) {
       setPendingEditSave(true);
       return;
     }
@@ -128,7 +134,8 @@ export default function EmployeesPage() {
         role: form.role,
         baseSalary: newSalary,
         tipoRegimen: form.tipoRegimen,
-        tipoJornada: form.tipoJornada
+        tipoJornada: form.tipoJornada,
+        hireDate: form.hireDate || null
       });
       replaceEmployee(updated);
       setSuccessMessage("Se guardaron los cambios de " + updated.name + ".");
@@ -353,6 +360,13 @@ export default function EmployeesPage() {
                       }))}
                     />
                   )}
+                  <FormField
+                    id={"hireDate-" + employee.id}
+                    label="Fecha de ingreso"
+                    type="date"
+                    value={form.hireDate}
+                    onChange={(value) => setForm({ ...form, hireDate: value })}
+                  />
                   {pendingEditSave && (
                     <div className="action-confirm" role="alert">
                       <p className="action-confirm-message">Se guardarán cambios importantes.</p>

@@ -91,10 +91,8 @@ def _employer_cost(
             periodicity=request.periodicity,
             days=Decimal(request.paid_days()),
             years_completed=years,
-            total_perceptions=Decimal(str(breakdown["total_perceptions"])),
-            worker_imss_paid_by_employer=Decimal(
-                str(breakdown["imss_employer_paid"])
-            ),
+            total_perceptions=breakdown["total_perceptions"],
+            worker_imss_paid_by_employer=breakdown["imss_employer_paid"],
             assimilated=breakdown["tipo_regimen"] == ASIMILADOS,
         ),
         cost_params,
@@ -129,7 +127,7 @@ def calculate_payroll(
 
     # El regimen y la jornada son de la persona, no de la peticion.
     regimen = employee.get("tipo_regimen") or SUELDOS
-    years = completed_years(employee.get("created_at"), request.period_end())
+    years = completed_years(employee.get("hire_date"), request.period_end())
     payroll_params, cost_params, sbc = _parameters(
         request, user["company_id"], years, regimen == ASIMILADOS
     )
@@ -143,7 +141,7 @@ def calculate_payroll(
                 "tipo_jornada": employee.get("tipo_jornada"),
             },
             payroll_params,
-            float(sbc),
+            sbc,
         )
     except ValueError as error:
         raise HTTPException(

@@ -231,6 +231,16 @@ vacacional de ley segun la antiguedad), entre el salario minimo y 25 UMA.
 Es el mismo SBC que usa el costo patronal, asi que trabajador y empresa
 cotizan sobre la misma base.
 
+La **antiguedad** se cuenta desde la fecha de ingreso de la persona
+(`employees.hire_date`, migracion 016), no desde que se creo su cuenta en
+CEN. Las cuentas que ya existian toman como fecha de ingreso la de su alta,
+que la migracion 011 ya habia recorrido al primer periodo cobrado; conviene
+corregirla desde la pantalla de usuarios para quien entro antes.
+
+**Redondeo.** Todo el calculo usa decimales exactos (`Decimal`) y redondea
+a centavos con la mitad hacia arriba, igual que el costo patronal. Con
+punto flotante, 235.695 quedaba en 235.69; ahora queda en 235.70.
+
 **Lo que cambia cada anio no esta en el codigo.** La UMA, el salario
 minimo, el subsidio para el empleo y la tarifa del ISR se leen de la base
 con su vigencia (migraciones 012 y 013), segun la fecha en que empieza el
@@ -318,8 +328,10 @@ capa.
   periodo: recalcular el mismo mes reemplaza el anterior y la respuesta lo
   indica en `created`. Cada recibo guarda quien lo proceso.
 - `GET /employees` y `POST /employees`: lista y da de alta empleados.
-  Requieren rol `admin`.
-- `PUT /employees/{id}`: corrige nombre, correo, rol y salario base.
+  Requieren rol `admin`. El alta acepta `hire_date`; sin ella, la persona
+  ingresa hoy.
+- `PUT /employees/{id}`: corrige nombre, correo, rol, salario base y fecha
+  de ingreso. Sin `hire_date` se conserva la que ya tenia.
 - `POST /employees/{id}/deactivate` y `.../activate`: baja y alta logica.
   Dar de baja conserva los recibos, impide iniciar sesion y bloquea el
   calculo de nomina de esa persona. Un administrador no puede quitarse a
@@ -347,12 +359,28 @@ capa.
 
 ## Pruebas
 
-Las del servidor no necesitan una base de datos: la capa de acceso a
-datos se sustituye por dobles en cada caso.
+Las unitarias del servidor no necesitan una base de datos: la capa de
+acceso a datos se sustituye por dobles en cada caso.
 
 ```
 pytest server/tests/ --cov=server/src/ --cov-fail-under=80
 ```
+
+Las de `server/tests/integration/` corren contra un PostgreSQL de verdad:
+aplican todas las migraciones en una base nueva, calculan y guardan un
+recibo por la API, piden los tableros de cada rol y recorren la
+recuperacion de contrasena hasta el login. Solo corren si esta definida
+`TEST_DATABASE_URL`, que apunta a un servidor donde se pueda crear una base:
+cada corrida crea la suya con nombre aleatorio y la borra al terminar. Sin
+la variable se saltan.
+
+```
+docker run -d --rm --name cen-pruebas-pg -e POSTGRES_PASSWORD=postgres -p 55432:5432 postgres:15-alpine
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:55432/postgres pytest server/tests/integration
+```
+
+En PowerShell la variable se define antes con
+`$env:TEST_DATABASE_URL = "postgresql://postgres:postgres@localhost:55432/postgres"`.
 
 Las del cliente corren con Vitest sobre jsdom y cubren las piezas con
 logica propia: el formateo de importes y periodos, la sesion en
@@ -375,7 +403,9 @@ Servidor:
 
 1. Linting con flake8, con la configuracion de `.flake8`.
 2. Pruebas unitarias e integracion con pytest, con un umbral minimo de
-   cobertura del 80%.
+   cobertura del 80%. El trabajo levanta un PostgreSQL 15 como servicio y
+   define `TEST_DATABASE_URL`, asi que las pruebas de integracion corren
+   en cada push.
 
 Cliente:
 

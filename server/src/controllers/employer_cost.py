@@ -16,7 +16,6 @@ Simplificaciones que conviene saber:
   todavia no se integran.
 - El limite inferior del SBC es el salario minimo general; no se distingue la
   Zona Libre de la Frontera Norte.
-- La antiguedad sale de la fecha de alta de la cuenta.
 - La cuota obrera de quien gana el salario minimo se suma aqui (LSS art. 36),
   sin distinguir la Zona Libre de la Frontera Norte.
 

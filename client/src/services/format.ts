@@ -41,6 +41,11 @@ export function currentPeriod(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+export function currentDate(): string {
+  const now = new Date();
+  return `${currentPeriod()}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 export function formatRange(startValue: string, endValue: string): string {
   const start = toLocalDate(startValue);
   const end = toLocalDate(endValue);

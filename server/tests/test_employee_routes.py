@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import patch
 
 import pytest
@@ -519,3 +520,94 @@ def test_update_changes_the_regime_and_workday(mock_update):
     assert response.json()["tipo_jornada"] == "03"
     data = mock_update.call_args[0][1]
     assert (data["tipo_regimen"], data["tipo_jornada"]) == ("02", "03")
+
+
+def _new_employee(**extra):
+    return {
+        "name": "Juan Perez", "email": "juan@cen.com", "role": "employee",
+        "base_salary": 12000, "password": "clave123", **extra,
+    }
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.create_employee")
+def test_create_employee_saves_the_hire_date(mock_create_employee):
+    mock_create_employee.return_value = 10
+
+    response = client.post(
+        "/employees",
+        json=_new_employee(hire_date="2019-06-03"),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["hire_date"] == "2019-06-03"
+    assert mock_create_employee.call_args[0][0]["hire_date"] == date(2019, 6, 3)
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.create_employee")
+def test_without_hire_date_the_person_starts_today(mock_create_employee):
+    mock_create_employee.return_value = 10
+
+    response = client.post(
+        "/employees",
+        json=_new_employee(),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.json()["hire_date"] == date.today().isoformat()
+    assert mock_create_employee.call_args[0][0]["hire_date"] == date.today()
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.create_employee")
+def test_an_impossible_hire_date_is_rejected(mock_create_employee):
+    response = client.post(
+        "/employees",
+        json=_new_employee(hire_date="2019-02-30"),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
+    mock_create_employee.assert_not_called()
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.update_employee")
+def test_update_corrects_the_hire_date(mock_update):
+    mock_update.return_value = {
+        "id": 3, "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 18000, "is_active": True,
+        "tipo_regimen": "02", "tipo_jornada": "01",
+        "hire_date": date(2018, 1, 8),
+    }
+
+    response = client.put(
+        "/employees/3",
+        json={
+            "name": "Ana", "email": "ana@cen.com", "role": "employee",
+            "base_salary": 18000, "hire_date": "2018-01-08",
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["hire_date"] == "2018-01-08"
+    assert mock_update.call_args[0][1]["hire_date"] == date(2018, 1, 8)
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.update_employee")
+def test_update_without_hire_date_keeps_the_saved_one(mock_update):
+    mock_update.return_value = {
+        "id": 3, "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 18000, "is_active": True,
+        "hire_date": date(2018, 1, 8),
+    }
+
+    client.put(
+        "/employees/3",
+        json={
+            "name": "Ana", "email": "ana@cen.com", "role": "employee",
+            "base_salary": 18000,
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert mock_update.call_args[0][1]["hire_date"] is None

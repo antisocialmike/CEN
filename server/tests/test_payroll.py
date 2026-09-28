@@ -24,16 +24,16 @@ from server.tests.payroll_parameters import (
     PAYROLL_RATES_ENERO_2026,
 )
 
-UMA_DIARIA_2026 = 117.31
+UMA_DIARIA_2026 = Decimal("117.31")
 
 
 def _sbc(gross_salary, periodicity="mensual", rates=PAYROLL_RATES_2026, years=0):
     """El SBC que la ruta le pasa al calculo: el mismo del costo patronal."""
     if periodicity not in DAILY_DIVISOR:
-        return 0.0
-    return float(EmployerCostService().contribution_base(
+        return Decimal(0)
+    return EmployerCostService().contribution_base(
         EmployerCostParameters(rates=rates), gross_salary, periodicity, years
-    ))
+    )
 
 
 def _process(inputs, parameters=PARAMETERS_2026, rates=PAYROLL_RATES_2026):
@@ -51,22 +51,22 @@ def _items_by_concept(result):
 
 def test_el_subsidio_de_2026_es_el_15_02_por_ciento_de_la_uma():
     # 15.02% de 3,566.22 (decreto DOF 31-12-2025).
-    assert PARAMETERS_2026.subsidio_mensual == 535.65
+    assert PARAMETERS_2026.subsidio_mensual == Decimal("535.65")
 
 
 def test_en_enero_de_2026_el_subsidio_usa_la_uma_2025_y_su_porcentaje():
     enero = PayrollParameters.from_rows(PAYROLL_RATES_ENERO_2026, ISR_2026)
 
     # 15.59% de 3,439.46.
-    assert enero.subsidio_mensual == 536.21
+    assert enero.subsidio_mensual == Decimal("536.21")
 
 
 def test_el_subsidio_de_2025_y_su_enero():
     enero = PayrollParameters.from_rows(PAYROLL_RATES_ENERO_2025, ISR_2025)
 
     # 13.8% de 3,439.46 y, en enero, 14.39% de la UMA 2024 (3,300.53).
-    assert PARAMETERS_2025.subsidio_mensual == 474.65
-    assert enero.subsidio_mensual == 474.95
+    assert PARAMETERS_2025.subsidio_mensual == Decimal("474.65")
+    assert enero.subsidio_mensual == Decimal("474.95")
 
 
 @pytest.mark.parametrize("key", [
@@ -95,33 +95,54 @@ def test_sin_tarifa_de_isr_vigente_no_se_calcula():
 
 def test_isr_calculation():
     # 420.95 + (10,000 - 7,168.52) x 10.88% = 729.02, menos 535.65 de subsidio.
-    assert ISRStrategy(PARAMETERS_2026).calculate(10000) == 193.37
+    assert ISRStrategy(PARAMETERS_2026).calculate(10000) == Decimal("193.37")
 
 
 def test_isr_calculation_bajo_limite_de_subsidio():
-    assert ISRStrategy(PARAMETERS_2026).calculate(5000) == 0.0
+    assert ISRStrategy(PARAMETERS_2026).calculate(5000) == Decimal("0.0")
 
 
 def test_el_isr_de_2025_usa_su_propia_tarifa_y_su_subsidio():
     # 371.83 + (10,000 - 6,332.06) x 10.88% = 770.90, menos 474.65 de subsidio.
-    assert ISRStrategy(PARAMETERS_2025).calculate(10000) == 296.25
+    assert ISRStrategy(PARAMETERS_2025).calculate(10000) == Decimal("296.25")
 
 
 def test_arriba_del_limite_no_hay_subsidio():
     # 1,011.68 + (12,600 - 12,598.03) x 16%: pasa de 11,492.66, sin subsidio.
-    assert ISRStrategy(PARAMETERS_2026).calculate(12600) == 1012.0
+    assert ISRStrategy(PARAMETERS_2026).calculate(12600) == Decimal("1012.0")
+
+
+def test_el_isr_redondea_el_medio_centavo_hacia_arriba():
+    assert ISRStrategy(PARAMETERS_2026).calculate(Decimal("19302.40")) == (
+        Decimal("2234.65")
+    )
 
 
 # --- IMSS: cuota obrera sobre el SBC ----------------------------------------
 
 def test_imss_calculation():
     # SBC 349.77 (333.33 x 1.049315) x 30 dias x 2.375%.
-    assert IMSSStrategy(PARAMETERS_2026).calculate(349.77, 30) == 249.21
+    assert IMSSStrategy(PARAMETERS_2026).calculate(349.77, 30) == Decimal("249.21")
 
 
 def test_imss_calculation_con_excedente_de_3_uma():
     # SBC 699.55: 699.55 x 30 x 2.375% + (699.55 - 351.93) x 30 x 0.40%.
-    assert IMSSStrategy(PARAMETERS_2026).calculate(699.55, 30) == 540.14
+    assert IMSSStrategy(PARAMETERS_2026).calculate(699.55, 30) == Decimal("540.14")
+
+
+def test_el_imss_redondea_el_medio_centavo_hacia_arriba():
+    assert IMSSStrategy(PARAMETERS_2026).calculate(Decimal("330.80"), 30) == (
+        Decimal("235.70")
+    )
+
+
+def test_los_importes_del_desglose_son_decimales_a_centavos():
+    result = _process({"gross_salary": 9457.58})
+
+    for key in ("isr_deduction", "imss_deduction", "net_salary"):
+        assert isinstance(result[key], Decimal)
+        assert result[key].as_tuple().exponent == -2
+    assert result["imss_deduction"] == Decimal("235.70")
 
 
 def test_el_imss_se_calcula_sobre_el_sbc_no_sobre_el_sueldo():
@@ -129,7 +150,7 @@ def test_el_imss_se_calcula_sobre_el_sbc_no_sobre_el_sueldo():
 
     # Sobre el sueldo serian 10,000 x 2.375% = 237.50; el SBC integra aguinaldo
     # y prima vacacional.
-    assert result["imss_deduction"] == 249.21
+    assert result["imss_deduction"] == Decimal("249.21")
 
 
 def test_el_imss_cuenta_los_dias_del_periodo():
@@ -152,9 +173,9 @@ def test_a_quien_gana_el_salario_minimo_no_se_le_retiene_nada():
     result = _process({"gross_salary": 9451.20})
 
     conceptos = _items_by_concept(result)
-    assert result["isr_deduction"] == 0.0
-    assert result["imss_deduction"] == 0.0
-    assert result["net_salary"] == 9451.20
+    assert result["isr_deduction"] == Decimal("0.0")
+    assert result["imss_deduction"] == Decimal("0.0")
+    assert result["net_salary"] == Decimal("9451.20")
     assert "salario minimo" in conceptos["isr"]["description"]
     assert "patron" in conceptos["imss"]["description"]
 
@@ -163,23 +184,23 @@ def test_su_cuota_del_imss_la_paga_el_patron():
     result = _process({"gross_salary": 9451.20})
 
     # SBC 330.58 (315.04 x 1.049315) x 30 dias x 2.375%.
-    assert result["imss_employer_paid"] == 235.54
+    assert result["imss_employer_paid"] == Decimal("235.54")
 
 
 def test_con_percepciones_extra_el_isr_si_se_calcula():
     result = _process({"gross_salary": 9451.20, "bonus": 2000})
 
     # 420.95 + (11,451.20 - 7,168.52) x 10.88% = 886.91, menos 535.65.
-    assert result["isr_deduction"] == 351.26
+    assert result["isr_deduction"] == Decimal("351.26")
     # La cuota del IMSS la sigue pagando el patron: depende del salario diario.
-    assert result["imss_deduction"] == 0.0
+    assert result["imss_deduction"] == Decimal("0.0")
 
 
 def test_un_peso_arriba_del_minimo_ya_retiene():
     result = _process({"gross_salary": 9500})
 
     assert result["imss_deduction"] > 0
-    assert result["imss_employer_paid"] == 0.0
+    assert result["imss_employer_paid"] == Decimal("0.0")
 
 
 def test_el_minimo_de_2025_es_otro():
@@ -199,7 +220,7 @@ def test_una_nomina_sin_conceptos_extra_solo_lleva_sueldo_isr_e_imss():
     assert list(_items_by_concept(result)) == ["sueldo", "isr", "imss"]
     assert result["total_perceptions"] == 10000
     # 10,000 - 193.37 de ISR - 249.21 de IMSS.
-    assert result["net_salary"] == 9557.42
+    assert result["net_salary"] == Decimal("9557.42")
 
 
 def test_process_negative_value_raises_error():
@@ -215,7 +236,7 @@ def test_horas_extra_dobles_y_triples_segun_la_ley_federal_del_trabajo():
     })
 
     horas = _items_by_concept(result)["horas_extra"]
-    assert horas["amount"] == 2362.5
+    assert horas["amount"] == Decimal("2362.5")
     assert horas["taxable"] + horas["exempt"] == horas["amount"]
 
 
@@ -226,7 +247,7 @@ def test_la_mitad_de_las_horas_extra_esta_exenta():
     })
 
     horas = _items_by_concept(result)["horas_extra"]
-    assert horas["exempt"] == round(horas["amount"] * 0.5, 2)
+    assert horas["exempt"] == round(horas["amount"] * Decimal("0.5"), 2)
 
 
 def test_el_aguinaldo_sale_de_los_dias_de_salario_diario():
@@ -236,7 +257,7 @@ def test_el_aguinaldo_sale_de_los_dias_de_salario_diario():
     })
 
     aguinaldo = _items_by_concept(result)["aguinaldo"]
-    assert aguinaldo["amount"] == 10500.0
+    assert aguinaldo["amount"] == Decimal("10500.0")
     assert aguinaldo["exempt"] == round(UMA_DIARIA_2026 * 30, 2)
 
 
@@ -248,7 +269,7 @@ def test_la_exencion_del_aguinaldo_usa_la_uma_del_periodo():
     )
 
     # En enero de 2026 rige la UMA 2025: 113.14 x 30.
-    assert _items_by_concept(result)["aguinaldo"]["exempt"] == 3394.2
+    assert _items_by_concept(result)["aguinaldo"]["exempt"] == Decimal("3394.2")
 
 
 def test_el_aguinaldo_pequeno_queda_totalmente_exento():
@@ -258,9 +279,9 @@ def test_el_aguinaldo_pequeno_queda_totalmente_exento():
     })
 
     aguinaldo = _items_by_concept(result)["aguinaldo"]
-    assert aguinaldo["amount"] == 3000.0
-    assert aguinaldo["taxable"] == 0.0
-    assert aguinaldo["exempt"] == 3000.0
+    assert aguinaldo["amount"] == Decimal("3000.0")
+    assert aguinaldo["taxable"] == Decimal("0.0")
+    assert aguinaldo["exempt"] == Decimal("3000.0")
 
 
 def test_la_prima_vacacional_es_el_veinticinco_por_ciento():
@@ -270,7 +291,7 @@ def test_la_prima_vacacional_es_el_veinticinco_por_ciento():
     })
 
     prima = _items_by_concept(result)["prima_vacacional"]
-    assert prima["amount"] == 2100.0
+    assert prima["amount"] == Decimal("2100.0")
     assert prima["exempt"] == round(UMA_DIARIA_2026 * 15, 2)
 
 
@@ -286,8 +307,8 @@ def test_las_deducciones_adicionales_se_restan_del_neto():
         sin_deducciones["net_salary"] - 2000, 2
     )
     conceptos = _items_by_concept(con_deducciones)
-    assert conceptos["prestamo"]["amount"] == 800.0
-    assert conceptos["infonavit"]["amount"] == 1200.0
+    assert conceptos["prestamo"]["amount"] == Decimal("800.0")
+    assert conceptos["infonavit"]["amount"] == Decimal("1200.0")
 
 
 def test_el_isr_se_calcula_sobre_la_base_gravable_no_sobre_el_total():
@@ -306,8 +327,8 @@ def test_el_bono_es_gravable_por_completo():
     result = _process({"gross_salary": 10000, "bonus": 2000})
 
     bono = _items_by_concept(result)["bono"]
-    assert bono["taxable"] == 2000.0
-    assert bono["exempt"] == 0.0
+    assert bono["taxable"] == Decimal("2000.0")
+    assert bono["exempt"] == Decimal("0.0")
 
 
 def test_el_neto_cuadra_con_percepciones_menos_deducciones():
@@ -405,7 +426,7 @@ def test_la_periodicidad_viaja_en_el_resultado():
 
 def test_el_sbc_se_redondea_como_el_costo_patronal():
     # La ruta le pasa al calculo el SBC en Decimal ya redondeado.
-    assert _sbc(10000) == float(Decimal("349.77"))
+    assert _sbc(10000) == Decimal("349.77")
 
 
 # --- Asimilados a salarios (tipo de regimen 09) -----------------------------
@@ -418,9 +439,9 @@ def test_un_asimilado_paga_isr_sin_subsidio_y_no_cotiza_al_imss():
     result = _asimilado({"gross_salary": 10000})
 
     # 420.95 + (10,000 - 7,168.52) x 10.88% = 729.02: sin restar subsidio.
-    assert result["isr_deduction"] == 729.02
-    assert result["imss_deduction"] == 0.0
-    assert result["net_salary"] == 9270.98
+    assert result["isr_deduction"] == Decimal("729.02")
+    assert result["imss_deduction"] == Decimal("0.0")
+    assert result["net_salary"] == Decimal("9270.98")
     assert result["tipo_regimen"] == "09"
     assert list(_items_by_concept(result)) == ["sueldo", "isr"]
 
@@ -437,8 +458,8 @@ def test_el_salario_minimo_no_aplica_a_un_asimilado():
     result = _asimilado({"gross_salary": 9451.20})
 
     # 420.95 + (9,451.20 - 7,168.52) x 10.88% = 669.31, sin subsidio.
-    assert result["isr_deduction"] == 669.31
-    assert result["imss_employer_paid"] == 0.0
+    assert result["isr_deduction"] == Decimal("669.31")
+    assert result["imss_employer_paid"] == Decimal("0.0")
 
 
 @pytest.mark.parametrize("concepto", [
@@ -459,8 +480,8 @@ def test_un_asimilado_si_puede_tener_bono_y_prestamo():
     })
 
     conceptos = _items_by_concept(result)
-    assert conceptos["bono"]["taxable"] == 2000.0
-    assert conceptos["prestamo"]["amount"] == 500.0
+    assert conceptos["bono"]["taxable"] == Decimal("2000.0")
+    assert conceptos["prestamo"]["amount"] == Decimal("500.0")
 
 
 def test_sin_tipo_de_regimen_la_nomina_es_de_sueldos():

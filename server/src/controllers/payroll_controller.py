@@ -19,16 +19,22 @@ Dos tipos de nomina (claves del catalogo c_TipoRegimen del SAT):
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from decimal import ROUND_HALF_UP, Decimal
 from typing import List, Optional, Tuple
 
-DIAS_TARIFA_MENSUAL = 30.4
+CENT = Decimal("0.01")
+CERO = Decimal("0.00")
+
+DIAS_TARIFA_MENSUAL = Decimal("30.4")
 
 SUELDOS = "02"
 ASIMILADOS = "09"
 TIPOS_DE_REGIMEN = (SUELDOS, ASIMILADOS)
 
 # Jornada maxima por dia, la que divide el salario diario en horas (LFT art. 61).
-HORAS_POR_JORNADA = {"01": 8.0, "02": 7.0, "03": 7.5}
+HORAS_POR_JORNADA = {
+    "01": Decimal("8"), "02": Decimal("7"), "03": Decimal("7.5"),
+}
 DIURNA = "01"
 
 # Lo que un asimilado no puede tener: son prestaciones de la relacion laboral.
@@ -46,32 +52,32 @@ SEMANAL = "semanal"
 
 PERIODICITIES = {
     MENSUAL: {
-        "tarifa_dias": 30.4, "dias_nominales": 30,
-        "semanas": 4.0, "etiqueta": "Mensual",
+        "tarifa_dias": Decimal("30.4"), "dias_nominales": 30,
+        "semanas": 4, "etiqueta": "Mensual",
     },
     QUINCENAL: {
-        "tarifa_dias": 15.2, "dias_nominales": 15,
-        "semanas": 2.0, "etiqueta": "Quincenal",
+        "tarifa_dias": Decimal("15.2"), "dias_nominales": 15,
+        "semanas": 2, "etiqueta": "Quincenal",
     },
     SEMANAL: {
-        "tarifa_dias": 7.0, "dias_nominales": 7,
-        "semanas": 1.0, "etiqueta": "Semanal",
+        "tarifa_dias": Decimal("7"), "dias_nominales": 7,
+        "semanas": 1, "etiqueta": "Semanal",
     },
 }
 
 # Cuota obrera del IMSS sobre el SBC (LSS arts. 25, 106, 107, 147 y 168).
-IMSS_ENFERMEDAD_MATERNIDAD_DINERO = 0.0025
-IMSS_GASTOS_MEDICOS_PENSIONADOS = 0.00375
-IMSS_INVALIDEZ_VIDA = 0.00625
-IMSS_CESANTIA_EDAD_AVANZADA_VEJEZ = 0.01125
-IMSS_ENFERMEDAD_MATERNIDAD_EXCEDENTE = 0.0040
+IMSS_ENFERMEDAD_MATERNIDAD_DINERO = Decimal("0.0025")
+IMSS_GASTOS_MEDICOS_PENSIONADOS = Decimal("0.00375")
+IMSS_INVALIDEZ_VIDA = Decimal("0.00625")
+IMSS_CESANTIA_EDAD_AVANZADA_VEJEZ = Decimal("0.01125")
+IMSS_ENFERMEDAD_MATERNIDAD_EXCEDENTE = Decimal("0.0040")
 IMSS_EXCEDENTE_UMBRAL_UMA = 3
 
 AGUINALDO_EXENTO_UMA = 30
 PRIMA_VACACIONAL_EXENTO_UMA = 15
-PRIMA_VACACIONAL_PORCENTAJE = 0.25
+PRIMA_VACACIONAL_PORCENTAJE = Decimal("0.25")
 HORAS_EXTRA_EXENTO_UMA_POR_SEMANA = 5
-HORAS_EXTRA_PORCENTAJE_EXENTO = 0.5
+HORAS_EXTRA_PORCENTAJE_EXENTO = Decimal("0.5")
 
 FACTOR_HORA_DOBLE = 2
 FACTOR_HORA_TRIPLE = 3
@@ -80,8 +86,16 @@ PERCEPTION = "perception"
 DEDUCTION = "deduction"
 
 
-def _round(amount: float) -> float:
-    return round(amount + 0.0, 2)
+def _decimal(value) -> Decimal:
+    return Decimal(str(value or 0))
+
+
+def _round(amount) -> Decimal:
+    return Decimal(amount).quantize(CENT, rounding=ROUND_HALF_UP) + 0
+
+
+def _quantity(value: Decimal) -> str:
+    return "{:f}".format(value.normalize())
 
 
 class MissingPayrollParameter(Exception):
@@ -94,10 +108,10 @@ class MissingPayrollParameter(Exception):
 
 @dataclass(frozen=True)
 class PayrollParameters:
-    uma_diaria: float
-    salario_minimo_general: float
-    subsidio_porcentaje_uma: float
-    subsidio_limite_mensual: float
+    uma_diaria: Decimal
+    salario_minimo_general: Decimal
+    subsidio_porcentaje_uma: Decimal
+    subsidio_limite_mensual: Decimal
     # Tarifa mensual del art. 96: (limite inferior, limite superior o None,
     # cuota fija, porcentaje sobre el excedente), del tramo mas bajo al mas alto.
     isr_table: Tuple[tuple, ...]
@@ -106,11 +120,11 @@ class PayrollParameters:
     def from_rows(cls, rates: dict, isr_rows: list) -> "PayrollParameters":
         """Con lo que devuelve el repositorio para la fecha del periodo."""
 
-        def required(key: str) -> float:
+        def required(key: str) -> Decimal:
             value = rates.get(key)
             if value is None:
                 raise MissingPayrollParameter(key)
-            return float(value)
+            return _decimal(value)
 
         if not isr_rows:
             raise MissingPayrollParameter("tarifa_isr")
@@ -122,21 +136,22 @@ class PayrollParameters:
             subsidio_limite_mensual=required("subsidio_empleo_limite_mensual"),
             isr_table=tuple(
                 (
-                    float(row["lower_limit"]),
-                    None if row["upper_limit"] is None else float(row["upper_limit"]),
-                    float(row["fixed_fee"]),
-                    float(row["rate"]),
+                    _decimal(row["lower_limit"]),
+                    None if row["upper_limit"] is None
+                    else _decimal(row["upper_limit"]),
+                    _decimal(row["fixed_fee"]),
+                    _decimal(row["rate"]),
                 )
                 for row in isr_rows
             ),
         )
 
     @property
-    def uma_mensual(self) -> float:
+    def uma_mensual(self) -> Decimal:
         return _round(self.uma_diaria * DIAS_TARIFA_MENSUAL)
 
     @property
-    def subsidio_mensual(self) -> float:
+    def subsidio_mensual(self) -> Decimal:
         """El porcentaje del decreto sobre la UMA mensual del periodo.
 
         En 2026: 15.02% de 3,566.22 = 535.65 de febrero a diciembre, y 15.59%
@@ -150,9 +165,9 @@ class PayrollItem:
     kind: str
     concept: str
     description: str
-    amount: float
-    taxable: float = 0.0
-    exempt: float = 0.0
+    amount: Decimal
+    taxable: Decimal = CERO
+    exempt: Decimal = CERO
 
     def as_dict(self) -> dict:
         return {
@@ -165,18 +180,18 @@ class PayrollItem:
         }
 
 
-def _split_exemption(amount: float, exempt_cap: float) -> tuple:
-    exempt = min(amount, max(0.0, exempt_cap))
+def _split_exemption(amount: Decimal, exempt_cap: Decimal) -> tuple:
+    exempt = min(amount, max(CERO, exempt_cap))
     return _round(amount - exempt), _round(exempt)
 
 
 class TaxCalculationStrategy(ABC):
     @abstractmethod
-    def calculate(self, base_salary: float) -> float:
+    def calculate(self, base_salary: Decimal) -> Decimal:
         pass
 
 
-def scale_isr_table(table: Tuple[tuple, ...], factor: float) -> list:
+def scale_isr_table(table: Tuple[tuple, ...], factor: Decimal) -> list:
     return [
         (
             limite_inferior * factor,
@@ -199,11 +214,12 @@ class ISRStrategy(TaxCalculationStrategy):
         self.table = scale_isr_table(parameters.isr_table, self.factor)
         self.subsidio_limite = parameters.subsidio_limite_mensual * self.factor
         self.subsidio = (
-            parameters.subsidio_mensual * self.factor if with_subsidy else 0.0
+            parameters.subsidio_mensual * self.factor if with_subsidy else CERO
         )
 
-    def calculate(self, base_salary: float) -> float:
-        isr_causado = 0.0
+    def calculate(self, base_salary) -> Decimal:
+        base_salary = _decimal(base_salary)
+        isr_causado = CERO
         for limite_inferior, limite_superior, cuota_fija, porcentaje in self.table:
             dentro_del_rango = base_salary >= limite_inferior and (
                 limite_superior is None or base_salary <= limite_superior
@@ -215,7 +231,7 @@ class ISRStrategy(TaxCalculationStrategy):
         # El subsidio solo se resta del ISR: si es mayor, no se entrega la
         # diferencia (decreto DOF 01-05-2024, art. segundo).
         if base_salary <= self.subsidio_limite:
-            isr_causado = max(0.0, isr_causado - self.subsidio)
+            isr_causado = max(CERO, isr_causado - self.subsidio)
 
         return _round(isr_causado)
 
@@ -226,14 +242,16 @@ class IMSSStrategy:
     def __init__(self, parameters: PayrollParameters):
         self.umbral_excedente = parameters.uma_diaria * IMSS_EXCEDENTE_UMBRAL_UMA
 
-    def calculate(self, sbc_daily: float, days: float) -> float:
+    def calculate(self, sbc_daily, days) -> Decimal:
+        sbc_daily = _decimal(sbc_daily)
+        days = _decimal(days)
         cuotas_sobre_sbc = (
             IMSS_ENFERMEDAD_MATERNIDAD_DINERO
             + IMSS_GASTOS_MEDICOS_PENSIONADOS
             + IMSS_INVALIDEZ_VIDA
             + IMSS_CESANTIA_EDAD_AVANZADA_VEJEZ
         )
-        excedente = max(0.0, sbc_daily - self.umbral_excedente)
+        excedente = max(CERO, sbc_daily - self.umbral_excedente)
 
         imss = (
             sbc_daily * days * cuotas_sobre_sbc
@@ -245,20 +263,20 @@ class IMSSStrategy:
 
 class PayrollService:
     def process(
-        self, inputs: dict, parameters: PayrollParameters, sbc_daily: float
+        self, inputs: dict, parameters: PayrollParameters, sbc_daily
     ) -> dict:
         """El desglose del periodo.
 
         `parameters` son los vigentes en el periodo y `sbc_daily` el salario
         base de cotizacion que usa tambien el costo patronal.
         """
-        gross_salary = float(inputs.get("gross_salary", 0))
+        gross_salary = _decimal(inputs.get("gross_salary"))
         periodicity = inputs.get("periodicity") or MENSUAL
         if periodicity not in PERIODICITIES:
             raise ValueError("Periodicidad no reconocida")
 
         given_days = inputs.get("paid_days")
-        paid_days = float(
+        paid_days = _decimal(
             given_days
             if given_days is not None
             else PERIODICITIES[periodicity]["dias_nominales"]
@@ -289,8 +307,8 @@ class PayrollService:
             gross_salary, periodicity, parameters
         )
         imss_quota = (
-            0.0 if assimilated
-            else IMSSStrategy(parameters).calculate(float(sbc_daily), paid_days)
+            CERO if assimilated
+            else IMSSStrategy(parameters).calculate(sbc_daily, paid_days)
         )
 
         deductions = self._deductions(
@@ -309,7 +327,7 @@ class PayrollService:
         isr = next(item.amount for item in deductions if item.concept == "isr")
         # Un asimilado no lleva renglon de IMSS: no cotiza.
         imss = next(
-            (item.amount for item in deductions if item.concept == "imss"), 0.0
+            (item.amount for item in deductions if item.concept == "imss"), CERO
         )
 
         return {
@@ -320,7 +338,7 @@ class PayrollService:
             "isr_deduction": isr,
             "imss_deduction": imss,
             # La cuota obrera que paga la empresa: va a su costo, no al recibo.
-            "imss_employer_paid": imss_quota if minimum_wage else 0.0,
+            "imss_employer_paid": imss_quota if minimum_wage else CERO,
             "total_perceptions": total_perceptions,
             "total_deductions": total_deductions,
             "taxable_base": _round(taxable_base),
@@ -329,7 +347,8 @@ class PayrollService:
         }
 
     def _earns_minimum_wage(
-        self, gross_salary: float, periodicity: str, parameters: PayrollParameters
+        self, gross_salary: Decimal, periodicity: str,
+        parameters: PayrollParameters,
     ) -> bool:
         # El mismo salario diario que usa el costo patronal: 30, 15 o 7 dias.
         daily = _round(gross_salary / PERIODICITIES[periodicity]["dias_nominales"])
@@ -337,7 +356,7 @@ class PayrollService:
 
     def _reject_labor_concepts(self, inputs: dict) -> None:
         if any(
-            float(inputs.get(field) or 0) > 0
+            _decimal(inputs.get(field)) > 0
             for field in CONCEPTOS_SOLO_DE_TRABAJADORES
         ):
             raise ValueError(
@@ -346,7 +365,7 @@ class PayrollService:
             )
 
     def _reject_negatives(self, inputs: dict) -> None:
-        if float(inputs.get("gross_salary", 0)) < 0:
+        if _decimal(inputs.get("gross_salary")) < 0:
             raise ValueError("El salario no puede ser negativo")
 
         for field in (
@@ -358,25 +377,25 @@ class PayrollService:
             "loan_deduction",
             "housing_credit_deduction",
         ):
-            if float(inputs.get(field) or 0) < 0:
+            if _decimal(inputs.get(field)) < 0:
                 raise ValueError("Los conceptos de nomina no pueden ser negativos")
 
     def _hourly_wage(
-        self, gross_salary: float, paid_days: float, hours_per_day: float
-    ) -> float:
+        self, gross_salary: Decimal, paid_days: Decimal, hours_per_day: Decimal
+    ) -> Decimal:
         return self._daily_wage(gross_salary, paid_days) / hours_per_day
 
-    def _daily_wage(self, gross_salary: float, paid_days: float) -> float:
+    def _daily_wage(self, gross_salary: Decimal, paid_days: Decimal) -> Decimal:
         return gross_salary / paid_days
 
     def _perceptions(
         self,
-        gross_salary: float,
+        gross_salary: Decimal,
         inputs: dict,
-        paid_days: float,
+        paid_days: Decimal,
         periodicity: str,
-        uma_diaria: float,
-        hours_per_day: float,
+        uma_diaria: Decimal,
+        hours_per_day: Decimal,
         assimilated: bool,
     ) -> List[PayrollItem]:
         items = [
@@ -411,7 +430,7 @@ class PayrollService:
         if vacation_premium is not None:
             items.append(vacation_premium)
 
-        bonus = float(inputs.get("bonus") or 0)
+        bonus = _decimal(inputs.get("bonus"))
         if bonus > 0:
             items.append(
                 PayrollItem(
@@ -427,15 +446,15 @@ class PayrollService:
 
     def _overtime(
         self,
-        gross_salary: float,
+        gross_salary: Decimal,
         inputs: dict,
-        paid_days: float,
+        paid_days: Decimal,
         periodicity: str,
-        uma_diaria: float,
-        hours_per_day: float,
+        uma_diaria: Decimal,
+        hours_per_day: Decimal,
     ):
-        double_hours = float(inputs.get("overtime_double_hours") or 0)
-        triple_hours = float(inputs.get("overtime_triple_hours") or 0)
+        double_hours = _decimal(inputs.get("overtime_double_hours"))
+        triple_hours = _decimal(inputs.get("overtime_triple_hours"))
         if double_hours <= 0 and triple_hours <= 0:
             return None
 
@@ -457,8 +476,8 @@ class PayrollService:
         return PayrollItem(
             kind=PERCEPTION,
             concept="horas_extra",
-            description="Horas extra ({:g} dobles, {:g} triples)".format(
-                double_hours, triple_hours
+            description="Horas extra ({} dobles, {} triples)".format(
+                _quantity(double_hours), _quantity(triple_hours)
             ),
             amount=amount,
             taxable=taxable,
@@ -466,10 +485,10 @@ class PayrollService:
         )
 
     def _christmas_bonus(
-        self, gross_salary: float, inputs: dict, paid_days: float,
-        uma_diaria: float,
+        self, gross_salary: Decimal, inputs: dict, paid_days: Decimal,
+        uma_diaria: Decimal,
     ):
-        days = float(inputs.get("christmas_bonus_days") or 0)
+        days = _decimal(inputs.get("christmas_bonus_days"))
         if days <= 0:
             return None
 
@@ -481,17 +500,17 @@ class PayrollService:
         return PayrollItem(
             kind=PERCEPTION,
             concept="aguinaldo",
-            description="Aguinaldo ({:g} dias)".format(days),
+            description="Aguinaldo ({} dias)".format(_quantity(days)),
             amount=amount,
             taxable=taxable,
             exempt=exempt,
         )
 
     def _vacation_premium(
-        self, gross_salary: float, inputs: dict, paid_days: float,
-        uma_diaria: float,
+        self, gross_salary: Decimal, inputs: dict, paid_days: Decimal,
+        uma_diaria: Decimal,
     ):
-        days = float(inputs.get("vacation_days") or 0)
+        days = _decimal(inputs.get("vacation_days"))
         if days <= 0:
             return None
 
@@ -507,8 +526,8 @@ class PayrollService:
         return PayrollItem(
             kind=PERCEPTION,
             concept="prima_vacacional",
-            description="Prima vacacional ({:g} dias de vacaciones)".format(
-                days
+            description="Prima vacacional ({} dias de vacaciones)".format(
+                _quantity(days)
             ),
             amount=amount,
             taxable=taxable,
@@ -518,8 +537,8 @@ class PayrollService:
     def _deductions(
         self,
         isr_calc: ISRStrategy,
-        taxable_base: float,
-        imss_quota: float,
+        taxable_base: Decimal,
+        imss_quota: Decimal,
         minimum_wage: bool,
         only_salary: bool,
         inputs: dict,
@@ -532,7 +551,7 @@ class PayrollService:
                 kind=DEDUCTION,
                 concept="isr",
                 description="ISR: no se retiene a quien gana el salario minimo",
-                amount=0.0,
+                amount=CERO,
             )
         else:
             isr = PayrollItem(
@@ -549,7 +568,7 @@ class PayrollService:
                 kind=DEDUCTION,
                 concept="imss",
                 description="IMSS: lo paga el patron por ser salario minimo",
-                amount=0.0,
+                amount=CERO,
             )
         else:
             imss = PayrollItem(
@@ -561,7 +580,7 @@ class PayrollService:
 
         items = [isr] + ([imss] if imss is not None else [])
 
-        loan = float(inputs.get("loan_deduction") or 0)
+        loan = _decimal(inputs.get("loan_deduction"))
         if loan > 0:
             items.append(
                 PayrollItem(
@@ -572,7 +591,7 @@ class PayrollService:
                 )
             )
 
-        housing = float(inputs.get("housing_credit_deduction") or 0)
+        housing = _decimal(inputs.get("housing_credit_deduction"))
         if housing > 0:
             items.append(
                 PayrollItem(

@@ -445,8 +445,34 @@ def test_update_employee_returns_the_saved_row(repository, cursor):
     assert result is not None
     assert result["base_salary"] == 19000
     assert cursor.execute.call_args_list[1][0][1] == (
-        "Ana", "ana@cen.com", "employee", 19000, "02", "01", COMPANY, 3
+        "Ana", "ana@cen.com", "employee", 19000, "02", "01", None, COMPANY, 3
     )
+
+
+def test_update_employee_keeps_the_hire_date_when_it_does_not_come(
+    repository, cursor
+):
+    cursor.fetchone.side_effect = [_member(), _saved_row()]
+
+    repository.update_employee(3, {
+        "name": "Ana", "email": "ana@cen.com",
+        "role": "employee", "base_salary": 19000,
+    }, COMPANY)
+
+    assert "hire_date = COALESCE(%s, hire_date)" in _queries(cursor)[1]
+
+
+def test_create_employee_starts_today_without_a_hire_date(repository, cursor):
+    cursor.fetchone.return_value = {"id": 10}
+
+    repository.create_employee({
+        "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 19000, "password_hash": "hash",
+    }, COMPANY)
+
+    query, params = cursor.execute.call_args[0]
+    assert "COALESCE(%s, CURRENT_DATE)" in query
+    assert params[6] is None
 
 
 def test_update_employee_to_admin_assigns_the_company(repository, cursor):
