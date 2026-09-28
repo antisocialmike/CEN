@@ -56,6 +56,39 @@ def test_list_employees_success(mock_list_employees):
     assert body[0]["name"] == "Ana Lopez"
 
 
+@patch("server.src.routes.employee_routes.payroll_repository.list_employees")
+@patch("server.src.routes.employee_routes.payroll_repository.page_employees")
+def test_list_employees_by_page(mock_page_employees, mock_list_employees):
+    mock_page_employees.return_value = ([
+        {
+            "id": 21, "name": "Ana Lopez", "email": "ana@cen.com",
+            "role": "employee", "base_salary": 9000
+        }
+    ], 21)
+
+    response = client.get(
+        "/employees?page=2",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"][0]["name"] == "Ana Lopez"
+    assert (body["total"], body["page"], body["page_size"]) == (21, 2, 20)
+    mock_page_employees.assert_called_once_with(ADMIN_COMPANY_ID, 20, 20)
+    mock_list_employees.assert_not_called()
+
+
+@pytest.mark.parametrize("query", ["page=0", "page_size=101"])
+def test_list_employees_rejects_impossible_pages(query):
+    response = client.get(
+        "/employees?" + query,
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
+
+
 def test_list_employees_requires_admin_role():
     response = client.get(
         "/employees",

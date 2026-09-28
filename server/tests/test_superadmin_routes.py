@@ -82,6 +82,48 @@ def test_list_owners(mock_list):
     assert response.json()[0]["companies"][0]["legal_name"] == "Grupo Norte"
 
 
+@patch(REPOSITORY + ".page_owners")
+def test_list_owners_by_page(mock_page):
+    mock_page.return_value = ([OWNER], 21)
+
+    response = client.get("/superadmin/owners?page=2&page_size=20", headers=SUPERADMIN)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"][0]["name"] == "Laura Mendez"
+    assert (body["total"], body["page"], body["page_size"]) == (21, 2, 20)
+    mock_page.assert_called_once_with(20, 20)
+
+
+@patch(REPOSITORY + ".list_companies")
+def test_list_companies_whole_for_whoever_does_not_ask_for_a_page(mock_list):
+    mock_list.return_value = [COMPANY]
+
+    response = client.get("/superadmin/companies", headers=SUPERADMIN)
+
+    assert response.status_code == 200
+    assert response.json()[0]["legal_name"] == "Grupo Norte SA de CV"
+
+
+@patch(REPOSITORY + ".page_companies")
+def test_list_companies_by_page(mock_page):
+    mock_page.return_value = ([], 3)
+
+    response = client.get("/superadmin/companies?page=5", headers=SUPERADMIN)
+
+    assert response.status_code == 200
+    assert response.json() == {"items": [], "total": 3, "page": 5, "page_size": 20}
+    mock_page.assert_called_once_with(20, 80)
+
+
+@pytest.mark.parametrize("path", ["/superadmin/owners", "/superadmin/companies"])
+@pytest.mark.parametrize("query", ["page=0", "page_size=101"])
+def test_superadmin_lists_reject_impossible_pages(path, query):
+    response = client.get(path + "?" + query, headers=SUPERADMIN)
+
+    assert response.status_code == 422
+
+
 @patch(REPOSITORY + ".get_owner")
 @patch(REPOSITORY + ".create_owner")
 def test_create_owner_returns_a_temporary_password(mock_create, mock_get):

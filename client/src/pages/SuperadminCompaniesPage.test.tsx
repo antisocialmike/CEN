@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import SuperadminCompaniesPage from "./SuperadminCompaniesPage";
 import {
   assignCompanyOwner,
   createCompany,
-  listCompanies,
+  listCompaniesPage,
   listOwners,
   unassignCompanyOwner
 } from "../services/superadminService";
@@ -15,7 +15,7 @@ vi.mock("../services/superadminService", async (importOriginal) => {
   const original = await importOriginal<typeof import("../services/superadminService")>();
   return {
     ENTIDADES_FEDERATIVAS: original.ENTIDADES_FEDERATIVAS,
-    listCompanies: vi.fn(),
+    listCompaniesPage: vi.fn(),
     listOwners: vi.fn(),
     createCompany: vi.fn(),
     updateCompany: vi.fn(),
@@ -39,6 +39,11 @@ const norte = {
   owners: [{ id: 5, name: "Laura Mendez", is_active: true }]
 };
 
+// Lo que devuelve la API al pedir una pagina.
+function pagina<T>(items: T[], total = items.length, page = 1) {
+  return { items, total, page, page_size: 20 };
+}
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -49,7 +54,7 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(listCompanies).mockResolvedValue([norte]);
+  vi.mocked(listCompaniesPage).mockResolvedValue(pagina([norte]));
   vi.mocked(listOwners).mockResolvedValue([laura, pedro]);
 });
 
@@ -83,6 +88,8 @@ describe("alta", () => {
       6
     );
     expect(await screen.findByText("Sur SA quedó registrada.")).toBeInTheDocument();
+    // La pagina se vuelve a pedir para que la nueva quede en su lugar por nombre.
+    await waitFor(() => expect(listCompaniesPage).toHaveBeenCalledTimes(2));
   });
 
   it("pide un dueño antes de registrar la primera empresa", async () => {

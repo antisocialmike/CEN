@@ -52,14 +52,22 @@ UPDATE_PASSWORD = (
     "UPDATE employees SET password_hash = %s, must_change_password = FALSE "
     "WHERE id = %s;"
 )
-SELECT_EMPLOYEES = (
-    "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active "
+EMPLOYEES_OF_COMPANY = (
     "FROM employees e WHERE e.role IN ('admin', 'employee') "
     "AND (e.company_id = %s OR EXISTS ("
     "SELECT 1 FROM company_admins ca WHERE ca.admin_id = e.id "
     "AND ca.company_id = %s AND ca.is_active)) "
-    "ORDER BY e.is_active DESC, e.name ASC;"
 )
+# El id desempata a los homonimos para que la paginacion no los baraje.
+EMPLOYEES_ORDER = "ORDER BY e.is_active DESC, e.name ASC, e.id ASC"
+SELECT_EMPLOYEES = (
+    "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active "
+    + EMPLOYEES_OF_COMPANY
+    + EMPLOYEES_ORDER
+)
+SELECT_ALL_EMPLOYEES = SELECT_EMPLOYEES + ";"
+SELECT_EMPLOYEES_PAGE = SELECT_EMPLOYEES + " LIMIT %s OFFSET %s;"
+COUNT_EMPLOYEES = "SELECT COUNT(*) AS total " + EMPLOYEES_OF_COMPANY + ";"
 # Bloquea a la persona mientras se modifica y dice si tambien administra
 # otras empresas: en ese caso la cuenta no es solo de esta empresa.
 LOCK_MEMBER = (
@@ -118,7 +126,9 @@ SELECT_RECEIPTS_BY_EMPLOYEE = (
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
     "WHERE r.employee_id = %s GROUP BY r.id ORDER BY r.period_start DESC;"
 )
-SELECT_RECENT_RECEIPTS = (
+# El id desempata: sin el, dos recibos iguales en periodo y hora podrian
+# cambiar de lugar entre una pagina y la siguiente.
+SELECT_RECEIPTS_PAGE = (
     "SELECT r.id, r.employee_id, e.name AS employee_name, "
     "r.period_start, r.period_end, r.periodicity, r.paid_days, "
     "r.gross_salary, r.isr_deduction, r.imss_deduction, r.net_salary, "
@@ -128,7 +138,11 @@ SELECT_RECENT_RECEIPTS = (
     + "FROM payroll_receipts r JOIN employees e ON e.id = r.employee_id "
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
     "WHERE r.company_id = %s GROUP BY r.id, e.name "
-    "ORDER BY r.period_start DESC, r.updated_at DESC LIMIT %s;"
+    "ORDER BY r.period_start DESC, r.updated_at DESC, r.id DESC "
+    "LIMIT %s OFFSET %s;"
+)
+COUNT_RECEIPTS = (
+    "SELECT COUNT(*) AS total FROM payroll_receipts r WHERE r.company_id = %s;"
 )
 SELECT_RECEIPT_BY_ID = (
     "SELECT r.id, r.employee_id, e.name AS employee_name, "
@@ -322,7 +336,13 @@ class PayrollRepository:
             cursor.execute(UPDATE_PASSWORD, (password_hash, employee_id))
 
     def list_employees(self, company_id: int) -> list:
-        return self._fetch_all(SELECT_EMPLOYEES, (company_id, company_id))
+        return self._fetch_all(SELECT_ALL_EMPLOYEES, (company_id, company_id))
+
+    def page_employees(self, company_id: int, limit: int, offset: int) -> tuple:
+        return self._fetch_page(
+            SELECT_EMPLOYEES_PAGE, COUNT_EMPLOYEES,
+            (company_id, company_id), limit, offset,
+        )
 
     def create_employee(
         self, employee_data: dict, company_id: Optional[int] = None,
@@ -366,8 +386,10 @@ class PayrollRepository:
     def get_receipt_by_id(self, receipt_id: int) -> Optional[dict]:
         return self._fetch_one(SELECT_RECEIPT_BY_ID, (receipt_id,))
 
-    def list_recent_receipts(self, company_id: int, limit: int = 20) -> list:
-        return self._fetch_all(SELECT_RECENT_RECEIPTS, (company_id, limit))
+    def page_receipts(self, company_id: int, limit: int, offset: int) -> tuple:
+        return self._fetch_page(
+            SELECT_RECEIPTS_PAGE, COUNT_RECEIPTS, (company_id,), limit, offset
+        )
 
     def save_payroll_receipt(self, receipt_data: dict) -> dict:
         with db_cursor() as cursor:
@@ -491,6 +513,17 @@ class PayrollRepository:
         with db_cursor() as cursor:
             cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
+
+    def _fetch_page(
+        self, query: str, count_query: str, params: tuple,
+        limit: int, offset: int,
+    ) -> tuple:
+        """Las filas del tramo pedido y el total de la lista completa."""
+        with db_cursor() as cursor:
+            cursor.execute(count_query, params)
+            total = dict(cursor.fetchone())["total"]
+            cursor.execute(query, params + (limit, offset))
+            return [dict(row) for row in cursor.fetchall()], total
 
     def create_password_reset_token(
         self, employee_id: int, token: str, code: str, expires_at

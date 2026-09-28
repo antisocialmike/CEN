@@ -238,16 +238,16 @@ def test_health_check_fails_without_database(mock_ready):
     assert response.json()["detail"] == "Base de datos no disponible"
 
 
-@patch("server.src.routes.payroll_routes.payroll_repository.list_recent_receipts")
-def test_list_recent_receipts_success(mock_list_receipts):
-    mock_list_receipts.return_value = [
+@patch("server.src.routes.payroll_routes.payroll_repository.page_receipts")
+def test_list_receipts_starts_on_the_first_page(mock_page_receipts):
+    mock_page_receipts.return_value = ([
         {
             "id": 1, "employee_id": 7, "employee_name": "Ana Lopez",
             "gross_salary": 10000.0, "isr_deduction": 192.8,
             "imss_deduction": 237.5, "net_salary": 9569.7,
             "created_at": "2026-09-01T10:00:00"
         }
-    ]
+    ], 41)
 
     response = client.get(
         "/payroll/receipts",
@@ -255,11 +255,40 @@ def test_list_recent_receipts_success(mock_list_receipts):
     )
 
     assert response.status_code == 200
-    assert len(response.json()["receipts"]) == 1
-    mock_list_receipts.assert_called_once_with(ADMIN_COMPANY_ID, 20)
+    body = response.json()
+    assert len(body["items"]) == 1
+    assert (body["total"], body["page"], body["page_size"]) == (41, 1, 20)
+    mock_page_receipts.assert_called_once_with(ADMIN_COMPANY_ID, 20, 0)
 
 
-def test_list_recent_receipts_requires_admin_role():
+@patch("server.src.routes.payroll_routes.payroll_repository.page_receipts")
+def test_list_receipts_skips_the_previous_pages(mock_page_receipts):
+    mock_page_receipts.return_value = ([], 41)
+
+    response = client.get(
+        "/payroll/receipts?page=3&page_size=10",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    mock_page_receipts.assert_called_once_with(ADMIN_COMPANY_ID, 10, 20)
+
+
+@pytest.mark.parametrize("query", [
+    "page=0", "page=-1", "page=uno", "page_size=0", "page_size=101",
+])
+@patch("server.src.routes.payroll_routes.payroll_repository.page_receipts")
+def test_list_receipts_rejects_impossible_pages(mock_page_receipts, query):
+    response = client.get(
+        "/payroll/receipts?" + query,
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
+    mock_page_receipts.assert_not_called()
+
+
+def test_list_receipts_requires_admin_role():
     response = client.get(
         "/payroll/receipts",
         headers={"Authorization": f"Bearer {_employee_token()}"}

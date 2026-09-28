@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Buildings, Plus, UsersThree, X } from "@phosphor-icons/react";
@@ -9,13 +9,15 @@ import SuccessMessage from "../components/SuccessMessage";
 import SubmitButton from "../components/SubmitButton";
 import Skeleton from "../components/Skeleton";
 import CompanyFields from "../components/CompanyFields";
+import Paginacion from "../components/Paginacion";
+import { useListaPaginada } from "../routes/listaPaginada";
 import { companyMeta, toCompanyInput } from "../services/companyData";
 import {
   assignCompanyOwner,
   Company,
   CompanyInput,
   createCompany,
-  listCompanies,
+  listCompaniesPage,
   listOwners,
   Owner,
   unassignCompanyOwner,
@@ -43,8 +45,12 @@ export default function SuperadminCompaniesPage() {
   const stackTravel = useStill(stackVariants);
   const rowTravel = useStill(rowVariants);
   const navigate = useNavigate();
-  const [companies, setCompanies] = useState<Company[] | null>(null);
+  const lista = useListaPaginada(listCompaniesPage);
+  const companies = lista.items;
+  const inicioDeLista = useRef<HTMLUListElement>(null);
+  // Los duenos van completos: alimentan los selectores de asignar, no se paginan.
   const [owners, setOwners] = useState<Owner[]>([]);
+  const [ownersFailed, setOwnersFailed] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newCompany, setNewCompany] = useState<CompanyInput>(emptyCompany);
   const [firstOwnerId, setFirstOwnerId] = useState("");
@@ -57,21 +63,21 @@ export default function SuperadminCompaniesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const activeOwners = owners.filter((owner) => owner.is_active);
+  // Los fallos al cargar no se borran al intentar otra accion: los datos siguen sin llegar.
+  const shownError =
+    errorMessage ??
+    (lista.fallo
+      ? "No se pudo cargar la lista de empresas. Recarga la página."
+      : ownersFailed
+        ? "No se pudo cargar la lista de dueños para asignar. Recarga la página."
+        : null);
 
   useEffect(() => {
     let isMounted = true;
 
-    Promise.all([listCompanies(), listOwners()])
-      .then(([companyList, ownerList]) => {
-        if (!isMounted) return;
-        setCompanies(companyList);
-        setOwners(ownerList);
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setCompanies([]);
-        setErrorMessage("No se pudo cargar la lista de empresas. Recarga la página.");
-      });
+    listOwners()
+      .then((ownerList) => isMounted && setOwners(ownerList))
+      .catch(() => isMounted && setOwnersFailed(true));
 
     return () => {
       isMounted = false;
@@ -84,8 +90,8 @@ export default function SuperadminCompaniesPage() {
   }
 
   function replaceCompany(updated: Company) {
-    setCompanies((current) =>
-      (current ?? []).map((item) => (item.id === updated.id ? updated : item))
+    lista.actualizar((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item))
     );
   }
 
@@ -104,7 +110,8 @@ export default function SuperadminCompaniesPage() {
 
     try {
       const created = await createCompany(newCompany, Number(firstOwnerId));
-      setCompanies((current) => [created, ...(current ?? [])]);
+      // Queda en el lugar que le toca por nombre, que puede ser otra pagina.
+      lista.recargar();
       setSuccessMessage(created.legal_name + " quedó registrada.");
       setNewCompany(emptyCompany);
       setIsCreating(false);
@@ -204,7 +211,7 @@ export default function SuperadminCompaniesPage() {
       </div>
 
       <AnimatePresence mode="wait">
-        {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
+        {shownError && <ErrorMessage key="error" message={shownError} />}
         {successMessage && <SuccessMessage key="success" message={successMessage} />}
       </AnimatePresence>
 
@@ -258,7 +265,13 @@ export default function SuperadminCompaniesPage() {
       )}
 
       {companies !== null && companies.length > 0 && (
-        <motion.ul className="employee-list" variants={stackTravel} initial="initial" animate="animate">
+        <motion.ul
+          ref={inicioDeLista}
+          className="employee-list"
+          variants={stackTravel}
+          initial="initial"
+          animate="animate"
+        >
           {companies.map((company) => {
             const assignable = activeOwners.filter(
               (owner) => !company.owners.some((assigned) => assigned.id === owner.id)
@@ -343,6 +356,15 @@ export default function SuperadminCompaniesPage() {
           })}
         </motion.ul>
       )}
+
+      <Paginacion
+        pagina={lista.pagina}
+        total={lista.total}
+        porPagina={lista.porPagina}
+        etiqueta="Páginas de empresas"
+        alCambiar={lista.irAPagina}
+        destino={inicioDeLista}
+      />
     </div>
   );
 }

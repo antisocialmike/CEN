@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Buildings, EnvelopeSimple, UserCirclePlus, UsersThree } from "@phosphor-icons/react";
@@ -9,9 +9,11 @@ import SuccessMessage from "../components/SuccessMessage";
 import SubmitButton from "../components/SubmitButton";
 import Skeleton from "../components/Skeleton";
 import TemporaryPassword from "../components/TemporaryPassword";
+import Paginacion from "../components/Paginacion";
+import { useListaPaginada } from "../routes/listaPaginada";
 import {
   createOwner,
-  listOwners,
+  listOwnersPage,
   Owner,
   OwnerInput,
   resetOwnerPassword,
@@ -38,7 +40,9 @@ export default function SuperadminOwnersPage() {
   const stackTravel = useStill(stackVariants);
   const rowTravel = useStill(rowVariants);
   const navigate = useNavigate();
-  const [owners, setOwners] = useState<Owner[] | null>(null);
+  const lista = useListaPaginada(listOwnersPage);
+  const owners = lista.items;
+  const inicioDeLista = useRef<HTMLUListElement>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newOwner, setNewOwner] = useState<OwnerInput>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -50,21 +54,10 @@ export default function SuperadminOwnersPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [issuedPassword, setIssuedPassword] = useState<IssuedPassword | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    listOwners()
-      .then((result) => isMounted && setOwners(result))
-      .catch(() => {
-        if (!isMounted) return;
-        setOwners([]);
-        setErrorMessage("No se pudo cargar la lista de dueños. Recarga la página.");
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  // El fallo al cargar no se borra al intentar otra accion: la lista sigue sin llegar.
+  const shownError =
+    errorMessage ??
+    (lista.fallo ? "No se pudo cargar la lista de dueños. Recarga la página." : null);
 
   function clearMessages() {
     setErrorMessage(null);
@@ -72,8 +65,8 @@ export default function SuperadminOwnersPage() {
   }
 
   function replaceOwner(updated: Owner) {
-    setOwners((current) =>
-      (current ?? []).map((item) => (item.id === updated.id ? updated : item))
+    lista.actualizar((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item))
     );
   }
 
@@ -84,7 +77,8 @@ export default function SuperadminOwnersPage() {
 
     try {
       const created = await createOwner(newOwner);
-      setOwners((current) => [created.owner, ...(current ?? [])]);
+      // Queda en el lugar que le toca por nombre, que puede ser otra pagina.
+      lista.recargar();
       setIssuedPassword({ name: created.owner.name, password: created.temporary_password });
       setNewOwner(emptyForm);
       setIsCreating(false);
@@ -213,7 +207,7 @@ export default function SuperadminOwnersPage() {
       </div>
 
       <AnimatePresence mode="wait">
-        {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
+        {shownError && <ErrorMessage key="error" message={shownError} />}
         {successMessage && <SuccessMessage key="success" message={successMessage} />}
       </AnimatePresence>
 
@@ -284,7 +278,13 @@ export default function SuperadminOwnersPage() {
       )}
 
       {owners !== null && owners.length > 0 && (
-        <motion.ul className="employee-list" variants={stackTravel} initial="initial" animate="animate">
+        <motion.ul
+          ref={inicioDeLista}
+          className="employee-list"
+          variants={stackTravel}
+          initial="initial"
+          animate="animate"
+        >
           {owners.map((owner) => (
             <motion.li
               key={owner.id}
@@ -381,6 +381,15 @@ export default function SuperadminOwnersPage() {
           ))}
         </motion.ul>
       )}
+
+      <Paginacion
+        pagina={lista.pagina}
+        total={lista.total}
+        porPagina={lista.porPagina}
+        etiqueta="Páginas de dueños"
+        alCambiar={lista.irAPagina}
+        destino={inicioDeLista}
+      />
     </div>
   );
 }

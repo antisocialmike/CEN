@@ -1,5 +1,6 @@
 import httpClient from "./httpClient";
 import { companyPayload, CompanyInput, EntidadFederativa } from "./companyData";
+import { Pagina, POR_PAGINA } from "./pagina";
 
 export { ENTIDADES_FEDERATIVAS } from "./companyData";
 export type { CompanyInput, EntidadFederativa } from "./companyData";
@@ -58,6 +59,13 @@ export async function listOwners(): Promise<Owner[]> {
   return response.data;
 }
 
+export async function listOwnersPage(pagina: number): Promise<Pagina<Owner>> {
+  const response = await httpClient.get<Pagina<Owner>>("/superadmin/owners", {
+    params: { page: pagina, page_size: POR_PAGINA }
+  });
+  return response.data;
+}
+
 export async function createOwner(input: OwnerInput): Promise<OwnerCreated> {
   const response = await httpClient.post<OwnerCreated>("/superadmin/owners", input);
   return response.data;
@@ -81,8 +89,10 @@ export async function resetOwnerPassword(id: number): Promise<OwnerPasswordReset
   return response.data;
 }
 
-export async function listCompanies(): Promise<Company[]> {
-  const response = await httpClient.get<Company[]>("/superadmin/companies");
+export async function listCompaniesPage(pagina: number): Promise<Pagina<Company>> {
+  const response = await httpClient.get<Pagina<Company>>("/superadmin/companies", {
+    params: { page: pagina, page_size: POR_PAGINA }
+  });
   return response.data;
 }
 

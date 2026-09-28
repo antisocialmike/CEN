@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import FormField from "../components/FormField";
@@ -7,15 +7,15 @@ import ErrorMessage from "../components/ErrorMessage";
 import SubmitButton from "../components/SubmitButton";
 import PayrollResultCard from "../components/PayrollResultCard";
 import Skeleton from "../components/Skeleton";
+import Paginacion from "../components/Paginacion";
 import { Receipt, UsersThree, Wallet } from "@phosphor-icons/react";
 import {
   calculatePayroll,
   countActiveConcepts,
   emptyConcepts,
-  getRecentReceipts,
+  getReceiptsPage,
   PayrollCalculationResult,
   PayrollConcepts,
-  PayrollReceipt,
   Periodicity,
   PERIODICITY_LABELS,
   ExistingReceipt,
@@ -24,6 +24,7 @@ import {
 } from "../services/payrollService";
 import { isOnPayroll, listEmployees, PayrollEmployee } from "../services/employeeService";
 import { getStatusCode } from "../services/apiError";
+import { useListaPaginada } from "../routes/listaPaginada";
 import {
   currentPeriod,
   formatCurrency,
@@ -33,7 +34,9 @@ import {
 
 export default function AdminDashboardPage() {
   const [employees, setEmployees] = useState<PayrollEmployee[] | null>(null);
-  const [receipts, setReceipts] = useState<PayrollReceipt[] | null>(null);
+  const recibos = useListaPaginada(getReceiptsPage);
+  const receipts = recibos.items;
+  const inicioDeRecibos = useRef<HTMLDivElement>(null);
   const [employeeId, setEmployeeId] = useState("");
   const [month, setMonth] = useState(currentPeriod());
   const [periodicity, setPeriodicity] = useState<Periodicity>("mensual");
@@ -93,10 +96,6 @@ export default function AdminDashboardPage() {
         setEmployees([]);
         setErrorMessage("No se pudo cargar la lista de usuarios. Recarga la página.");
       });
-
-    getRecentReceipts()
-      .then((data) => isMounted && setReceipts(data))
-      .catch(() => isMounted && setReceipts([]));
 
     return () => {
       isMounted = false;
@@ -160,22 +159,8 @@ export default function AdminDashboardPage() {
         concepts
       );
       setResult(calculation);
-      setReceipts((current) => {
-        const row: PayrollReceipt = {
-          id: calculation.receipt_id,
-          employee_id: calculation.employee_id,
-          employee_name: calculation.employee_name ?? selectedEmployee?.name,
-          period_start: calculation.period_start,
-          period_end: calculation.period_end,
-          periodicity,
-          paid_days: 0,
-          processed_by: calculation.processed_by,
-          created_at: new Date().toISOString(),
-          ...calculation.data
-        };
-        const rest = (current ?? []).filter((item) => item.id !== row.id);
-        return [row, ...rest].slice(0, 20);
-      });
+      // El recibo nuevo (o el reemplazado) toma su lugar segun su periodo: lo dice el servidor.
+      recibos.recargar();
     } catch (error) {
       const status = getStatusCode(error);
       if (status === 404) {
@@ -546,8 +531,8 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="section-title-row">
-            <h2 className="section-title">Recibos recientes</h2>
-            <p className="section-note">Últimos 20 emitidos por el equipo</p>
+            <h2 className="section-title">Recibos emitidos</h2>
+            <p className="section-note">Del periodo más reciente al más antiguo</p>
           </div>
 
           {receipts === null && (
@@ -569,11 +554,9 @@ export default function AdminDashboardPage() {
           )}
 
           {receipts !== null && receipts.length > 0 && (
-            <div className="table-wrap">
+            <div className="table-wrap" ref={inicioDeRecibos}>
               <table className="data-table">
-                <caption className="visually-hidden">
-                  Recibos de nómina emitidos recientemente
-                </caption>
+                <caption className="visually-hidden">Recibos de nómina emitidos</caption>
                 <thead>
                   <tr>
                     <th scope="col">Empleado</th>
@@ -617,6 +600,15 @@ export default function AdminDashboardPage() {
               </table>
             </div>
           )}
+
+          <Paginacion
+            pagina={recibos.pagina}
+            total={recibos.total}
+            porPagina={recibos.porPagina}
+            etiqueta="Páginas de recibos"
+            alCambiar={recibos.irAPagina}
+            destino={inicioDeRecibos}
+          />
         </>
       )}
     </div>

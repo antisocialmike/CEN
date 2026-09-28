@@ -169,6 +169,32 @@ def test_an_admin_of_a_and_b_works_in_the_chosen_one(mock_list, admin_of):
     mock_list.assert_called_once_with(COMPANY_B)
 
 
+@patch(EMPLOYEES + ".page_employees")
+def test_the_paged_list_also_stays_in_the_chosen_company(mock_page, admin_of):
+    admin_of(COMPANY_A, COMPANY_B)
+    mock_page.return_value = ([], 0)
+
+    response = client.get(
+        "/employees?page=1", headers=_headers(company=COMPANY_B)
+    )
+
+    assert response.status_code == 200
+    mock_page.assert_called_once_with(COMPANY_B, 20, 0)
+
+
+@patch(PAYROLL + ".page_receipts")
+def test_the_receipts_history_stays_in_the_chosen_company(mock_page, admin_of):
+    admin_of(COMPANY_A, COMPANY_B)
+    mock_page.return_value = ([], 0)
+
+    response = client.get(
+        "/payroll/receipts", headers=_headers(company=COMPANY_A)
+    )
+
+    assert response.status_code == 200
+    mock_page.assert_called_once_with(COMPANY_A, 20, 0)
+
+
 def test_an_admin_of_a_and_b_without_header_is_asked_to_choose(admin_of):
     admin_of(COMPANY_A, COMPANY_B)
 

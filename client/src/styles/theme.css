@@ -1098,6 +1098,61 @@ p {
   color: var(--ink-3);
 }
 
+/* Paginacion de listas: el rango a la izquierda, los controles a la derecha. */
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3) var(--s-4);
+  flex-wrap: wrap;
+  margin-top: var(--s-5);
+}
+
+.paginacion-rango,
+.paginacion-actual {
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.paginacion-rango {
+  color: var(--ink-3);
+}
+
+.paginacion-actual {
+  font-weight: 700;
+}
+
+.paginacion-controles {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+/* En el telefono no caben los dos botones y "Pagina X de Y" en una fila: el
+   rango de arriba ya dice donde se esta, y el lector de pantalla lo sigue leyendo. */
+@media (max-width: 480px) {
+  .paginacion-controles {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .paginacion-controles .btn {
+    padding-inline: var(--s-4);
+  }
+
+  .paginacion-actual {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+  }
+}
+
 .stat-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));

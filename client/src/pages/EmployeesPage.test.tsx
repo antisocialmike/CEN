@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import EmployeesPage from "./EmployeesPage";
 import {
   activateEmployee,
   deactivateEmployee,
-  listEmployees,
+  listEmployeesPage,
   resetEmployeePassword,
   updateEmployee
 } from "../services/employeeService";
 
 vi.mock("../services/employeeService", () => ({
-  listEmployees: vi.fn(),
+  listEmployeesPage: vi.fn(),
   updateEmployee: vi.fn(),
   deactivateEmployee: vi.fn(),
   activateEmployee: vi.fn(),
@@ -44,6 +44,11 @@ const anaReset = {
   temporary_password: "Xk7mQ2pRt9Zc"
 };
 
+// Lo que devuelve la API al pedir una pagina.
+function pagina<T>(items: T[], total = items.length, page = 1) {
+  return { items, total, page, page_size: 20 };
+}
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -55,7 +60,7 @@ function renderPage() {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
-  vi.mocked(listEmployees).mockResolvedValue([ana, luis]);
+  vi.mocked(listEmployeesPage).mockResolvedValue(pagina([ana, luis]));
 });
 
 describe("listado", () => {
@@ -75,7 +80,7 @@ describe("listado", () => {
   });
 
   it("avisa cuando la lista no carga", async () => {
-    vi.mocked(listEmployees).mockRejectedValue(new Error("sin red"));
+    vi.mocked(listEmployeesPage).mockRejectedValue(new Error("sin red"));
 
     renderPage();
 
@@ -83,7 +88,7 @@ describe("listado", () => {
   });
 
   it("invita a dar de alta cuando no hay nadie", async () => {
-    vi.mocked(listEmployees).mockResolvedValue([]);
+    vi.mocked(listEmployeesPage).mockResolvedValue(pagina([]));
 
     renderPage();
 
@@ -163,14 +168,14 @@ describe("administradores sin salario", () => {
   };
 
   it("dice que no cobra nómina en vez de mostrar una cifra", async () => {
-    vi.mocked(listEmployees).mockResolvedValue([pablo]);
+    vi.mocked(listEmployeesPage).mockResolvedValue(pagina([pablo]));
     renderPage();
 
     expect(await screen.findByText(/pablo@cen.com · Sin salario en nómina/)).toBeInTheDocument();
   });
 
   it("guarda sus cambios sin inventarle un salario", async () => {
-    vi.mocked(listEmployees).mockResolvedValue([pablo]);
+    vi.mocked(listEmployeesPage).mockResolvedValue(pagina([pablo]));
     vi.mocked(updateEmployee).mockResolvedValue({ ...pablo, name: "Pablo Soto Ruiz" });
     const user = userEvent.setup();
     renderPage();
@@ -324,5 +329,77 @@ describe("baja y reactivacion", () => {
     expect(
       await screen.findByText(/No puedes desactivar tu propia cuenta/)
     ).toBeInTheDocument();
+  });
+});
+
+describe("paginacion", () => {
+  function RutaActual() {
+    const { search } = useLocation();
+    return <output data-testid="busqueda">{search}</output>;
+  }
+
+  function renderEn(ruta: string) {
+    return render(
+      <MemoryRouter initialEntries={[ruta]}>
+        <EmployeesPage />
+        <RutaActual />
+      </MemoryRouter>
+    );
+  }
+
+  // 45 personas: tres paginas de 20, 20 y 5.
+  function responderConTresPaginas() {
+    vi.mocked(listEmployeesPage).mockImplementation(async (numero) =>
+      numero <= 3
+        ? pagina([{ ...ana, name: `Persona de la página ${numero}` }], 45, numero)
+        : pagina([], 45, numero)
+    );
+  }
+
+  it("con todo en una pagina no enseña controles", async () => {
+    renderPage();
+
+    await screen.findByText("Ana Lopez");
+    expect(screen.queryByRole("navigation", { name: "Páginas de usuarios" })).toBeNull();
+  });
+
+  it("pide la siguiente pagina y la deja en la URL", async () => {
+    responderConTresPaginas();
+    const user = userEvent.setup();
+    renderEn("/admin/usuarios");
+
+    await screen.findByText("Persona de la página 1");
+    await user.click(screen.getByRole("button", { name: /Siguiente/ }));
+
+    expect(await screen.findByText("Persona de la página 2")).toBeInTheDocument();
+    expect(listEmployeesPage).toHaveBeenLastCalledWith(2);
+    expect(screen.getByTestId("busqueda")).toHaveTextContent("?pagina=2");
+    expect(screen.getByRole("navigation", { name: "Páginas de usuarios" })).toHaveTextContent(
+      "21–40 de 45"
+    );
+  });
+
+  it("al recargar abre la pagina que dice la URL", async () => {
+    responderConTresPaginas();
+    renderEn("/admin/usuarios?pagina=3");
+
+    expect(await screen.findByText("Persona de la página 3")).toBeInTheDocument();
+    expect(listEmployeesPage).toHaveBeenCalledWith(3);
+  });
+
+  it("una pagina que ya no existe lleva a la ultima", async () => {
+    responderConTresPaginas();
+    renderEn("/admin/usuarios?pagina=9");
+
+    expect(await screen.findByText("Persona de la página 3")).toBeInTheDocument();
+    expect(screen.getByTestId("busqueda")).toHaveTextContent("?pagina=3");
+  });
+
+  it("una pagina que no es numero se lee como la primera", async () => {
+    responderConTresPaginas();
+    renderEn("/admin/usuarios?pagina=abc");
+
+    expect(await screen.findByText("Persona de la página 1")).toBeInTheDocument();
+    expect(listEmployeesPage).toHaveBeenCalledWith(1);
   });
 });

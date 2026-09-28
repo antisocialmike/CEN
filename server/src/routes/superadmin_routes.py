@@ -1,11 +1,17 @@
-from typing import List
+from typing import List, Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..middlewares.auth_middleware import (
     generate_temporary_password,
     hash_password,
     require_role,
+)
+from ..models.pagination_model import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    Page,
+    page_offset,
 )
 from ..models.platform_model import (
     Company,
@@ -61,9 +67,20 @@ def _company_or_404(company_id: int) -> dict:
     return company
 
 
-@router.get("/owners", response_model=List[Owner])
-def list_owners(user: dict = Depends(require_superadmin)):
-    return company_repository.list_owners()
+@router.get("/owners", response_model=Union[Page[Owner], List[Owner]])
+def list_owners(
+    page: Optional[int] = Query(default=None, ge=1),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    user: dict = Depends(require_superadmin),
+):
+    # Sin `page` va la lista completa: el selector para asignar dueno la necesita toda.
+    if page is None:
+        return company_repository.list_owners()
+
+    items, total = company_repository.page_owners(
+        page_size, page_offset(page, page_size)
+    )
+    return Page[Owner](items=items, total=total, page=page, page_size=page_size)
 
 
 @router.post(
@@ -156,9 +173,20 @@ def reset_owner_password(
     )
 
 
-@router.get("/companies", response_model=List[Company])
-def list_companies(user: dict = Depends(require_superadmin)):
-    return company_repository.list_companies()
+@router.get("/companies", response_model=Union[Page[Company], List[Company]])
+def list_companies(
+    page: Optional[int] = Query(default=None, ge=1),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    user: dict = Depends(require_superadmin),
+):
+    # Igual que los duenos: sin `page`, la lista completa.
+    if page is None:
+        return company_repository.list_companies()
+
+    items, total = company_repository.page_companies(
+        page_size, page_offset(page, page_size)
+    )
+    return Page[Company](items=items, total=total, page=page, page_size=page_size)
 
 
 @router.post(

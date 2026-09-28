@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..middlewares.auth_middleware import (
     generate_temporary_password,
@@ -12,6 +12,12 @@ from ..models.payroll_model import (
     EmployeeCreateRequest,
     EmployeeUpdateRequest,
     PasswordResetResponse,
+)
+from ..models.pagination_model import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    Page,
+    page_offset,
 )
 from ..repositories.payroll_repository import (
     SharedAdminError,
@@ -31,9 +37,20 @@ SHARED_ADMIN = HTTPException(
 )
 
 
-@router.get("", response_model=List[Employee])
-def list_employees(user: dict = Depends(require_admin_company)):
-    return payroll_repository.list_employees(user["company_id"])
+@router.get("", response_model=Union[Page[Employee], List[Employee]])
+def list_employees(
+    page: Optional[int] = Query(default=None, ge=1),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    user: dict = Depends(require_admin_company),
+):
+    # Sin `page` va la lista completa: el selector de la calculadora la necesita toda.
+    if page is None:
+        return payroll_repository.list_employees(user["company_id"])
+
+    items, total = payroll_repository.page_employees(
+        user["company_id"], page_size, page_offset(page, page_size)
+    )
+    return Page[Employee](items=items, total=total, page=page, page_size=page_size)
 
 
 @router.post("", response_model=Employee)

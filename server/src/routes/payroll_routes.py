@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
 from ..controllers.employer_cost import (
     EmployerCostInputs,
@@ -20,6 +20,11 @@ from ..middlewares.company_context import (
     require_admin_company,
     resolve_admin_company,
 )
+from ..models.pagination_model import (
+    DEFAULT_PAGE_SIZE,
+    MAX_PAGE_SIZE,
+    page_offset,
+)
 from ..models.payroll_model import (
     PayrollCalculationRequest,
     PeriodLookupRequest,
@@ -32,8 +37,6 @@ from ..repositories.payroll_repository import (
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
 payroll_service = PayrollService()
 employer_cost_service = EmployerCostService()
-
-RECENT_RECEIPTS_LIMIT = 20
 
 
 def _employer_cost(
@@ -144,11 +147,18 @@ def lookup_receipt(
 
 
 @router.get("/receipts")
-def list_recent_receipts(user: dict = Depends(require_admin_company)):
-    receipts = payroll_repository.list_recent_receipts(
-        user["company_id"], RECENT_RECEIPTS_LIMIT
+def list_receipts(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    user: dict = Depends(require_admin_company),
+):
+    """El historial de recibos de la empresa, del periodo mas nuevo al mas viejo."""
+    receipts, total = payroll_repository.page_receipts(
+        user["company_id"], page_size, page_offset(page, page_size)
     )
-    return {"receipts": receipts}
+    return {
+        "items": receipts, "total": total, "page": page, "page_size": page_size,
+    }
 
 
 @router.get("/my-receipts")

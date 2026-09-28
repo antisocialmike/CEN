@@ -10,17 +10,19 @@ import SuccessMessage from "../components/SuccessMessage";
 import SubmitButton from "../components/SubmitButton";
 import Skeleton from "../components/Skeleton";
 import TemporaryPassword from "../components/TemporaryPassword";
+import Paginacion from "../components/Paginacion";
 import {
   activateEmployee,
   deactivateEmployee,
   EmployeeCreated,
-  listEmployees,
+  listEmployeesPage,
   resetEmployeePassword,
   updateEmployee
 } from "../services/employeeService";
 import { getEmployeeId, EmployeeRole } from "../services/authSession";
 import { getStatusCode } from "../services/apiError";
 import { formatCurrency } from "../services/format";
+import { useListaPaginada } from "../routes/listaPaginada";
 
 interface EditForm {
   name: string;
@@ -37,7 +39,9 @@ interface IssuedPassword {
 export default function EmployeesPage() {
   const stackTravel = useStill(stackVariants);
   const rowTravel = useStill(rowVariants);
-  const [employees, setEmployees] = useState<EmployeeCreated[] | null>(null);
+  const lista = useListaPaginada(listEmployeesPage);
+  const employees = lista.items;
+  const inicioDeLista = useRef<HTMLUListElement>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -50,31 +54,19 @@ export default function EmployeesPage() {
   const [issuedPassword, setIssuedPassword] = useState<IssuedPassword | null>(null);
   const confirmResetRef = useRef<HTMLButtonElement>(null);
   const ownEmployeeId = getEmployeeId();
+  // El fallo al cargar no se borra al intentar otra accion: la lista sigue sin llegar.
+  const shownError =
+    errorMessage ??
+    (lista.fallo ? "No se pudo cargar la lista de usuarios. Recarga la página." : null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    let isMounted = true;
-
-    listEmployees()
-      .then((result) => isMounted && setEmployees(result))
-      .catch(() => {
-        if (!isMounted) return;
-        setEmployees([]);
-        setErrorMessage("No se pudo cargar la lista de usuarios. Recarga la página.");
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (confirmingResetId !== null) confirmResetRef.current?.focus();
   }, [confirmingResetId]);
 
   function replaceEmployee(updated: EmployeeCreated) {
-    setEmployees((current) =>
-      (current ?? []).map((item) => (item.id === updated.id ? updated : item))
+    lista.actualizar((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item))
     );
   }
 
@@ -226,7 +218,7 @@ export default function EmployeesPage() {
       </div>
 
       <AnimatePresence mode="wait">
-        {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
+        {shownError && <ErrorMessage key="error" message={shownError} />}
         {successMessage && <SuccessMessage key="success" message={successMessage} />}
       </AnimatePresence>
 
@@ -263,6 +255,7 @@ export default function EmployeesPage() {
 
       {employees !== null && employees.length > 0 && (
         <motion.ul
+          ref={inicioDeLista}
           className="employee-list"
           variants={stackTravel}
           initial="initial"
@@ -454,6 +447,15 @@ export default function EmployeesPage() {
           ))}
         </motion.ul>
       )}
+
+      <Paginacion
+        pagina={lista.pagina}
+        total={lista.total}
+        porPagina={lista.porPagina}
+        etiqueta="Páginas de usuarios"
+        alCambiar={lista.irAPagina}
+        destino={inicioDeLista}
+      />
     </div>
   );
 }

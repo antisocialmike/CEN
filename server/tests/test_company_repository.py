@@ -42,6 +42,35 @@ def test_list_owners_only_brings_owners(repository, cursor):
     assert "e.role = 'owner'" in _queries(cursor)[0]
 
 
+def test_page_owners_counts_owners_and_cuts_with_a_stable_order(repository, cursor):
+    cursor.fetchone.return_value = {"total": 21}
+    cursor.fetchall.return_value = []
+
+    assert repository.page_owners(20, 20) == ([], 21)
+
+    (count, count_params), (page, page_params) = [
+        call[0] for call in cursor.execute.call_args_list
+    ]
+    assert "COUNT(*)" in count and "e.role = 'owner'" in count
+    assert "e.role = 'owner'" in page
+    assert "e.name ASC, e.id ASC LIMIT %s OFFSET %s" in page
+    assert page_params == (20, 20)
+
+
+def test_page_companies_counts_companies_and_cuts_with_a_stable_order(repository, cursor):
+    cursor.fetchone.return_value = {"total": 3}
+    cursor.fetchall.return_value = []
+
+    assert repository.page_companies(20, 0) == ([], 3)
+
+    (count, _), (page, page_params) = [
+        call[0] for call in cursor.execute.call_args_list
+    ]
+    assert "COUNT(*) AS total FROM companies" in count
+    assert "c.legal_name ASC, c.id ASC LIMIT %s OFFSET %s" in page
+    assert page_params == (20, 0)
+
+
 def test_create_owner_forces_the_password_change(repository, cursor):
     cursor.fetchone.return_value = {"id": 5}
 

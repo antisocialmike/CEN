@@ -1,5 +1,6 @@
 import httpClient from "./httpClient";
 import { EmployeeRole } from "./authSession";
+import { Pagina, POR_PAGINA } from "./pagina";
 
 export interface NewEmployeeInput {
   name: string;
@@ -45,6 +46,13 @@ export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeC
 
 export async function listEmployees(): Promise<EmployeeCreated[]> {
   const response = await httpClient.get<EmployeeCreated[]>("/employees");
+  return response.data;
+}
+
+export async function listEmployeesPage(pagina: number): Promise<Pagina<EmployeeCreated>> {
+  const response = await httpClient.get<Pagina<EmployeeCreated>>("/employees", {
+    params: { page: pagina, page_size: POR_PAGINA }
+  });
   return response.data;
 }
 

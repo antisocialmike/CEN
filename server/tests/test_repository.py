@@ -202,16 +202,40 @@ def test_get_receipts_by_employee_id(repository, cursor):
     assert result[0]["employee_id"] == 5
 
 
-def test_list_recent_receipts_applies_the_company_and_limit(
-    repository, cursor
-):
+def test_page_receipts_counts_and_cuts_within_the_company(repository, cursor):
+    cursor.fetchone.return_value = {"total": 41}
+    cursor.fetchall.return_value = [{"id": 9}]
+
+    rows, total = repository.page_receipts(COMPANY, 20, 40)
+
+    assert (rows, total) == ([{"id": 9}], 41)
+    (count, count_params), (page, page_params) = [
+        call[0] for call in cursor.execute.call_args_list
+    ]
+    assert "COUNT(*)" in count and "r.company_id = %s" in count
+    assert count_params == (COMPANY,)
+    assert "WHERE r.company_id = %s" in page
+    assert "r.id DESC LIMIT %s OFFSET %s" in page
+    assert page_params == (COMPANY, 20, 40)
+
+
+def test_page_employees_counts_the_same_people_it_lists(repository, cursor):
+    cursor.fetchone.return_value = {"total": 3}
     cursor.fetchall.return_value = []
 
-    repository.list_recent_receipts(COMPANY, 5)
+    rows, total = repository.page_employees(COMPANY, 20, 0)
 
-    query, params = cursor.execute.call_args[0]
-    assert "WHERE r.company_id = %s" in query
-    assert params == (COMPANY, 5)
+    assert (rows, total) == ([], 3)
+    (count, count_params), (page, page_params) = [
+        call[0] for call in cursor.execute.call_args_list
+    ]
+    for query in (count, page):
+        assert "role IN ('admin', 'employee')" in query
+        assert "e.company_id = %s" in query
+        assert "ca.is_active" in query
+    assert count_params == (COMPANY, COMPANY)
+    assert page_params == (COMPANY, COMPANY, 20, 0)
+    assert "e.name ASC, e.id ASC LIMIT %s OFFSET %s" in page
 
 
 def _receipt(**overrides):

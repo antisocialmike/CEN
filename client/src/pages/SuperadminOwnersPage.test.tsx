@@ -5,13 +5,13 @@ import { MemoryRouter } from "react-router-dom";
 import SuperadminOwnersPage from "./SuperadminOwnersPage";
 import {
   createOwner,
-  listOwners,
+  listOwnersPage,
   resetOwnerPassword,
   setOwnerActive
 } from "../services/superadminService";
 
 vi.mock("../services/superadminService", () => ({
-  listOwners: vi.fn(),
+  listOwnersPage: vi.fn(),
   createOwner: vi.fn(),
   updateOwner: vi.fn(),
   setOwnerActive: vi.fn(),
@@ -26,6 +26,13 @@ const laura = {
   companies: [{ id: 1, legal_name: "Grupo Norte", is_active: true }]
 };
 
+const pedro = { id: 6, name: "Pedro Ruiz", email: "pedro@sur.mx", is_active: true, companies: [] };
+
+// Lo que devuelve la API al pedir una pagina.
+function pagina<T>(items: T[], total = items.length, page = 1) {
+  return { items, total, page, page_size: 20 };
+}
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -36,7 +43,7 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(listOwners).mockResolvedValue([laura]);
+  vi.mocked(listOwnersPage).mockResolvedValue(pagina([laura]));
 });
 
 describe("listado", () => {
@@ -48,7 +55,7 @@ describe("listado", () => {
   });
 
   it("avisa cuando no hay dueños", async () => {
-    vi.mocked(listOwners).mockResolvedValue([]);
+    vi.mocked(listOwnersPage).mockResolvedValue(pagina([]));
     renderPage();
 
     expect(await screen.findByText("Todavía no hay dueños")).toBeInTheDocument();
@@ -64,6 +71,8 @@ describe("alta", () => {
     });
     renderPage();
     await screen.findByText("Laura Mendez");
+    // Tras el alta la pagina se vuelve a pedir: el servidor ya lo incluye.
+    vi.mocked(listOwnersPage).mockResolvedValue(pagina([laura, pedro]));
 
     await user.click(screen.getByRole("button", { name: /Nuevo dueño/ }));
     await user.type(screen.getByLabelText("Nombre completo"), "Pedro Ruiz");
@@ -72,7 +81,8 @@ describe("alta", () => {
 
     expect(createOwner).toHaveBeenCalledWith({ name: "Pedro Ruiz", email: "pedro@sur.mx" });
     expect(await screen.findByText("Xk7mQ2pRt9Zc")).toBeInTheDocument();
-    expect(screen.getByText("Pedro Ruiz")).toBeInTheDocument();
+    expect(await screen.findByText("Pedro Ruiz")).toBeInTheDocument();
+    expect(listOwnersPage).toHaveBeenCalledTimes(2);
   });
 
   it("explica el correo repetido", async () => {

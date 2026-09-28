@@ -14,11 +14,15 @@ OWNER_FIELDS = (
     "LEFT JOIN company_owners o ON o.owner_id = e.id "
     "LEFT JOIN companies c ON c.id = o.company_id "
 )
-SELECT_OWNERS = (
+# El id desempata a los homonimos para que la paginacion no los baraje.
+OWNERS_IN_ORDER = (
     OWNER_FIELDS
     + "WHERE e.role = 'owner' GROUP BY e.id "
-    "ORDER BY e.is_active DESC, e.name ASC;"
+    "ORDER BY e.is_active DESC, e.name ASC, e.id ASC"
 )
+SELECT_OWNERS = OWNERS_IN_ORDER + ";"
+SELECT_OWNERS_PAGE = OWNERS_IN_ORDER + " LIMIT %s OFFSET %s;"
+COUNT_OWNERS = "SELECT COUNT(*) AS total FROM employees e WHERE e.role = 'owner';"
 SELECT_OWNER = (
     OWNER_FIELDS + "WHERE e.id = %s AND e.role = 'owner' GROUP BY e.id;"
 )
@@ -68,10 +72,13 @@ COMPANY_FIELDS = (
     "LEFT JOIN company_owners o ON o.company_id = c.id "
     "LEFT JOIN employees e ON e.id = o.owner_id "
 )
-SELECT_COMPANIES = (
+COMPANIES_IN_ORDER = (
     COMPANY_FIELDS
-    + "GROUP BY c.id ORDER BY c.is_active DESC, c.legal_name ASC;"
+    + "GROUP BY c.id ORDER BY c.is_active DESC, c.legal_name ASC, c.id ASC"
 )
+SELECT_COMPANIES = COMPANIES_IN_ORDER + ";"
+SELECT_COMPANIES_PAGE = COMPANIES_IN_ORDER + " LIMIT %s OFFSET %s;"
+COUNT_COMPANIES = "SELECT COUNT(*) AS total FROM companies;"
 SELECT_COMPANY = COMPANY_FIELDS + "WHERE c.id = %s GROUP BY c.id;"
 INSERT_COMPANY = (
     "INSERT INTO companies (legal_name, trade_name, rfc, registro_patronal, "
@@ -192,6 +199,9 @@ class OrphanedCompanyError(Exception):
 class CompanyRepository:
     def list_owners(self) -> list:
         return self._fetch_all(SELECT_OWNERS)
+
+    def page_owners(self, limit: int, offset: int) -> tuple:
+        return self._fetch_page(SELECT_OWNERS_PAGE, COUNT_OWNERS, limit, offset)
 
     def get_owner(self, owner_id: int) -> Optional[dict]:
         return self._fetch_one(SELECT_OWNER, (owner_id,))
@@ -361,6 +371,11 @@ class CompanyRepository:
     def list_companies(self) -> list:
         return self._fetch_all(SELECT_COMPANIES)
 
+    def page_companies(self, limit: int, offset: int) -> tuple:
+        return self._fetch_page(
+            SELECT_COMPANIES_PAGE, COUNT_COMPANIES, limit, offset
+        )
+
     def get_company(self, company_id: int) -> Optional[dict]:
         return self._fetch_one(SELECT_COMPANY, (company_id,))
 
@@ -466,6 +481,16 @@ class CompanyRepository:
         with db_cursor() as cursor:
             cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
+
+    def _fetch_page(
+        self, query: str, count_query: str, limit: int, offset: int
+    ) -> tuple:
+        """Las filas del tramo pedido y el total de la lista completa."""
+        with db_cursor() as cursor:
+            cursor.execute(count_query, ())
+            total = dict(cursor.fetchone())["total"]
+            cursor.execute(query, (limit, offset))
+            return [dict(row) for row in cursor.fetchall()], total
 
 
 company_repository = CompanyRepository()

@@ -1,4 +1,5 @@
 import httpClient from "./httpClient";
+import { Pagina, POR_PAGINA } from "./pagina";
 
 export type Periodicity = "mensual" | "quincenal" | "semanal";
 
@@ -125,9 +126,11 @@ export async function getMyReceipts(): Promise<PayrollReceipt[]> {
   return response.data.receipts;
 }
 
-export async function getRecentReceipts(): Promise<PayrollReceipt[]> {
-  const response = await httpClient.get<{ receipts: PayrollReceipt[] }>("/payroll/receipts");
-  return response.data.receipts;
+export async function getReceiptsPage(pagina: number): Promise<Pagina<PayrollReceipt>> {
+  const response = await httpClient.get<Pagina<PayrollReceipt>>("/payroll/receipts", {
+    params: { page: pagina, page_size: POR_PAGINA }
+  });
+  return response.data;
 }
 
 function filenameFromHeaders(disposition: unknown, fallback: string): string {
