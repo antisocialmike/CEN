@@ -281,6 +281,22 @@ def test_amounts_travel_as_text(repository):
     assert body["employer_cost"]["monthly"][0]["sar"] == "2000.00"
 
 
+def test_the_comparison_carries_the_cost_of_each_company(repository):
+    repository.payroll_analytics.return_value = _raw(companies=[{
+        "id": MINE, "legal_name": "Grupo Norte", "is_active": True,
+        "gross_payroll": Decimal("25000.00"), "net_paid": Decimal("21000.00"),
+        "employer_cost": Decimal("5000.00"),
+        "total_cost": Decimal("30000.00"), "receipts": 1,
+        "paid_employees": 1, "active_employees": 3,
+    }])
+
+    body = client.get("/owner/analytics", headers=_headers()).json()
+
+    company = body["companies"][0]
+    assert company["employer_cost"] == "5000.00"
+    assert company["total_cost"] == "30000.00"
+
+
 def test_an_owner_without_companies_gets_zeros(repository):
     repository.owner_company_ids.return_value = []
 
@@ -362,6 +378,21 @@ def test_employer_cost_queries_cover_both_periods(cursor):
         (date(2026, 9, 1), date(2026, 9, 30)),
         (date(2026, 8, 2), date(2026, 8, 31)),
     ]
+
+
+def test_the_comparison_adds_the_employer_cost_of_each_company(cursor):
+    _run(compare=True)
+
+    comparison = next(
+        call[0][0] for call in cursor.execute.call_args_list
+        if "FROM companies c" in call[0][0]
+    )
+    # Uno a uno con el recibo: el costo no duplica la nomina de la empresa.
+    assert "LEFT JOIN payroll_employer_costs ec ON ec.receipt_id = r.id" in (
+        comparison
+    )
+    assert "AS employer_cost" in comparison
+    assert "AS total_cost" in comparison
 
 
 def test_the_comparison_only_runs_for_every_company(cursor):

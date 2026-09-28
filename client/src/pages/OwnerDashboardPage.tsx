@@ -376,7 +376,9 @@ export default function OwnerDashboardPage() {
               {analytics.companies.length > 1 && (
                 <section className="owner-card" aria-labelledby="titulo-empresas">
                   <h2 id="titulo-empresas">Comparativo entre empresas</h2>
-                  <p className="owner-card-note">Nómina bruta de cada empresa en el periodo.</p>
+                  <p className="owner-card-note">
+                    Nómina bruta de cada empresa en el periodo. La tabla suma su costo patronal.
+                  </p>
                   <BarList
                     label="Nómina bruta por empresa"
                     color={PERCEPCION}
@@ -393,6 +395,8 @@ export default function OwnerDashboardPage() {
                     columns={[
                       { label: "Empresa" },
                       { label: "Nómina bruta", numeric: true },
+                      { label: "Costo patronal", numeric: true },
+                      { label: "Costo total", numeric: true },
                       { label: "Neto pagado", numeric: true },
                       { label: "Recibos", numeric: true },
                       { label: "Activos", numeric: true }
@@ -402,6 +406,8 @@ export default function OwnerDashboardPage() {
                       cells: [
                         item.legal_name,
                         formatCurrency(toAmount(item.gross_payroll)),
+                        formatCurrency(toAmount(item.employer_cost)),
+                        formatCurrency(toAmount(item.total_cost)),
                         formatCurrency(toAmount(item.net_paid)),
                         formatInteger(item.receipts),
                         formatInteger(item.active_employees)

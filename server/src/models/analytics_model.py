@@ -103,6 +103,9 @@ class CompanyComparison(BaseModel):
     is_active: bool
     gross_payroll: Decimal
     net_paid: Decimal
+    employer_cost: Decimal
+    # Nomina bruta + costo patronal, igual que total_cost en los KPI.
+    total_cost: Decimal
     receipts: int
     paid_employees: int
     active_employees: int

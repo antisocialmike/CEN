@@ -80,11 +80,13 @@ function analytics(overrides: Partial<PayrollAnalytics> = {}): PayrollAnalytics 
     companies: [
       {
         id: 1, legal_name: "Grupo Norte SA de CV", is_active: true, gross_payroll: "25000.00",
-        net_paid: "21000.00", receipts: 1, paid_employees: 1, active_employees: 3
+        net_paid: "21000.00", employer_cost: "5000.00", total_cost: "30000.00", receipts: 1,
+        paid_employees: 1, active_employees: 3
       },
       {
         id: 3, legal_name: "Servicios del Sur SC", is_active: false, gross_payroll: "5000.00",
-        net_paid: "4500.00", receipts: 1, paid_employees: 1, active_employees: 1
+        net_paid: "4500.00", employer_cost: "1000.00", total_cost: "6000.00", receipts: 1,
+        paid_employees: 1, active_employees: 1
       }
     ],
     employer_cost: {
@@ -211,6 +213,22 @@ describe("gráficas y tablas", () => {
     expect(
       await screen.findByRole("heading", { name: "Comparativo entre empresas" })
     ).toBeInTheDocument();
+  });
+
+  it("el comparativo suma el costo patronal de cada empresa", async () => {
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Comparativo entre empresas" });
+    const norte = within(table).getByRole("row", { name: /Grupo Norte/ });
+
+    expect(within(norte).getAllByRole("cell").map((cell) => cell.textContent)).toEqual([
+      "Grupo Norte SA de CV",
+      "$25,000.00",
+      "$5,000.00",
+      "$30,000.00",
+      "$21,000.00",
+      "1",
+      "3"
+    ]);
   });
 
   it("muestra solo los meses con altas o bajas", async () => {

@@ -115,6 +115,9 @@ export interface CompanyComparison {
   is_active: boolean;
   gross_payroll: Amount;
   net_paid: Amount;
+  employer_cost: Amount;
+  // Nomina bruta mas costo patronal, como total_cost en los KPI.
+  total_cost: Amount;
   receipts: number;
   paid_employees: number;
   active_employees: number;

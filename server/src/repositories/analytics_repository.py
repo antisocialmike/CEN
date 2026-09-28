@@ -95,10 +95,15 @@ SALARY_HISTOGRAM = (
     "GROUP BY b.position, b.label, b.min_salary, b.max_salary "
     "ORDER BY b.position;"
 )
+# El costo patronal es uno por recibo (receipt_id es su llave): unirlo no
+# repite recibos. Los que no lo tienen calculado suman cero, como en los KPI.
 COMPANY_COMPARISON = (
     "SELECT c.id, c.legal_name, c.is_active, "
     "COALESCE(SUM(r.total_perceptions), 0) AS gross_payroll, "
     "COALESCE(SUM(r.net_salary), 0) AS net_paid, "
+    "COALESCE(SUM(ec.total), 0) AS employer_cost, "
+    "COALESCE(SUM(r.total_perceptions), 0) + COALESCE(SUM(ec.total), 0) "
+    "AS total_cost, "
     "COUNT(r.id) AS receipts, "
     "COUNT(DISTINCT r.employee_id) AS paid_employees, "
     "(SELECT COUNT(*) FROM employees e WHERE e.company_id = c.id "
@@ -107,6 +112,7 @@ COMPANY_COMPARISON = (
     "LEFT JOIN payroll_receipts r ON r.company_id = c.id "
     "AND r.period_start BETWEEN %s AND %s "
     "AND (%s::text IS NULL OR r.periodicity = %s) "
+    "LEFT JOIN payroll_employer_costs ec ON ec.receipt_id = r.id "
     "WHERE c.id = ANY(%s) "
     "GROUP BY c.id ORDER BY gross_payroll DESC, c.legal_name ASC;"
 )
