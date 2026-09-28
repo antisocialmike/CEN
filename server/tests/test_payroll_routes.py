@@ -192,15 +192,15 @@ def test_calculate_payroll_requires_authentication():
     assert response.status_code == 401
 
 
-@patch("server.src.routes.payroll_routes.payroll_repository.get_receipts_by_employee_id")
-def test_get_my_receipts_success(mock_get_receipts):
-    mock_get_receipts.return_value = [
+@patch("server.src.routes.payroll_routes.payroll_repository.page_employee_receipts")
+def test_get_my_receipts_success(mock_page_receipts):
+    mock_page_receipts.return_value = ([
         {
             "id": 1, "employee_id": 7, "gross_salary": 10000.0,
             "isr_deduction": 1600.0, "imss_deduction": 275.0,
             "net_salary": 8125.0, "created_at": "2026-09-01T10:00:00"
         }
-    ]
+    ], 1)
 
     response = client.get(
         "/payroll/my-receipts",
@@ -209,9 +209,38 @@ def test_get_my_receipts_success(mock_get_receipts):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["employee_id"] == 7
-    assert len(body["receipts"]) == 1
-    mock_get_receipts.assert_called_once_with(7)
+    assert body["total"] == 1
+    assert (body["page"], body["page_size"]) == (1, 20)
+    assert body["items"][0]["employee_id"] == 7
+    mock_page_receipts.assert_called_once_with(7, 20, 0)
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.page_employee_receipts")
+def test_my_receipts_come_in_pages(mock_page_receipts):
+    mock_page_receipts.return_value = ([], 45)
+
+    response = client.get(
+        "/payroll/my-receipts?page=3&page_size=10",
+        headers={"Authorization": f"Bearer {_employee_token(employee_id=7)}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [], "total": 45, "page": 3, "page_size": 10,
+    }
+    mock_page_receipts.assert_called_once_with(7, 10, 20)
+
+
+@pytest.mark.parametrize("query", ["page=0", "page_size=0", "page_size=101"])
+@patch("server.src.routes.payroll_routes.payroll_repository.page_employee_receipts")
+def test_my_receipts_reject_impossible_pages(mock_page_receipts, query):
+    response = client.get(
+        "/payroll/my-receipts?" + query,
+        headers={"Authorization": f"Bearer {_employee_token(employee_id=7)}"}
+    )
+
+    assert response.status_code == 422
+    mock_page_receipts.assert_not_called()
 
 
 def test_get_my_receipts_token_without_employee_id():

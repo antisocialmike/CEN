@@ -187,19 +187,21 @@ def test_list_employees_empty(repository, cursor):
     assert repository.list_employees(COMPANY) == []
 
 
-def test_get_receipts_by_employee_id(repository, cursor):
-    cursor.fetchall.return_value = [
-        {
-            "id": 1, "employee_id": 5, "gross_salary": 10000,
-            "isr_deduction": 1600, "imss_deduction": 275,
-            "net_salary": 8125, "created_at": "2026-09-01T10:00:00"
-        }
+def test_page_employee_receipts_counts_and_cuts_one_person(repository, cursor):
+    cursor.fetchone.return_value = {"total": 25}
+    cursor.fetchall.return_value = [{"id": 1, "employee_id": 5}]
+
+    rows, total = repository.page_employee_receipts(5, 20, 20)
+
+    assert (rows, total) == ([{"id": 1, "employee_id": 5}], 25)
+    (count, count_params), (page, page_params) = [
+        call[0] for call in cursor.execute.call_args_list
     ]
-
-    result = repository.get_receipts_by_employee_id(5)
-
-    assert len(result) == 1
-    assert result[0]["employee_id"] == 5
+    assert "COUNT(*)" in count and "r.employee_id = %s" in count
+    assert count_params == (5,)
+    assert "WHERE r.employee_id = %s" in page
+    assert "r.id DESC LIMIT %s OFFSET %s" in page
+    assert page_params == (5, 20, 20)
 
 
 def test_page_receipts_counts_and_cuts_within_the_company(repository, cursor):

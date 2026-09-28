@@ -119,7 +119,9 @@ RECEIPT_ITEMS_JSON = (
     "ORDER BY i.position) FILTER (WHERE i.id IS NOT NULL), '[]') AS items "
 )
 
-SELECT_RECEIPTS_BY_EMPLOYEE = (
+# Los recibos de una sola persona, en el mismo orden que el historial de la
+# empresa: del periodo mas nuevo al mas viejo, con el id de desempate.
+SELECT_EMPLOYEE_RECEIPTS_PAGE = (
     "SELECT r.id, r.employee_id, r.period_start, r.period_end, "
     "r.gross_salary, r.isr_deduction, "
     "r.imss_deduction, r.net_salary, r.total_perceptions, "
@@ -129,7 +131,13 @@ SELECT_RECEIPTS_BY_EMPLOYEE = (
     + RECEIPT_ITEMS_JSON
     + "FROM payroll_receipts r "
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
-    "WHERE r.employee_id = %s GROUP BY r.id ORDER BY r.period_start DESC;"
+    "WHERE r.employee_id = %s GROUP BY r.id "
+    "ORDER BY r.period_start DESC, r.updated_at DESC, r.id DESC "
+    "LIMIT %s OFFSET %s;"
+)
+COUNT_EMPLOYEE_RECEIPTS = (
+    "SELECT COUNT(*) AS total FROM payroll_receipts r "
+    "WHERE r.employee_id = %s;"
 )
 # El id desempata: sin el, dos recibos iguales en periodo y hora podrian
 # cambiar de lugar entre una pagina y la siguiente.
@@ -387,8 +395,13 @@ class PayrollRepository:
         row = self._fetch_one(SELECT_FIRST_COMPANY, ())
         return row["id"] if row else None
 
-    def get_receipts_by_employee_id(self, employee_id: int) -> list:
-        return self._fetch_all(SELECT_RECEIPTS_BY_EMPLOYEE, (employee_id,))
+    def page_employee_receipts(
+        self, employee_id: int, limit: int, offset: int
+    ) -> tuple:
+        return self._fetch_page(
+            SELECT_EMPLOYEE_RECEIPTS_PAGE, COUNT_EMPLOYEE_RECEIPTS,
+            (employee_id,), limit, offset,
+        )
 
     def get_receipt_by_period(
         self, employee_id: int, period_start, period_end, company_id: int

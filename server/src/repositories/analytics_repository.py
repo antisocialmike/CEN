@@ -168,6 +168,24 @@ EMPLOYER_MONTHLY = (
     ") AS x ON x.receipt_id = r.id "
     "GROUP BY m.month ORDER BY m.month;"
 )
+# El resumen de una persona: lo que cobro en el ano y sus ultimos periodos.
+EMPLOYEE_YEAR_TOTALS = (
+    "SELECT COALESCE(SUM(r.total_perceptions), 0) AS gross_payroll, "
+    "COALESCE(SUM(r.isr_deduction), 0) AS isr_withheld, "
+    "COALESCE(SUM(r.imss_deduction), 0) AS imss_withheld, "
+    "COALESCE(SUM(r.net_salary), 0) AS net_paid, "
+    "COUNT(*) AS receipts "
+    "FROM payroll_receipts r "
+    "WHERE r.employee_id = %s AND r.period_start >= %s "
+    "AND r.period_start < %s;"
+)
+EMPLOYEE_RECENT_RECEIPTS = (
+    "SELECT r.id, r.period_start, r.period_end, r.periodicity, "
+    "r.net_salary, r.total_perceptions "
+    "FROM payroll_receipts r WHERE r.employee_id = %s "
+    "ORDER BY r.period_start DESC, r.updated_at DESC, r.id DESC LIMIT %s;"
+)
+EMPLOYEE_RECENT_PERIODS = 12
 SELECT_OWNER_COMPANY_IDS = (
     "SELECT company_id FROM company_owners WHERE owner_id = %s "
     "ORDER BY company_id;"
@@ -227,6 +245,23 @@ class AnalyticsRepository:
                     EMPLOYER_MONTHLY, (start, end) + receipts
                 ),
             }
+
+    def employee_summary(
+        self, employee_id: int, year_start: date, next_year_start: date
+    ) -> dict:
+        with db_cursor() as cursor:
+            cursor.execute(CONSISTENT_SNAPSHOT)
+            cursor.execute(
+                EMPLOYEE_YEAR_TOTALS,
+                (employee_id, year_start, next_year_start),
+            )
+            year_totals = dict(cursor.fetchone())
+            cursor.execute(
+                EMPLOYEE_RECENT_RECEIPTS,
+                (employee_id, EMPLOYEE_RECENT_PERIODS),
+            )
+            recent = [dict(row) for row in cursor.fetchall()]
+        return {"year_totals": year_totals, "recent": recent}
 
 
 analytics_repository = AnalyticsRepository()

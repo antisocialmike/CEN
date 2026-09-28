@@ -2,6 +2,8 @@ from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Optional
 
+from ..models.payroll_model import next_period_start, period_end_for
+
 CENT = Decimal("0.01")
 TENTH = Decimal("0.1")
 DEFAULT_MONTHS = 12
@@ -145,4 +147,28 @@ def empty_raw_analytics() -> dict:
         "employer_components": [],
         "employer_missing": [],
         "employer_monthly": [],
+    }
+
+
+def build_employee_summary(raw: dict, year: int) -> dict:
+    """El resumen del empleado. `recent` llega del mas nuevo al mas viejo y
+    sale al reves, en el orden en que se grafica.
+
+    CEN no guarda fechas de pago: el siguiente periodo se estima con la
+    periodicidad del ultimo recibo y la pantalla lo presenta como estimado."""
+    recent = raw["recent"]
+    latest = recent[0] if recent else None
+    next_period = None
+    if latest is not None:
+        start = next_period_start(latest["periodicity"], latest["period_start"])
+        next_period = {
+            "periodicity": latest["periodicity"],
+            "start": start,
+            "end": period_end_for(latest["periodicity"], start),
+        }
+    return {
+        "latest": latest,
+        "next_period": next_period,
+        "year_to_date": {"year": year, **raw["year_totals"]},
+        "recent": list(reversed(recent)),
     }

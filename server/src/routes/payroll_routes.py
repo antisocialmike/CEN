@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from typing import Optional
 
@@ -10,6 +11,7 @@ from ..controllers.employer_cost import (
     MissingParameter,
     completed_years,
 )
+from ..controllers.payroll_analytics import build_employee_summary
 from ..controllers.payroll_controller import (
     ASIMILADOS,
     SUELDOS,
@@ -37,6 +39,7 @@ from ..models.payroll_model import (
     PayrollCalculationRequest,
     PeriodLookupRequest,
 )
+from ..repositories.analytics_repository import analytics_repository
 from ..repositories.payroll_repository import (
     ReceiptOfAnotherCompanyError,
     payroll_repository,
@@ -210,17 +213,43 @@ def list_receipts(
     }
 
 
-@router.get("/my-receipts")
-def get_my_receipts(user: dict = Depends(get_current_user)):
+def _own_employee_id(user: dict) -> int:
+    """La persona sale del token, nunca de un parametro: nadie puede pedir la
+    nomina de otro."""
     employee_id = user.get("employee_id")
     if employee_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Token sin empleado asociado",
         )
+    return employee_id
 
-    receipts = payroll_repository.get_receipts_by_employee_id(employee_id)
-    return {"employee_id": employee_id, "receipts": receipts}
+
+@router.get("/my-receipts")
+def get_my_receipts(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    user: dict = Depends(get_current_user),
+):
+    """Los recibos de quien inicio sesion, del periodo mas nuevo al mas viejo."""
+    receipts, total = payroll_repository.page_employee_receipts(
+        _own_employee_id(user), page_size, page_offset(page, page_size)
+    )
+    return {
+        "items": receipts, "total": total, "page": page, "page_size": page_size,
+    }
+
+
+@router.get("/my-summary")
+def get_my_summary(user: dict = Depends(get_current_user)):
+    """El tablero del empleado: su ultimo recibo, lo acumulado en el ano (por
+    el inicio del periodo) y sus ultimos periodos para la grafica."""
+    employee_id = _own_employee_id(user)
+    year = date.today().year
+    raw = analytics_repository.employee_summary(
+        employee_id, date(year, 1, 1), date(year + 1, 1, 1)
+    )
+    return build_employee_summary(raw, year)
 
 
 @router.get("/receipts/{receipt_id}/pdf")

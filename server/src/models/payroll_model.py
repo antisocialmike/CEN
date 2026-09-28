@@ -35,6 +35,19 @@ def paid_days_for(periodicity: str, start: date) -> int:
     return (period_end_for(periodicity, start) - start).days + 1
 
 
+def next_period_start(periodicity: str, start: date) -> date:
+    """El periodo que sigue, con los cortes que ofrece la calculadora del
+    admin: meses, quincenas del 1 y del 16, y semanas que empiezan el 1, 8,
+    15, 22 y 29 de cada mes."""
+    last_day = monthrange(start.year, start.month)[1]
+    if periodicity == "quincenal" and start.day < 16:
+        return start.replace(day=16)
+    if periodicity == "semanal" and start.day + 7 <= last_day:
+        return start + timedelta(days=7)
+    # Del dia 1 mas 31 dias siempre se cae en el mes siguiente.
+    return (start.replace(day=1) + timedelta(days=31)).replace(day=1)
+
+
 PERIOD_START_ERRORS = {
     "mensual": "Un periodo mensual empieza el dia 1",
     "quincenal": "Una quincena empieza el dia 1 o el 16",

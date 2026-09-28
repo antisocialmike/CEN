@@ -357,6 +357,38 @@ def test_an_admin_keeps_access_to_their_own_receipts(mock_get, admin_of):
 
 # --- Empleados, duenos y superadmin ------------------------------------------
 
+# Un empleado no puede ver a otro: la persona sale del token y un
+# employee_id en la direccion no cambia nada.
+@patch(PAYROLL + ".page_employee_receipts", return_value=([], 0))
+def test_an_employee_only_pages_their_own_receipts(mock_page):
+    response = client.get(
+        "/payroll/my-receipts?employee_id=99",
+        headers=_headers("employee", employee_id=5),
+    )
+
+    assert response.status_code == 200
+    assert mock_page.call_args[0][0] == 5
+
+
+@patch("server.src.routes.payroll_routes.analytics_repository")
+def test_an_employee_only_sees_their_own_summary(repository):
+    repository.employee_summary.return_value = {
+        "year_totals": {
+            "gross_payroll": 0, "isr_withheld": 0, "imss_withheld": 0,
+            "net_paid": 0, "receipts": 0,
+        },
+        "recent": [],
+    }
+
+    response = client.get(
+        "/payroll/my-summary?employee_id=99",
+        headers=_headers("employee", employee_id=5),
+    )
+
+    assert response.status_code == 200
+    assert repository.employee_summary.call_args[0][0] == 5
+
+
 @patch("server.src.routes.auth_routes.payroll_repository")
 def test_the_employee_token_carries_its_company(repository):
     from jose import jwt

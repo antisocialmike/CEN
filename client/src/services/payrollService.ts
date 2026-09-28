@@ -122,11 +122,42 @@ export async function calculatePayroll(
   return response.data;
 }
 
-export async function getMyReceipts(): Promise<PayrollReceipt[]> {
-  const response = await httpClient.get<{ employee_id: number; receipts: PayrollReceipt[] }>(
-    "/payroll/my-receipts"
-  );
-  return response.data.receipts;
+export async function getMyReceiptsPage(pagina: number): Promise<Pagina<PayrollReceipt>> {
+  const response = await httpClient.get<Pagina<PayrollReceipt>>("/payroll/my-receipts", {
+    params: { page: pagina, page_size: POR_PAGINA }
+  });
+  return response.data;
+}
+
+export interface ReceiptPoint {
+  id: number;
+  period_start: string;
+  period_end: string;
+  periodicity: Periodicity;
+  net_salary: number;
+  total_perceptions: number;
+}
+
+export interface MySummary {
+  latest: ReceiptPoint | null;
+  // CEN no guarda fechas de pago: se estima con la periodicidad del ultimo recibo.
+  next_period: { periodicity: Periodicity; start: string; end: string } | null;
+  // Lo del ano en curso, contado por el inicio de cada periodo.
+  year_to_date: {
+    year: number;
+    gross_payroll: number;
+    isr_withheld: number;
+    imss_withheld: number;
+    net_paid: number;
+    receipts: number;
+  };
+  // Los ultimos periodos, del mas viejo al mas nuevo.
+  recent: ReceiptPoint[];
+}
+
+export async function getMySummary(): Promise<MySummary> {
+  const response = await httpClient.get<MySummary>("/payroll/my-summary");
+  return response.data;
 }
 
 export async function getReceiptsPage(pagina: number): Promise<Pagina<PayrollReceipt>> {

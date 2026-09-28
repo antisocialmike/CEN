@@ -288,9 +288,13 @@ capa.
   calculo de nomina de esa persona. Un administrador no puede quitarse a
   si mismo el rol ni desactivar su propia cuenta, para que nadie se quede
   fuera del sistema.
-- `GET /payroll/receipts`: ultimos 20 recibos emitidos por todo el equipo,
-  con el nombre del empleado. Requiere rol `admin`.
-- `GET /payroll/my-receipts`: recibos del empleado dueno del token.
+- `GET /payroll/receipts`: historial de recibos de la empresa activa,
+  paginado y con el nombre del empleado. Requiere rol `admin`.
+- `GET /payroll/my-receipts`: recibos del empleado dueno del token, paginados
+  (`page`, `page_size`).
+- `GET /payroll/my-summary`: tablero del empleado dueno del token: ultimo
+  recibo, siguiente periodo estimado, acumulado del ano y neto de sus ultimos
+  12 periodos.
 - `GET /payroll/receipts/{id}/pdf`: descarga el comprobante en PDF. Un
   administrador puede bajar cualquiera; un empleado, solo los suyos.
 - `GET /health`: verificacion de disponibilidad del servicio y de la base
