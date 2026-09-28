@@ -1,15 +1,27 @@
 import { FormEvent, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
-import { Lock, ArrowLeft } from "@phosphor-icons/react";
+import { EnvelopeSimple, Lock, ArrowLeft } from "@phosphor-icons/react";
 import FormField from "../components/FormField";
 import ErrorMessage from "../components/ErrorMessage";
 import SubmitButton from "../components/SubmitButton";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
 import httpClient from "../services/httpClient";
+import { getErrorDetail, getStatusCode } from "../services/apiError";
+
+function emailFromState(state: unknown): string {
+  if (typeof state === "object" && state !== null && "email" in state) {
+    const { email } = state as { email: unknown };
+    return typeof email === "string" ? email : "";
+  }
+  return "";
+}
 
 export default function PasswordResetVerifyPage() {
+  const location = useLocation();
+  const requestedEmail = emailFromState(location.state);
+  const [email, setEmail] = useState(requestedEmail);
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -30,12 +42,17 @@ export default function PasswordResetVerifyPage() {
 
     try {
       await httpClient.post("/auth/password-reset/verify", {
+        email,
         code,
         new_password: newPassword,
       });
       navigate("/login", { replace: true });
-    } catch {
-      setErrorMessage("Código inválido, expirado o ya utilizado.");
+    } catch (error) {
+      setErrorMessage(
+        getStatusCode(error) === 429
+          ? getErrorDetail(error) ?? "Demasiados intentos. Inténtalo más tarde."
+          : "Código inválido, expirado o ya utilizado."
+      );
       setIsSubmitting(false);
     }
   }
@@ -59,7 +76,9 @@ export default function PasswordResetVerifyPage() {
         <div className="auth-card">
           <h1 className="auth-card-title">Verificar código</h1>
           <p className="auth-card-subtitle">
-            Ingresa el código de verificación y tu nueva contraseña.
+            {requestedEmail
+              ? "Si hay una cuenta con ese correo, te enviamos un código de 6 dígitos. Escríbelo junto con tu nueva contraseña."
+              : "Ingresa tu correo, el código de verificación y tu nueva contraseña."}
           </p>
 
           <AnimatePresence mode="wait">
@@ -67,6 +86,18 @@ export default function PasswordResetVerifyPage() {
           </AnimatePresence>
 
           <form onSubmit={handleSubmit}>
+            <FormField
+              id="email"
+              label="Correo"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              inputMode="email"
+              placeholder="tu@empresa.mx"
+              icon={<EnvelopeSimple weight="bold" />}
+              required
+            />
             <FormField
               id="code"
               label="Código de verificación"
@@ -106,6 +137,13 @@ export default function PasswordResetVerifyPage() {
               isLoading={isSubmitting}
             />
           </form>
+
+          <p className="auth-card-note">
+            ¿No te llegó?{" "}
+            <Link className="text-button" to="/password-recovery">
+              Pide otro código
+            </Link>
+          </p>
         </div>
 
         <ThemeToggle />

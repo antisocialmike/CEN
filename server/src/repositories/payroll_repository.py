@@ -26,7 +26,8 @@ SELECT_EMPLOYEE_BY_ID = (
 SELECT_EMPLOYEE_BY_EMAIL = (
     "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.password_hash, "
     "e.must_change_password, e.is_active, e.failed_login_attempts, "
-    "e.locked_until, e.company_id, c.is_active AS company_is_active "
+    "e.locked_until, e.company_id, e.token_version, "
+    "c.is_active AS company_is_active "
     "FROM employees e LEFT JOIN companies c ON c.id = e.company_id "
     "WHERE e.email = %s;"
 )
@@ -40,9 +41,12 @@ CLEAR_FAILED_LOGINS = (
     "UPDATE employees SET failed_login_attempts = 0, locked_until = NULL "
     "WHERE id = %s;"
 )
+# Restablecer o cambiar la contrasena sube la version de sesion: los tokens que
+# ya se emitieron dejan de valer.
 RESET_PASSWORD = (
     "UPDATE employees SET password_hash = %s, must_change_password = TRUE, "
-    "failed_login_attempts = 0, locked_until = NULL WHERE id = %s "
+    "failed_login_attempts = 0, locked_until = NULL, "
+    "token_version = token_version + 1 WHERE id = %s "
     "RETURNING id, name, email, role, base_salary, is_active, "
     "tipo_regimen, tipo_jornada;"
 )
@@ -50,8 +54,8 @@ SELECT_PASSWORD_HASH = (
     "SELECT password_hash FROM employees WHERE id = %s;"
 )
 UPDATE_PASSWORD = (
-    "UPDATE employees SET password_hash = %s, must_change_password = FALSE "
-    "WHERE id = %s;"
+    "UPDATE employees SET password_hash = %s, must_change_password = FALSE, "
+    "token_version = token_version + 1 WHERE id = %s;"
 )
 EMPLOYEES_OF_COMPANY = (
     "FROM employees e WHERE e.role IN ('admin', 'employee') "
@@ -243,17 +247,6 @@ INSERT_RECEIPT_ITEM = (
     "INSERT INTO payroll_receipt_items (receipt_id, kind, concept, "
     "description, amount, taxable, exempt, position) "
     "VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"
-)
-INSERT_PASSWORD_RESET_TOKEN = (
-    "INSERT INTO password_reset_tokens (employee_id, token, code, expires_at) "
-    "VALUES (%s, %s, %s, %s);"
-)
-SELECT_PASSWORD_RESET_TOKEN = (
-    "SELECT id, employee_id, token, code, created_at, expires_at, used_at "
-    "FROM password_reset_tokens WHERE code = %s;"
-)
-MARK_RESET_TOKEN_USED = (
-    "UPDATE password_reset_tokens SET used_at = NOW() WHERE id = %s;"
 )
 
 
@@ -560,19 +553,6 @@ class PayrollRepository:
             total = dict(cursor.fetchone())["total"]
             cursor.execute(query, params + (limit, offset))
             return [dict(row) for row in cursor.fetchall()], total
-
-    def create_password_reset_token(
-        self, employee_id: int, token: str, code: str, expires_at
-    ) -> None:
-        with db_cursor() as cursor:
-            cursor.execute(INSERT_PASSWORD_RESET_TOKEN, (employee_id, token, code, expires_at))
-
-    def get_password_reset_token(self, code: str) -> Optional[dict]:
-        return self._fetch_one(SELECT_PASSWORD_RESET_TOKEN, (code,))
-
-    def mark_reset_token_used(self, token_id: int) -> None:
-        with db_cursor() as cursor:
-            cursor.execute(MARK_RESET_TOKEN_USED, (token_id,))
 
 
 payroll_repository = PayrollRepository()

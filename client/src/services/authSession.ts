@@ -51,6 +51,12 @@ export function clearPasswordChangeFlag(): void {
   localStorage.setItem(MUST_CHANGE_KEY, "false");
 }
 
+// Cambiar la contraseña invalida en el servidor todos los tokens, también el
+// de esta pestaña: la API devuelve otro y la sesión sigue con él.
+export function replaceToken(accessToken: string): void {
+  localStorage.setItem(TOKEN_KEY, accessToken);
+}
+
 export function dashboardPathForRole(role: UserRole | null = getRole()): string {
   return DASHBOARD_PATHS[role ?? "employee"];
 }

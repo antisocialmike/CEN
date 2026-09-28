@@ -12,6 +12,7 @@ import {
   isAuthenticated,
   isTokenExpired,
   mustChangePassword,
+  replaceToken,
   saveSession
 } from "./authSession";
 
@@ -86,6 +87,19 @@ describe("clearPasswordChangeFlag", () => {
 
     expect(mustChangePassword()).toBe(false);
     expect(getToken()).toBe("token-abc");
+  });
+});
+
+describe("replaceToken", () => {
+  it("cambia solo el token y conserva el resto de la sesion", () => {
+    saveSession(adminSession);
+
+    replaceToken("token-nuevo");
+
+    expect(getToken()).toBe("token-nuevo");
+    expect(getRole()).toBe("admin");
+    expect(getName()).toBe("Ana Sofia Ramirez");
+    expect(getEmployeeId()).toBe(7);
   });
 });
 

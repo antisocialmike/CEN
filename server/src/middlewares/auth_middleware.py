@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
@@ -14,6 +16,7 @@ from ..config.settings import (
     JWT_SECRET_KEY,
     TEMPORARY_PASSWORD_LENGTH,
 )
+from ..repositories.auth_repository import auth_repository
 
 security_bearer = HTTPBearer()
 BCRYPT_MAX_BYTES = 72
@@ -27,6 +30,10 @@ TEMPORARY_PASSWORD_ALPHABET = "".join(
 INVALID_TOKEN = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Token no valido",
+)
+PASSWORD_CHANGE_REQUIRED = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN,
+    detail="Debes cambiar tu contrasena temporal antes de continuar",
 )
 
 
@@ -49,6 +56,16 @@ def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(_encode(password), password_hash.encode("utf-8"))
 
 
+def hash_reset_code(code: str) -> str:
+    return hmac.new(
+        JWT_SECRET_KEY.encode("utf-8"), code.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+
+
+def reset_code_matches(code: str, code_hash: str) -> bool:
+    return hmac.compare_digest(hash_reset_code(code), code_hash)
+
+
 def create_access_token(
     data: dict, expires_delta: Optional[timedelta] = None
 ) -> str:
@@ -58,9 +75,17 @@ def create_access_token(
     return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Security(security_bearer)
-) -> dict:
+def _session_is_current(state: Optional[dict], token_version: int) -> bool:
+    return (
+        state is not None
+        and bool(state["same_role"])
+        and bool(state["is_active"])
+        and state.get("company_is_active") is not False
+        and state["token_version"] == token_version
+    )
+
+
+def _authenticate(credentials: HTTPAuthorizationCredentials) -> tuple:
     try:
         payload = jwt.decode(
             credentials.credentials,
@@ -72,15 +97,37 @@ def get_current_user(
 
     username = str(payload.get("sub") or "")
     role = str(payload.get("role") or "")
-    if not username or not role:
+    employee_id = payload.get("employee_id")
+    if not username or not role or not isinstance(employee_id, int):
         raise INVALID_TOKEN
 
-    return {
+    state = auth_repository.session_state(employee_id, role)
+    if not _session_is_current(state, payload.get("ver", 0)):
+        raise INVALID_TOKEN
+
+    user = {
         "username": username,
         "role": role,
-        "employee_id": payload.get("employee_id"),
+        "employee_id": employee_id,
         "company_id": payload.get("company_id"),
     }
+    return user, bool(state["must_change_password"])
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Security(security_bearer)
+) -> dict:
+    user, must_change_password = _authenticate(credentials)
+    if must_change_password:
+        raise PASSWORD_CHANGE_REQUIRED
+    return user
+
+
+def get_user_changing_password(
+    credentials: HTTPAuthorizationCredentials = Security(security_bearer)
+) -> dict:
+    user, _ = _authenticate(credentials)
+    return user
 
 
 def require_role(required_role: str):

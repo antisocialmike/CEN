@@ -3,12 +3,23 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from jose import jwt
 
 from server.src.main import app
-from server.src.config.settings import LOGIN_LOCK_MINUTES, LOGIN_MAX_ATTEMPTS
+from server.src.config.settings import (
+    JWT_ALGORITHM,
+    JWT_SECRET_KEY,
+    LOGIN_LOCK_MINUTES,
+    LOGIN_MAX_ATTEMPTS,
+)
 from server.src.middlewares.auth_middleware import create_access_token, hash_password
+from server.tests.conftest import active_session
 
 client = TestClient(app)
+
+
+def _claims(token: str) -> dict:
+    return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
 
 
 @pytest.fixture(autouse=True)
@@ -46,6 +57,41 @@ def test_login_success(mock_get_employee):
 
 
 @patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
+def test_login_signs_the_session_version(mock_get_employee):
+    mock_get_employee.return_value = {
+        "id": 1, "email": "admin@cen.com", "role": "admin",
+        "password_hash": hash_password("clave123"), "token_version": 3,
+    }
+
+    response = client.post(
+        "/auth/login",
+        json={"email": "admin@cen.com", "password": "clave123"}
+    )
+
+    claims = _claims(response.json()["access_token"])
+    assert claims["ver"] == 3
+    assert claims["employee_id"] == 1
+
+
+@patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
+def test_login_is_limited_by_address(mock_get_employee, rate_limit_window):
+    rate_limit_window.return_value = {"hits": 61, "retry_after": 300}
+
+    response = client.post(
+        "/auth/login",
+        json={"email": "admin@cen.com", "password": "clave123"}
+    )
+
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "300"
+    assert "5 minutos" in response.json()["detail"]
+    mock_get_employee.assert_not_called()
+    bucket, client_key, _ = rate_limit_window.call_args[0]
+    assert bucket == "login"
+    assert client_key == "testclient"
+
+
+@patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
 def test_login_wrong_password(mock_get_employee):
     mock_get_employee.return_value = {
         "id": 1,
@@ -80,10 +126,15 @@ def _token_for(employee_id=7):
     )
 
 
+@patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
 @patch("server.src.routes.auth_routes.payroll_repository.update_password")
 @patch("server.src.routes.auth_routes.payroll_repository.get_password_hash")
-def test_change_password_success(mock_get_hash, mock_update):
+def test_change_password_success(mock_get_hash, mock_update, mock_get_employee):
     mock_get_hash.return_value = hash_password("clave123")
+    mock_get_employee.return_value = {
+        "id": 7, "email": "ana@cen.com", "role": "employee", "name": "Ana",
+        "company_id": 1, "token_version": 4,
+    }
 
     response = client.post(
         "/auth/password",
@@ -91,11 +142,38 @@ def test_change_password_success(mock_get_hash, mock_update):
         headers={"Authorization": f"Bearer {_token_for()}"}
     )
 
-    assert response.status_code == 204
+    assert response.status_code == 200
     mock_update.assert_called_once()
     employee_id, new_hash = mock_update.call_args[0]
     assert employee_id == 7
     assert new_hash != "nuevaClave1"
+    # El cambio cerro las sesiones: el token que sigue lleva la version nueva.
+    claims = _claims(response.json()["access_token"])
+    assert claims["employee_id"] == 7
+    assert claims["ver"] == 4
+    mock_get_employee.assert_called_once_with("ana@cen.com")
+
+
+@patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")
+@patch("server.src.routes.auth_routes.payroll_repository.update_password")
+@patch("server.src.routes.auth_routes.payroll_repository.get_password_hash")
+def test_change_password_is_allowed_with_the_temporary_one(
+    mock_get_hash, mock_update, mock_get_employee, session_state
+):
+    session_state.return_value = active_session(must_change_password=True)
+    mock_get_hash.return_value = hash_password("temporal123")
+    mock_get_employee.return_value = {
+        "id": 7, "email": "ana@cen.com", "role": "employee", "token_version": 1,
+    }
+
+    response = client.post(
+        "/auth/password",
+        json={"current_password": "temporal123", "new_password": "nuevaClave1"},
+        headers={"Authorization": f"Bearer {_token_for()}"}
+    )
+
+    assert response.status_code == 200
+    mock_update.assert_called_once()
 
 
 @patch("server.src.routes.auth_routes.payroll_repository.update_password")
@@ -150,7 +228,7 @@ def test_change_password_needs_an_employee_in_the_token():
         headers={"Authorization": f"Bearer {token}"}
     )
 
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_change_password_rejects_a_short_new_one():

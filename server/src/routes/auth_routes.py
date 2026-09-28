@@ -1,27 +1,45 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import secrets
 import string
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Response,
+    status,
+)
 
 from ..config.settings import (
     LOGIN_LOCK_MINUTES,
     LOGIN_MAX_ATTEMPTS,
+    LOGIN_RATE_LIMIT,
+    PASSWORD_RESET_COOLDOWN_SECONDS,
+    PASSWORD_RESET_MAX_ATTEMPTS,
+    PASSWORD_RESET_MAX_PER_HOUR,
+    PASSWORD_RESET_REQUEST_RATE_LIMIT,
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES,
+    PASSWORD_RESET_VERIFY_RATE_LIMIT,
 )
 from ..middlewares.auth_middleware import (
     create_access_token,
-    get_current_user,
+    get_user_changing_password,
     hash_password,
+    hash_reset_code,
+    reset_code_matches,
     verify_password,
 )
+from ..middlewares.rate_limit import rate_limit
 from ..models.auth_model import (
     LoginRequest,
     PasswordChangeRequest,
+    PasswordChangeResponse,
     PasswordResetRequest,
     PasswordResetVerify,
     TokenResponse,
 )
+from ..repositories.auth_repository import auth_repository
 from ..repositories.payroll_repository import payroll_repository
 from ..utils.email_service import send_password_reset_email
 
@@ -30,6 +48,12 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 INVALID_CREDENTIALS = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Credenciales invalidas",
+)
+# Una sola respuesta para todo lo que falla al canjear un codigo: no dice si el
+# correo existe, si el codigo vencio o si ya se agotaron sus intentos.
+INVALID_RESET_CODE = HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail="Codigo invalido o expirado",
 )
 
 
@@ -51,7 +75,24 @@ def _is_locked(locked_until) -> bool:
     return locked_until is not None and locked_until > datetime.now(timezone.utc)
 
 
-@router.post("/login", response_model=TokenResponse)
+def _issue_token(employee: dict) -> str:
+    """El token lleva la version de sesion de la cuenta: si despues cambia,
+    este token deja de valer."""
+    return create_access_token(data={
+        "sub": employee["email"],
+        "role": employee["role"],
+        "employee_id": employee["id"],
+        "company_id": employee.get("company_id"),
+        "name": employee.get("name", ""),
+        "ver": employee.get("token_version", 0),
+    })
+
+
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("login", LOGIN_RATE_LIMIT))],
+)
 def login(request: LoginRequest):
     employee = payroll_repository.get_employee_by_email(request.email)
     if employee is None:
@@ -82,35 +123,21 @@ def login(request: LoginRequest):
 
     payroll_repository.clear_failed_logins(employee["id"])
 
-    name = employee.get("name", "")
-    token = create_access_token(data={
-        "sub": employee["email"],
-        "role": employee["role"],
-        "employee_id": employee["id"],
-        "company_id": employee.get("company_id"),
-        "name": name,
-    })
     return TokenResponse(
-        access_token=token,
+        access_token=_issue_token(employee),
         role=employee["role"],
-        name=name,
+        name=employee.get("name", ""),
         employee_id=employee["id"],
         must_change_password=bool(employee.get("must_change_password")),
     )
 
 
-@router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/password", response_model=PasswordChangeResponse)
 def change_password(
     request: PasswordChangeRequest,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(get_user_changing_password),
 ):
-    employee_id = user.get("employee_id")
-    if employee_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Token sin empleado asociado",
-        )
-
+    employee_id = user["employee_id"]
     current_hash = payroll_repository.get_password_hash(employee_id)
     if current_hash is None or not verify_password(
         request.current_password, current_hash
@@ -129,7 +156,13 @@ def change_password(
     payroll_repository.update_password(
         employee_id, hash_password(request.new_password)
     )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    # El cambio subio la version de sesion: el token con el que se pidio ya no
+    # vale, y el que sigue sale de la cuenta tal como quedo.
+    employee = payroll_repository.get_employee_by_email(user["username"])
+    if employee is None:
+        raise INVALID_CREDENTIALS
+    return PasswordChangeResponse(access_token=_issue_token(employee))
 
 
 def _generate_reset_code() -> str:
@@ -137,61 +170,73 @@ def _generate_reset_code() -> str:
     return "".join(secrets.choice(digits) for _ in range(6))
 
 
-@router.post("/password-reset/request", status_code=status.HTTP_204_NO_CONTENT)
-def request_password_reset(request: PasswordResetRequest):
+def _can_recover(employee) -> bool:
+    return (
+        employee is not None
+        and employee.get("is_active", True)
+        and employee.get("company_is_active") is not False
+    )
+
+
+@router.post(
+    "/password-reset/request",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit(
+        "password-reset-request", PASSWORD_RESET_REQUEST_RATE_LIMIT
+    ))],
+)
+def request_password_reset(
+    request: PasswordResetRequest, background_tasks: BackgroundTasks
+):
+    # Siempre 204, y el correo sale despues de responder: ni la respuesta ni
+    # lo que tarda dicen si la cuenta existe.
     employee = payroll_repository.get_employee_by_email(request.email)
-    if employee is None:
+    if not _can_recover(employee):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     code = _generate_reset_code()
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(timezone.utc) + timedelta(
-        minutes=PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
+    issued = auth_repository.issue_reset_code(
+        employee["id"],
+        hash_reset_code(code),
+        PASSWORD_RESET_TOKEN_EXPIRE_MINUTES,
+        PASSWORD_RESET_COOLDOWN_SECONDS,
+        PASSWORD_RESET_MAX_PER_HOUR,
     )
-
-    payroll_repository.create_password_reset_token(
-        employee_id=employee["id"],
-        token=token,
-        code=code,
-        expires_at=expires_at,
-    )
-
-    send_password_reset_email(
-        email=employee["email"],
-        name=employee["name"],
-        code=code,
-    )
+    if issued:
+        background_tasks.add_task(
+            send_password_reset_email,
+            email=employee["email"],
+            name=employee["name"],
+            code=code,
+        )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/password-reset/verify", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/password-reset/verify",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(rate_limit(
+        "password-reset-verify", PASSWORD_RESET_VERIFY_RATE_LIMIT
+    ))],
+)
 def verify_password_reset(request: PasswordResetVerify):
-    reset_token = payroll_repository.get_password_reset_token(request.code)
+    # El codigo se busca entre los de esa cuenta, nunca entre los de todas.
+    employee = payroll_repository.get_employee_by_email(request.email)
+    if not _can_recover(employee):
+        raise INVALID_RESET_CODE
 
-    if reset_token is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Código inválido o expirado",
-        )
-
-    if reset_token["used_at"] is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Este código ya fue utilizado",
-        )
-
-    if datetime.fromisoformat(reset_token["expires_at"]) < datetime.now(timezone.utc):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Código expirado",
-        )
-
-    payroll_repository.update_password(
-        reset_token["employee_id"],
-        hash_password(request.new_password),
+    reset_code = auth_repository.claim_reset_attempt(
+        employee["id"], PASSWORD_RESET_MAX_ATTEMPTS
     )
+    if reset_code is None or not reset_code_matches(
+        request.code, reset_code["code_hash"]
+    ):
+        raise INVALID_RESET_CODE
 
-    payroll_repository.mark_reset_token_used(reset_token["id"])
+    if not auth_repository.reset_password_with_code(
+        reset_code["id"], employee["id"], hash_password(request.new_password)
+    ):
+        raise INVALID_RESET_CODE
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

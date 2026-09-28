@@ -129,7 +129,7 @@ def test_the_summary_is_the_one_of_the_token(repository):
 def test_a_token_without_employee_has_no_summary(repository):
     response = client.get("/payroll/my-summary", headers=_headers(None))
 
-    assert response.status_code == 403
+    assert response.status_code == 401
     repository.employee_summary.assert_not_called()
 
 

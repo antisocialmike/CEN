@@ -47,10 +47,12 @@ def payroll_parameters_only():
 
 
 def _admin_token():
-    return create_access_token(data={"sub": "admin1", "role": "admin"})
+    return create_access_token(
+        data={"sub": "admin1", "role": "admin", "employee_id": 99}
+    )
 
 
-def _employee_token(employee_id=None):
+def _employee_token(employee_id=50):
     data = {"sub": "empleado1", "role": "employee"}
     if employee_id is not None:
         data["employee_id"] = employee_id
@@ -246,10 +248,10 @@ def test_my_receipts_reject_impossible_pages(mock_page_receipts, query):
 def test_get_my_receipts_token_without_employee_id():
     response = client.get(
         "/payroll/my-receipts",
-        headers={"Authorization": f"Bearer {_employee_token()}"}
+        headers={"Authorization": f"Bearer {_employee_token(None)}"}
     )
 
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_get_my_receipts_requires_authentication():

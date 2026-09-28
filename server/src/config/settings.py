@@ -35,6 +35,15 @@ LOGIN_MAX_ATTEMPTS = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
 LOGIN_LOCK_MINUTES = int(os.getenv("LOGIN_LOCK_MINUTES", "15"))
 TEMPORARY_PASSWORD_LENGTH = int(os.getenv("TEMPORARY_PASSWORD_LENGTH", "12"))
 
+AUTH_RATE_WINDOW_SECONDS = int(os.getenv("AUTH_RATE_WINDOW_SECONDS", "900"))
+LOGIN_RATE_LIMIT = int(os.getenv("LOGIN_RATE_LIMIT", "60"))
+PASSWORD_RESET_REQUEST_RATE_LIMIT = int(
+    os.getenv("PASSWORD_RESET_REQUEST_RATE_LIMIT", "5")
+)
+PASSWORD_RESET_VERIFY_RATE_LIMIT = int(
+    os.getenv("PASSWORD_RESET_VERIFY_RATE_LIMIT", "10")
+)
+
 ADMIN_NAME = os.getenv("ADMIN_NAME", "Administrador")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@cen.com")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin1234")
@@ -48,7 +57,6 @@ OWNER_NAME = os.getenv("OWNER_NAME", "Dueño")
 OWNER_EMAIL = os.getenv("OWNER_EMAIL", "")
 OWNER_PASSWORD = os.getenv("OWNER_PASSWORD", "")
 
-# Largo minimo de las contraseñas de las cuentas que crea el bootstrap.
 BOOTSTRAP_MIN_PASSWORD_LENGTH = 12
 
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
@@ -59,3 +67,8 @@ SMTP_FROM = os.getenv("SMTP_FROM", "noreply@cenpayroll.com")
 SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "True").lower() == "true"
 
 PASSWORD_RESET_TOKEN_EXPIRE_MINUTES = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "15"))
+PASSWORD_RESET_MAX_ATTEMPTS = int(os.getenv("PASSWORD_RESET_MAX_ATTEMPTS", "5"))
+PASSWORD_RESET_COOLDOWN_SECONDS = int(
+    os.getenv("PASSWORD_RESET_COOLDOWN_SECONDS", "60")
+)
+PASSWORD_RESET_MAX_PER_HOUR = int(os.getenv("PASSWORD_RESET_MAX_PER_HOUR", "5"))

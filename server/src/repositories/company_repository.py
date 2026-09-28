@@ -14,7 +14,6 @@ OWNER_FIELDS = (
     "LEFT JOIN company_owners o ON o.owner_id = e.id "
     "LEFT JOIN companies c ON c.id = o.company_id "
 )
-# El id desempata a los homonimos para que la paginacion no los baraje.
 OWNERS_IN_ORDER = (
     OWNER_FIELDS
     + "WHERE e.role = 'owner' GROUP BY e.id "
@@ -41,16 +40,14 @@ UPDATE_OWNER_ACTIVE = (
 )
 RESET_OWNER_PASSWORD = (
     "UPDATE employees SET password_hash = %s, must_change_password = TRUE, "
-    "failed_login_attempts = 0, locked_until = NULL "
+    "failed_login_attempts = 0, locked_until = NULL, "
+    "token_version = token_version + 1 "
     "WHERE id = %s AND role = 'owner' RETURNING id, name, email;"
 )
 LOCK_ACTIVE_OWNER = (
     "SELECT id FROM employees "
     "WHERE id = %s AND role = 'owner' AND is_active FOR SHARE;"
 )
-# Empresas activas que se quedarian sin ningun dueno activo si el dueno
-# indicado dejara de contar. Bloquea esas empresas hasta el fin de la
-# transaccion para que dos bajas simultaneas no dejen una huerfana.
 SELECT_COMPANIES_LEFT_WITHOUT_OWNER = (
     "SELECT c.id, c.legal_name FROM companies c "
     "JOIN company_owners o ON o.company_id = c.id "
@@ -153,8 +150,6 @@ INSERT_ADMIN = (
     "must_change_password) VALUES (%s, %s, 'admin', NULL, %s, TRUE) "
     "RETURNING id;"
 )
-# Solo se busca un admin activo por su correo exacto: el dueno no puede
-# listar ni adivinar a los admins de otras empresas.
 SELECT_ACTIVE_ADMIN_BY_EMAIL = (
     "SELECT id FROM employees "
     "WHERE email = %s AND role = 'admin' AND is_active FOR SHARE;"
@@ -169,7 +164,6 @@ RELEASE_COMPANY_ADMIN = (
     "WHERE admin_id = %s AND company_id = %s AND is_active "
     "RETURNING admin_id;"
 )
-# La prima nueva cierra la que estaba abierta un dia antes de empezar.
 CLOSE_OPEN_RISK_PREMIUM = (
     "UPDATE company_risk_premiums SET valid_to = %s::date - 1 "
     "WHERE company_id = %s AND valid_to IS NULL AND valid_from < %s;"
@@ -314,7 +308,6 @@ class CompanyRepository:
             )
 
     def link_owner(self, owner_id: int, company_id: int) -> None:
-        """Hace dueño de una empresa sin auditoria: solo lo usa el bootstrap."""
         with db_cursor() as cursor:
             cursor.execute(INSERT_COMPANY_OWNER, (owner_id, company_id))
 
@@ -485,7 +478,6 @@ class CompanyRepository:
     def _fetch_page(
         self, query: str, count_query: str, limit: int, offset: int
     ) -> tuple:
-        """Las filas del tramo pedido y el total de la lista completa."""
         with db_cursor() as cursor:
             cursor.execute(count_query, ())
             total = dict(cursor.fetchone())["total"]

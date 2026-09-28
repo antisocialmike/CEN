@@ -343,6 +343,28 @@ def test_update_password_clears_the_forced_change(repository, cursor):
     assert params == ("nuevo_hash", 7)
 
 
+def test_changing_or_resetting_the_password_closes_the_sessions(
+    repository, cursor
+):
+    cursor.fetchone.side_effect = [_member(), _saved_row()]
+
+    repository.update_password(7, "nuevo_hash")
+    repository.reset_password(3, "hash", COMPANY)
+
+    password_updates = [q for q in _queries(cursor) if "password_hash = %s" in q]
+    assert len(password_updates) == 2
+    for query in password_updates:
+        assert "token_version = token_version + 1" in query
+
+
+def test_login_reads_the_session_version(repository, cursor):
+    cursor.fetchone.return_value = None
+
+    repository.get_employee_by_email("ana@cen.com")
+
+    assert "e.token_version" in cursor.execute.call_args[0][0]
+
+
 def test_create_employee_forces_the_first_password_change(repository, cursor):
     cursor.fetchone.return_value = {"id": 10}
 

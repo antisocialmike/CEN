@@ -24,10 +24,16 @@ class PasswordChangeRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=72)
 
 
+class PasswordChangeResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class PasswordResetRequest(BaseModel):
     email: str
 
 
 class PasswordResetVerify(BaseModel):
-    code: str
+    email: str
+    code: str = Field(pattern=r"^[0-9]{6}$")
     new_password: str = Field(min_length=8, max_length=72)

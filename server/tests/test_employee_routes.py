@@ -25,11 +25,15 @@ def admin_company():
 
 
 def _admin_token():
-    return create_access_token(data={"sub": "admin1", "role": "admin"})
+    return create_access_token(
+        data={"sub": "admin1", "role": "admin", "employee_id": 99}
+    )
 
 
 def _employee_token():
-    return create_access_token(data={"sub": "empleado1", "role": "employee"})
+    return create_access_token(
+        data={"sub": "empleado1", "role": "employee", "employee_id": 50}
+    )
 
 
 @patch("server.src.routes.employee_routes.payroll_repository.list_employees")

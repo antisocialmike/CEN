@@ -136,6 +136,7 @@ def test_reset_owner_password_is_scoped_to_owners(repository, cursor):
 
     assert result["id"] == 5
     assert "role = 'owner'" in _queries(cursor)[0]
+    assert "token_version = token_version + 1" in _queries(cursor)[0]
     assert _audits(cursor)[0][1] == "owner.reset_password"
 
 

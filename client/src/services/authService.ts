@@ -2,6 +2,7 @@ import httpClient from "./httpClient";
 import {
   clearPasswordChangeFlag,
   clearSession,
+  replaceToken,
   saveSession,
   UserRole
 } from "./authSession";
@@ -12,6 +13,10 @@ interface LoginResponse {
   name?: string;
   employee_id?: number | null;
   must_change_password?: boolean;
+}
+
+interface PasswordChangeResponse {
+  access_token: string;
 }
 
 export async function login(email: string, password: string): Promise<UserRole> {
@@ -39,9 +44,10 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string
 ): Promise<void> {
-  await httpClient.post("/auth/password", {
+  const response = await httpClient.post<PasswordChangeResponse>("/auth/password", {
     current_password: currentPassword,
     new_password: newPassword
   });
+  replaceToken(response.data.access_token);
   clearPasswordChangeFlag();
 }

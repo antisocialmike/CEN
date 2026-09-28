@@ -72,6 +72,35 @@ Ese bloqueo protege de la fuerza bruta pero abre la puerta a molestar a
 alguien fallando a proposito con su correo. Por eso el bloqueo es
 temporal y no permanente.
 
+Ademas del bloqueo por cuenta hay un limite por direccion en las rutas
+publicas de `/auth`, contado en la tabla `auth_rate_limits` en ventanas de
+`AUTH_RATE_WINDOW_SECONDS` (15 minutos por omision): `LOGIN_RATE_LIMIT`
+inicios de sesion (60), `PASSWORD_RESET_REQUEST_RATE_LIMIT` solicitudes de
+codigo (5) y `PASSWORD_RESET_VERIFY_RATE_LIMIT` canjes (10). Al pasarse
+responde `429` con `Retry-After`. La direccion la resuelve uvicorn: detras
+de un proxy, como en Render, hay que definir `FORWARDED_ALLOW_IPS` para que
+lea `X-Forwarded-For`; si no, todos comparten la del proxy y el limite los
+frena a todos juntos. Es una segunda barrera, no la principal: esa cabecera
+la puede falsear el cliente si el proxy no la reescribe.
+
+**Sesiones.** El token no basta por si solo: en cada peticion la API
+consulta la cuenta y lo rechaza con `401` si ya no esta activa, si su rol
+cambio, si su empresa se desactivo o si su version de sesion
+(`employees.token_version`) ya no es la que lleva el token. Esa version sube
+al cambiar la contrasena y al restablecerla, asi que ambas cosas cierran
+todas las sesiones abiertas de esa cuenta. Mientras una cuenta tenga la
+contrasena temporal, la API responde `403` a todo salvo a `POST
+/auth/password`: la regla la cumple el servidor, no solo el cliente.
+
+**Recuperacion por correo.** El codigo de seis digitos se amarra al correo
+que lo pidio, se guarda como HMAC (nunca en claro), vence en
+`PASSWORD_RESET_TOKEN_EXPIRE_MINUTES` y admite `PASSWORD_RESET_MAX_ATTEMPTS`
+intentos (5). Pedir otro anula el anterior, y cada cuenta puede pedir uno
+cada `PASSWORD_RESET_COOLDOWN_SECONDS` (60) y hasta
+`PASSWORD_RESET_MAX_PER_HOUR` por hora (5). La solicitud responde `204`
+exista o no la cuenta, y el correo sale despues de responder, para que ni
+la respuesta ni su demora revelen que correos estan registrados.
+
 El cliente comprueba la expiracion del token antes de dejar entrar al
 panel, asi que una sesion vencida manda al login en vez de mostrar una
 pantalla que fallaria en la primera peticion.
@@ -264,7 +293,15 @@ capa.
   con el rol del empleado y `must_change_password`, que indica si la
   cuenta sigue usando la contrasena temporal que le asignaron.
 - `POST /auth/password`: cambia la contrasena del dueno del token. Exige
-  la contrasena actual, rechaza reutilizar la misma y responde `204`.
+  la contrasena actual y rechaza reutilizar la misma. El cambio cierra
+  todas las sesiones de la cuenta, tambien la que lo pidio, asi que
+  responde `200` con el `access_token` con el que sigue.
+- `POST /auth/password-reset/request`: recibe `email` y, si la cuenta existe
+  y esta activa, le manda un codigo de seis digitos. Siempre responde `204`.
+- `POST /auth/password-reset/verify`: recibe `email`, `code` y
+  `new_password`. Con el codigo vigente de esa cuenta fija la contrasena,
+  levanta el bloqueo del login y responde `204`; con cualquier otra cosa,
+  `400` con el mismo mensaje.
 - `POST /employees/{id}/reset-password`: genera una contrasena temporal
   para esa persona, la marca para cambio obligatorio y desbloquea su
   cuenta. Devuelve la contrasena una sola vez, para que el administrador

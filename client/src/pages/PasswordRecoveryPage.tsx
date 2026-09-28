@@ -1,36 +1,36 @@
 import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import { EnvelopeSimple, ArrowLeft } from "@phosphor-icons/react";
 import FormField from "../components/FormField";
 import ErrorMessage from "../components/ErrorMessage";
-import SuccessMessage from "../components/SuccessMessage";
 import SubmitButton from "../components/SubmitButton";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
 import httpClient from "../services/httpClient";
+import { getErrorDetail, getStatusCode } from "../services/apiError";
 
 export default function PasswordRecoveryPage() {
   const [email, setEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage(null);
-    setSuccessMessage(null);
     setIsSubmitting(true);
 
     try {
       await httpClient.post("/auth/password-reset/request", { email });
-      setSuccessMessage("Se envió un código a tu correo. Revisa tu bandeja de entrada.");
-      setSubmitted(true);
-      setEmail("");
-    } catch {
-      setErrorMessage("No se pudo enviar el correo. Verifica que el correo sea válido.");
-    } finally {
+      // El código solo vale para el correo que lo pidió: la verificación lo necesita.
+      navigate("/password-reset-verify", { state: { email } });
+    } catch (error) {
+      setErrorMessage(
+        getStatusCode(error) === 429
+          ? getErrorDetail(error) ?? "Demasiadas solicitudes. Inténtalo más tarde."
+          : "No se pudo enviar el correo. Verifica que el correo sea válido."
+      );
       setIsSubmitting(false);
     }
   }
@@ -59,41 +59,27 @@ export default function PasswordRecoveryPage() {
 
           <AnimatePresence mode="wait">
             {errorMessage && <ErrorMessage key="error" message={errorMessage} />}
-            {successMessage && <SuccessMessage key="success" message={successMessage} />}
           </AnimatePresence>
 
-          {!submitted ? (
-            <form onSubmit={handleSubmit}>
-              <FormField
-                id="email"
-                label="Correo"
-                type="email"
-                value={email}
-                onChange={setEmail}
-                autoComplete="email"
-                inputMode="email"
-                placeholder="tu@empresa.mx"
-                icon={<EnvelopeSimple weight="bold" />}
-                required
-              />
-              <SubmitButton
-                label="Enviar código"
-                loadingLabel="Enviando…"
-                isLoading={isSubmitting}
-              />
-            </form>
-          ) : (
-            <p className="auth-card-note">
-              ¿No recibiste el correo?{" "}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => setSubmitted(false)}
-              >
-                Intenta de nuevo
-              </button>
-            </p>
-          )}
+          <form onSubmit={handleSubmit}>
+            <FormField
+              id="email"
+              label="Correo"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              inputMode="email"
+              placeholder="tu@empresa.mx"
+              icon={<EnvelopeSimple weight="bold" />}
+              required
+            />
+            <SubmitButton
+              label="Enviar código"
+              loadingLabel="Enviando…"
+              isLoading={isSubmitting}
+            />
+          </form>
         </div>
 
         <ThemeToggle />
