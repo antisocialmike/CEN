@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { claveDeTransicion } from "./routes/claveDeTransicion";
@@ -87,7 +87,7 @@ describe("transicion de login a los paneles", () => {
     sesion("admin");
 
     render(
-      <MemoryRouter initialEntries={["/admin/nuevo-empleado"]}>
+      <MemoryRouter initialEntries={["/admin/nuevo-usuario"]}>
         <App />
       </MemoryRouter>
     );
@@ -149,11 +149,11 @@ describe("transicion entre los paneles y cambiar contraseña", () => {
 
 describe("clave de transicion entre rutas del mismo armazon", () => {
   it("las dos rutas del panel de administracion comparten clave", () => {
-    expect(claveDeTransicion("/admin")).toBe(claveDeTransicion("/admin/empleados"));
+    expect(claveDeTransicion("/admin")).toBe(claveDeTransicion("/admin/usuarios"));
   });
 
   it("dar de alta no la comparte: es otra forma de pagina", () => {
-    expect(claveDeTransicion("/admin/nuevo-empleado")).not.toBe(
+    expect(claveDeTransicion("/admin/nuevo-usuario")).not.toBe(
       claveDeTransicion("/admin")
     );
   });
@@ -211,3 +211,25 @@ describe("el armazon de panel es unico y compartido", () => {
   });
 });
 
+
+describe("las direcciones de antes de llamarse usuarios", () => {
+  function RutaActual() {
+    return <output data-testid="ruta">{useLocation().pathname}</output>;
+  }
+
+  it.each([
+    ["/admin/empleados", "/admin/usuarios"],
+    ["/admin/nuevo-empleado", "/admin/nuevo-usuario"]
+  ])("%s lleva a %s", (vieja, nueva) => {
+    sesion("admin");
+
+    render(
+      <MemoryRouter initialEntries={[vieja]}>
+        <App />
+        <RutaActual />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("ruta")).toHaveTextContent(nueva);
+  });
+});

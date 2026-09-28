@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
       .catch(() => {
         if (!isMounted) return;
         setEmployees([]);
-        setErrorMessage("No se pudo cargar la lista de empleados. Recarga la página.");
+        setErrorMessage("No se pudo cargar la lista de usuarios. Recarga la página.");
       });
 
     getRecentReceipts()
@@ -214,16 +214,16 @@ export default function AdminDashboardPage() {
         <div className="dashboard-panel-actions">
           <button
             className="btn btn-line"
-            onClick={() => navigate("/admin/empleados")}
+            onClick={() => navigate("/admin/usuarios")}
           >
             <UsersThree weight="bold" />
-            Empleados
+            Usuarios
           </button>
           <button
             className="btn btn-line"
-            onClick={() => navigate("/admin/nuevo-empleado")}
+            onClick={() => navigate("/admin/nuevo-usuario")}
           >
-            Dar de alta empleado
+            Dar de alta usuario
           </button>
         </div>
       </div>
@@ -249,7 +249,7 @@ export default function AdminDashboardPage() {
             <Skeleton width="60%" height={28} />
           </div>
           <p className="visually-hidden" role="status">
-            Cargando empleados
+            Cargando usuarios
           </p>
         </div>
       )}
@@ -261,15 +261,15 @@ export default function AdminDashboardPage() {
           </span>
           <p className="empty-state-title">Todavía no hay nadie en la nómina</p>
           <p>
-            Da de alta al primer empleado y podrás calcular su ISR e IMSS y emitir su recibo
+            Da de alta al primer usuario y podrás calcular su ISR e IMSS y emitir su recibo
             en el mismo paso.
           </p>
           <button
             className="btn btn-line"
-            onClick={() => navigate("/admin/nuevo-empleado")}
+            onClick={() => navigate("/admin/nuevo-usuario")}
           >
             <UsersThree weight="bold" />
-            Dar de alta al primer empleado
+            Dar de alta al primer usuario
           </button>
         </div>
       )}

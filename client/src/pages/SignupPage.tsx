@@ -52,7 +52,7 @@ export default function SignupPage() {
       if (getStatusCode(error) === 409) {
         setErrorMessage("Ese correo ya está registrado. Usa otro o busca a la persona en la lista.");
       } else {
-        setErrorMessage("No se pudo dar de alta al empleado. Revisa los datos e inténtalo de nuevo.");
+        setErrorMessage("No se pudo dar de alta al usuario. Revisa los datos e inténtalo de nuevo.");
       }
     } finally {
       setIsSubmitting(false);
@@ -68,7 +68,7 @@ export default function SignupPage() {
         </button>
 
         <div style={{ margin: "20px 0 28px" }}>
-          <h1 className="auth-card-title">Dar de alta empleado</h1>
+          <h1 className="auth-card-title">Dar de alta usuario</h1>
           <p className="auth-card-subtitle" style={{ marginBottom: 0 }}>
             La persona entrará con su correo y la contraseña temporal que definas aquí.
           </p>

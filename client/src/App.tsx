@@ -61,13 +61,19 @@ export default function App() {
                 <Route element={<AdminCompanyGate />}>
                   <Route element={<RutaDePanel />}>
                     <Route path="/admin" element={<AdminDashboardPage />} />
-                    <Route path="/admin/empleados" element={<EmployeesPage />} />
+                    <Route path="/admin/usuarios" element={<EmployeesPage />} />
                   </Route>
                   <Route element={<AdminCompanyReadyPage />}>
-                    <Route path="/admin/nuevo-empleado" element={<SignupPage />} />
+                    <Route path="/admin/nuevo-usuario" element={<SignupPage />} />
                   </Route>
                 </Route>
               </Route>
+              {/* Direcciones de antes del cambio a "usuarios": favoritos y enlaces guardados siguen sirviendo. */}
+              <Route path="/admin/empleados" element={<Navigate to="/admin/usuarios" replace />} />
+              <Route
+                path="/admin/nuevo-empleado"
+                element={<Navigate to="/admin/nuevo-usuario" replace />}
+              />
 
               <Route element={<ProtectedRoute allowedRole="superadmin" />}>
                 <Route element={<RutaDePanel />}>

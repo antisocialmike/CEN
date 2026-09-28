@@ -60,7 +60,7 @@ export default function EmployeesPage() {
       .catch(() => {
         if (!isMounted) return;
         setEmployees([]);
-        setErrorMessage("No se pudo cargar la lista de empleados. Recarga la página.");
+        setErrorMessage("No se pudo cargar la lista de usuarios. Recarga la página.");
       });
 
     return () => {
@@ -212,7 +212,7 @@ export default function EmployeesPage() {
             <UsersThree weight="bold" />
           </span>
           <div>
-            <h1>Empleados</h1>
+            <h1>Usuarios</h1>
             <p className="dashboard-panel-subtitle">
               Corrige datos, ajusta salarios y da de baja a quien deje la empresa. Dar de baja
               no borra sus recibos.
@@ -255,8 +255,8 @@ export default function EmployeesPage() {
             <UsersThree weight="bold" />
           </span>
           <p className="empty-state-title">Todavía no hay nadie en la nómina</p>
-          <button className="btn btn-rosa" onClick={() => navigate("/admin/nuevo-empleado")}>
-            Dar de alta al primer empleado
+          <button className="btn btn-rosa" onClick={() => navigate("/admin/nuevo-usuario")}>
+            Dar de alta al primer usuario
           </button>
         </div>
       )}
