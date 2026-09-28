@@ -23,7 +23,6 @@ export default function PasswordRecoveryPage() {
 
     try {
       await httpClient.post("/auth/password-reset/request", { email });
-      // El código solo vale para el correo que lo pidió: la verificación lo necesita.
       navigate("/password-reset-verify", { state: { email } });
     } catch (error) {
       setErrorMessage(

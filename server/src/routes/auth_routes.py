@@ -49,8 +49,6 @@ INVALID_CREDENTIALS = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Credenciales invalidas",
 )
-# Una sola respuesta para todo lo que falla al canjear un codigo: no dice si el
-# correo existe, si el codigo vencio o si ya se agotaron sus intentos.
 INVALID_RESET_CODE = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
     detail="Codigo invalido o expirado",
@@ -76,8 +74,6 @@ def _is_locked(locked_until) -> bool:
 
 
 def _issue_token(employee: dict) -> str:
-    """El token lleva la version de sesion de la cuenta: si despues cambia,
-    este token deja de valer."""
     return create_access_token(data={
         "sub": employee["email"],
         "role": employee["role"],
@@ -157,8 +153,6 @@ def change_password(
         employee_id, hash_password(request.new_password)
     )
 
-    # El cambio subio la version de sesion: el token con el que se pidio ya no
-    # vale, y el que sigue sale de la cuenta tal como quedo.
     employee = payroll_repository.get_employee_by_email(user["username"])
     if employee is None:
         raise INVALID_CREDENTIALS
@@ -188,8 +182,6 @@ def _can_recover(employee) -> bool:
 def request_password_reset(
     request: PasswordResetRequest, background_tasks: BackgroundTasks
 ):
-    # Siempre 204, y el correo sale despues de responder: ni la respuesta ni
-    # lo que tarda dicen si la cuenta existe.
     employee = payroll_repository.get_employee_by_email(request.email)
     if not _can_recover(employee):
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -221,7 +213,6 @@ def request_password_reset(
     ))],
 )
 def verify_password_reset(request: PasswordResetVerify):
-    # El codigo se busca entre los de esa cuenta, nunca entre los de todas.
     employee = payroll_repository.get_employee_by_email(request.email)
     if not _can_recover(employee):
         raise INVALID_RESET_CODE

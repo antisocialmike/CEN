@@ -147,7 +147,6 @@ def test_change_password_success(mock_get_hash, mock_update, mock_get_employee):
     employee_id, new_hash = mock_update.call_args[0]
     assert employee_id == 7
     assert new_hash != "nuevaClave1"
-    # El cambio cerro las sesiones: el token que sigue lleva la version nueva.
     claims = _claims(response.json()["access_token"])
     assert claims["employee_id"] == 7
     assert claims["ver"] == 4

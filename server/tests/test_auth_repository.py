@@ -51,7 +51,6 @@ def test_hit_rate_limit_counts_within_the_window(repository, cursor):
     query, params = cursor.execute.call_args_list[0][0]
     assert "ON CONFLICT (bucket, client_key)" in query
     assert params == ("login", "10.0.0.1", 900, 900, 900)
-    # A mitad de ventana no se barre nada.
     assert len(_queries(cursor)) == 1
 
 

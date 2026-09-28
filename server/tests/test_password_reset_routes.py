@@ -71,7 +71,6 @@ def test_request_issues_a_code_and_mails_it(employee, codes, mailer):
         PASSWORD_RESET_COOLDOWN_SECONDS,
         PASSWORD_RESET_MAX_PER_HOUR,
     )
-    # A la base va el HMAC; el codigo en claro solo viaja en el correo.
     mailed_code = mailer.call_args.kwargs["code"]
     assert code_hash == hash_reset_code(mailed_code)
     assert code_hash != mailed_code
