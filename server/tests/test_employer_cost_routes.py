@@ -10,7 +10,12 @@ from server.src.main import app
 from server.src.middlewares.auth_middleware import create_access_token
 from server.src.repositories.company_repository import CompanyRepository
 from server.src.repositories.payroll_repository import PayrollRepository
-from server.tests.test_employer_cost import CEAV_2026, RATES_2026
+from server.tests.payroll_parameters import (
+    ISR_2026,
+    PAYROLL_ONLY_RATES_2026,
+    PAYROLL_RATES_2026,
+)
+from server.tests.test_employer_cost import CEAV_2026
 
 client = TestClient(app)
 
@@ -40,6 +45,12 @@ def company_context():
 
 # --- Calcular nomina guarda el costo patronal --------------------------------
 
+@pytest.fixture(autouse=True)
+def isr_2026():
+    with patch(PAYROLL + ".isr_brackets", return_value=ISR_2026):
+        yield
+
+
 @patch(PAYROLL + ".save_payroll_receipt")
 @patch(PAYROLL + ".employer_cost_parameters")
 @patch(PAYROLL + ".get_employee_by_id")
@@ -49,13 +60,14 @@ def test_payroll_saves_its_employer_cost(mock_employee, mock_params, mock_save):
         "created_at": datetime(2026, 3, 1, tzinfo=timezone.utc),
     }
     mock_params.return_value = {
-        "rates": RATES_2026, "ceav_brackets": CEAV_2026,
+        "rates": PAYROLL_RATES_2026, "ceav_brackets": CEAV_2026,
         "isn_rate": Decimal("0.03"), "risk_rate": Decimal("0.0054355"),
     }
     mock_save.return_value = {"id": 9, "created": True}
 
     # Un mes de septiembre (30 dias) con el salario minimo: el caso calculado a
-    # mano en test_employer_cost da 2,793.50.
+    # mano en test_employer_cost da 2,793.50, mas los 235.54 de la cuota obrera
+    # que por ser salario minimo paga la empresa (LSS art. 36).
     response = client.post("/payroll/calculate", json={
         "employee_id": 5, "period_start": "2026-09-01", "gross_salary": 9451.20,
     }, headers=_headers("admin", 3))
@@ -63,10 +75,11 @@ def test_payroll_saves_its_employer_cost(mock_employee, mock_params, mock_save):
     assert response.status_code == 200
     mock_params.assert_called_once_with(COMPANY, date(2026, 9, 1))
     saved = mock_save.call_args[0][0]["employer_cost"]
-    assert saved["total"] == Decimal("2793.50")
+    assert saved["total"] == Decimal("3029.04")
     assert saved["sbc_daily"] == Decimal("330.58")
     assert saved["missing"] == []
-    assert response.json()["employer_cost"]["total"] == 2793.5
+    assert response.json()["employer_cost"]["total"] == 3029.04
+    assert response.json()["data"]["imss_deduction"] == 0.0
 
 
 @patch(PAYROLL + ".save_payroll_receipt")
@@ -76,8 +89,10 @@ def test_payroll_without_parameters_still_saves(
     mock_employee, mock_params, mock_save
 ):
     mock_employee.return_value = {"id": 5, "name": "Ana", "is_active": True}
+    # Estan los parametros del calculo, pero no las tasas del costo patronal.
     mock_params.return_value = {
-        "rates": {}, "ceav_brackets": [], "isn_rate": None, "risk_rate": None,
+        "rates": PAYROLL_ONLY_RATES_2026, "ceav_brackets": [],
+        "isn_rate": None, "risk_rate": None,
     }
     mock_save.return_value = {"id": 9, "created": True}
 

@@ -22,6 +22,7 @@ from server.src.repositories.payroll_repository import (
     ReceiptOfAnotherCompanyError,
     SharedAdminError,
 )
+from server.tests.payroll_parameters import ISR_2026, PAYROLL_ONLY_RATES_2026
 
 client = TestClient(app)
 
@@ -61,16 +62,20 @@ def admin_of():
 
 
 @pytest.fixture(autouse=True)
-def no_employer_cost_parameters():
-    # Sin parametros el costo patronal queda pendiente; sus cifras se prueban
-    # en test_employer_cost y en test_employer_cost_routes.
+def payroll_parameters_only():
+    # Los parametros del calculo de 2026, sin los del costo patronal: ese queda
+    # pendiente; sus cifras se prueban en test_employer_cost y en
+    # test_employer_cost_routes.
     with patch(
         "server.src.routes.payroll_routes.payroll_repository"
         ".employer_cost_parameters",
         return_value={
-            "rates": {}, "ceav_brackets": [],
+            "rates": PAYROLL_ONLY_RATES_2026, "ceav_brackets": [],
             "isn_rate": None, "risk_rate": None,
         },
+    ), patch(
+        "server.src.routes.payroll_routes.payroll_repository.isr_brackets",
+        return_value=ISR_2026,
     ):
         yield
 

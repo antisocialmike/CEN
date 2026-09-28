@@ -17,6 +17,8 @@ Simplificaciones que conviene saber:
 - El limite inferior del SBC es el salario minimo general; no se distingue la
   Zona Libre de la Frontera Norte.
 - La antiguedad sale de la fecha de alta de la cuenta.
+- La cuota obrera de quien gana el salario minimo se suma aqui (LSS art. 36),
+  sin distinguir la Zona Libre de la Frontera Norte.
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -87,6 +89,8 @@ class EmployerCostInputs:
     days: Decimal
     years_completed: int
     total_perceptions: Decimal
+    # Cuota obrera del IMSS que la ley pone a cargo del patron (salario minimo).
+    worker_imss_paid_by_employer: Decimal = Decimal(0)
 
 
 @dataclass
@@ -123,8 +127,8 @@ class EmployerCostComponent(ABC):
     group = IMSS
 
     @abstractmethod
-    def compute(self, ctx: CostContext) -> ComponentAmount:
-        pass
+    def compute(self, ctx: CostContext) -> Optional[ComponentAmount]:
+        """None cuando el componente no aplica a este recibo."""
 
 
 class PercentOfSbc(EmployerCostComponent):
@@ -231,6 +235,23 @@ class StatePayrollTax(EmployerCostComponent):
         )
 
 
+class WorkerQuotaPaidByEmployer(EmployerCostComponent):
+    """La cuota obrera de quien gana el salario minimo la paga el patron (LSS art. 36).
+
+    El monto lo calcula payroll_controller con la misma formula de la cuota
+    obrera; aqui solo se suma al costo de la empresa.
+    """
+
+    key = "imss_obrero_patron"
+    description = "Cuota obrera del IMSS a cargo del patrón (salario mínimo)"
+
+    def compute(self, ctx: CostContext) -> Optional[ComponentAmount]:
+        amount = Decimal(ctx.inputs.worker_imss_paid_by_employer)
+        if amount <= 0:
+            return None
+        return ComponentAmount(amount, Decimal(1))
+
+
 def default_components() -> List[EmployerCostComponent]:
     return [
         SicknessFixedQuota(),
@@ -256,7 +277,13 @@ def default_components() -> List[EmployerCostComponent]:
         RetirementUnemploymentOldAge(),
         PercentOfSbc("infonavit", "INFONAVIT", INFONAVIT, "infonavit"),
         StatePayrollTax(),
+        WorkerQuotaPaidByEmployer(),
     ]
+
+
+def daily_salary(period_salary, periodicity: str) -> Decimal:
+    """El salario diario del periodo: lo dividen 30, 15 o 7 dias (LSS art. 29 fr. II)."""
+    return money(Decimal(str(period_salary)) / DAILY_DIVISOR[periodicity])
 
 
 class EmployerCostService:
@@ -283,12 +310,20 @@ class EmployerCostService:
         ceiling = uma * params.get("imss_tope_uma")
         return money(min(max(daily_salary * factor, floor), ceiling))
 
+    def contribution_base(
+        self, params: EmployerCostParameters, period_salary, periodicity: str,
+        years_completed: int,
+    ) -> Decimal:
+        """El SBC del periodo. La cuota obrera del IMSS usa este mismo, para que
+        trabajador y empresa coticen sobre la misma base. Si falta un parametro
+        lanza MissingParameter: sin SBC no hay retencion que calcular."""
+        factor = self.integration_factor(params, years_completed)
+        return self.sbc(params, daily_salary(period_salary, periodicity), factor)
+
     def calculate(
         self, inputs: EmployerCostInputs, params: EmployerCostParameters
     ) -> dict:
-        daily_salary = money(
-            Decimal(inputs.period_salary) / DAILY_DIVISOR[inputs.periodicity]
-        )
+        daily = daily_salary(inputs.period_salary, inputs.periodicity)
         missing: List[str] = []
 
         factor = Decimal(1)
@@ -300,7 +335,7 @@ class EmployerCostService:
         sbc = None
         try:
             if not missing:
-                sbc = self.sbc(params, daily_salary, factor)
+                sbc = self.sbc(params, daily, factor)
         except MissingParameter as error:
             missing.append(error.name)
 
@@ -317,6 +352,8 @@ class EmployerCostService:
                 if error.name not in missing:
                     missing.append(error.name)
                 continue
+            if result is None:
+                continue
             items.append({
                 "component": component.key,
                 "group_key": component.group,
@@ -328,7 +365,7 @@ class EmployerCostService:
             })
 
         return {
-            "daily_salary": daily_salary,
+            "daily_salary": daily,
             "integration_factor": factor,
             "sbc_daily": sbc,
             "uma_daily": ctx.uma,

@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
@@ -7,6 +8,7 @@ from psycopg2 import OperationalError
 
 from server.src.main import app
 from server.src.middlewares.auth_middleware import create_access_token
+from server.tests.payroll_parameters import ISR_2026, PAYROLL_ONLY_RATES_2026
 
 client = TestClient(app)
 
@@ -26,16 +28,20 @@ def admin_company():
 
 
 @pytest.fixture(autouse=True)
-def no_employer_cost_parameters():
-    # Sin parametros el costo patronal queda pendiente; sus cifras se prueban
-    # en test_employer_cost y en test_employer_cost_routes.
+def payroll_parameters_only():
+    # Los parametros del calculo de 2026, sin los del costo patronal: ese queda
+    # pendiente; sus cifras se prueban en test_employer_cost y en
+    # test_employer_cost_routes.
     with patch(
         "server.src.routes.payroll_routes.payroll_repository"
         ".employer_cost_parameters",
         return_value={
-            "rates": {}, "ceav_brackets": [],
+            "rates": PAYROLL_ONLY_RATES_2026, "ceav_brackets": [],
             "isn_rate": None, "risk_rate": None,
         },
+    ), patch(
+        "server.src.routes.payroll_routes.payroll_repository.isr_brackets",
+        return_value=ISR_2026,
     ):
         yield
 
@@ -73,7 +79,8 @@ def test_calculate_payroll_success(mock_get_employee, mock_save_receipt):
     assert body["period_start"] == "2026-09-01"
     assert body["period_end"] == "2026-09-30"
     assert body["employee_id"] == 1
-    assert body["data"]["net_salary"] == 9569.7
+    # 10,000 - 193.37 de ISR - 249.21 de IMSS sobre el SBC (30 dias de septiembre).
+    assert body["data"]["net_salary"] == 9557.42
     assert body["processed_by"] == "admin1"
     saved = mock_save_receipt.call_args[0][0]
     assert saved["period_start"] == date(2026, 9, 1)
@@ -494,7 +501,7 @@ def test_calculate_payroll_without_concepts_keeps_the_simple_shape(
     assert [item["concept"] for item in data["items"]] == [
         "sueldo", "isr", "imss"
     ]
-    assert data["net_salary"] == 9569.7
+    assert data["net_salary"] == 9557.42
 
 
 @patch("server.src.routes.payroll_routes.payroll_repository.get_receipt_by_period")
@@ -578,3 +585,81 @@ def test_lookup_requires_admin_role():
     )
 
     assert response.status_code == 403
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_a_period_without_parameters_in_force_is_not_calculated(
+    mock_get_employee, mock_save
+):
+    mock_get_employee.return_value = {"id": 1, "name": "Juan", "is_active": True}
+
+    with patch(
+        "server.src.routes.payroll_routes.payroll_repository.isr_brackets",
+        return_value=[],
+    ):
+        response = client.post(
+            "/payroll/calculate",
+            json={
+                "employee_id": 1, "periodicity": "mensual",
+                "period_start": "2024-09-01", "gross_salary": 10000
+            },
+            headers={"Authorization": f"Bearer {_admin_token()}"}
+        )
+
+    assert response.status_code == 422
+    assert "2024-09-01" in response.json()["detail"]
+    assert "la tarifa del ISR" in response.json()["detail"]
+    mock_save.assert_not_called()
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_the_parameters_are_the_ones_in_force_when_the_period_starts(
+    mock_get_employee, mock_save
+):
+    mock_get_employee.return_value = {"id": 1, "name": "Juan", "is_active": True}
+    mock_save.return_value = {"id": 55, "created": True}
+
+    with patch(
+        "server.src.routes.payroll_routes.payroll_repository.isr_brackets",
+        return_value=ISR_2026,
+    ) as mock_isr:
+        client.post(
+            "/payroll/calculate",
+            json={
+                "employee_id": 1, "periodicity": "quincenal",
+                "period_start": "2026-01-16", "gross_salary": 5000
+            },
+            headers={"Authorization": f"Bearer {_admin_token()}"}
+        )
+
+    mock_isr.assert_called_once_with(date(2026, 1, 16))
+
+
+@patch("server.src.routes.payroll_routes.payroll_repository.save_payroll_receipt")
+@patch("server.src.routes.payroll_routes.payroll_repository.get_employee_by_id")
+def test_minimum_wage_retains_nothing_and_the_employer_pays_the_imss(
+    mock_get_employee, mock_save
+):
+    mock_get_employee.return_value = {"id": 1, "name": "Juan", "is_active": True}
+    mock_save.return_value = {"id": 55, "created": True}
+
+    response = client.post(
+        "/payroll/calculate",
+        json={
+            "employee_id": 1, "periodicity": "mensual",
+            "period_start": "2026-09-01", "gross_salary": 9451.20
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    data = response.json()["data"]
+    assert (data["isr_deduction"], data["imss_deduction"]) == (0.0, 0.0)
+    assert data["net_salary"] == 9451.20
+    employer_cost = mock_save.call_args[0][0]["employer_cost"]
+    quota = next(
+        item for item in employer_cost["items"]
+        if item["component"] == "imss_obrero_patron"
+    )
+    assert quota["amount"] == Decimal("235.54")

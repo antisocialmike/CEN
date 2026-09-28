@@ -7,9 +7,15 @@ from ..controllers.employer_cost import (
     EmployerCostInputs,
     EmployerCostParameters,
     EmployerCostService,
+    MissingParameter,
     completed_years,
 )
-from ..controllers.payroll_controller import PayrollService
+from ..controllers.payroll_controller import (
+    MissingPayrollParameter,
+    PayrollParameters,
+    PayrollService,
+    missing_parameter_label,
+)
 from ..controllers.receipt_pdf import (
     build_receipt_pdf,
     build_receipt_response_headers,
@@ -39,24 +45,49 @@ payroll_service = PayrollService()
 employer_cost_service = EmployerCostService()
 
 
-def _employer_cost(
-    request: PayrollCalculationRequest, employee: dict, company_id: int,
-    breakdown: dict,
-) -> dict:
-    params = payroll_repository.employer_cost_parameters(
+def _parameters(request: PayrollCalculationRequest, company_id: int, years: int):
+    """Lo vigente al inicio del periodo, la misma fecha que usa el costo patronal:
+    los parametros del calculo, los del costo patronal y el SBC que comparten."""
+    raw = payroll_repository.employer_cost_parameters(
         company_id, request.period_start
     )
+    cost_params = EmployerCostParameters(**raw)
+    try:
+        payroll_params = PayrollParameters.from_rows(
+            raw["rates"], payroll_repository.isr_brackets(request.period_start)
+        )
+        sbc = employer_cost_service.contribution_base(
+            cost_params, request.gross_salary, request.periodicity, years
+        )
+    except (MissingPayrollParameter, MissingParameter) as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                "No se puede calcular un periodo que empieza el "
+                f"{request.period_start.isoformat()}: no hay "
+                f"{missing_parameter_label(error.name)} vigente para esa fecha. "
+                "CEN tiene los parametros de 2025 y 2026."
+            ),
+        ) from error
+    return payroll_params, cost_params, sbc
+
+
+def _employer_cost(
+    request: PayrollCalculationRequest, cost_params: EmployerCostParameters,
+    years: int, breakdown: dict,
+) -> dict:
     return employer_cost_service.calculate(
         EmployerCostInputs(
             period_salary=Decimal(str(request.gross_salary)),
             periodicity=request.periodicity,
             days=Decimal(request.paid_days()),
-            years_completed=completed_years(
-                employee.get("created_at"), request.period_end()
-            ),
+            years_completed=years,
             total_perceptions=Decimal(str(breakdown["total_perceptions"])),
+            worker_imss_paid_by_employer=Decimal(
+                str(breakdown["imss_employer_paid"])
+            ),
         ),
-        EmployerCostParameters(**params),
+        cost_params,
     )
 
 
@@ -86,20 +117,27 @@ def calculate_payroll(
             detail="No se puede calcular nomina de una cuenta desactivada",
         )
 
+    years = completed_years(employee.get("created_at"), request.period_end())
+    payroll_params, cost_params, sbc = _parameters(
+        request, user["company_id"], years
+    )
+
     try:
-        breakdown = payroll_service.process({
-            **request.model_dump(exclude={"employee_id", "period_start"}),
-            "paid_days": request.paid_days(),
-        })
+        breakdown = payroll_service.process(
+            {
+                **request.model_dump(exclude={"employee_id", "period_start"}),
+                "paid_days": request.paid_days(),
+            },
+            payroll_params,
+            float(sbc),
+        )
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(error),
         ) from error
 
-    employer_cost = _employer_cost(
-        request, employee, user["company_id"], breakdown
-    )
+    employer_cost = _employer_cost(request, cost_params, years, breakdown)
 
     try:
         saved = payroll_repository.save_payroll_receipt({

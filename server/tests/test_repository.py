@@ -549,3 +549,15 @@ def test_get_receipt_by_period_when_the_period_is_free(repository, cursor):
     assert repository.get_receipt_by_period(
         3, date(2026, 10, 1), date(2026, 10, 31), COMPANY
     ) is None
+
+
+def test_isr_brackets_reads_the_tariff_in_force_in_order(repository, cursor):
+    cursor.fetchall.return_value = [{"lower_limit": 0}]
+
+    rows = repository.isr_brackets(date(2025, 6, 1))
+
+    assert rows == [{"lower_limit": 0}]
+    query, params = cursor.execute.call_args[0]
+    assert "FROM isr_tariff_brackets" in query
+    assert "ORDER BY lower_limit" in query
+    assert params == (date(2025, 6, 1), date(2025, 6, 1))

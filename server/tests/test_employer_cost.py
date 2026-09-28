@@ -222,3 +222,29 @@ def test_every_component_names_its_group():
     assert groups["infonavit"] == "infonavit"
     assert groups["isn"] == "isn"
     assert groups["em_cuota_fija"] == groups["riesgo_trabajo"] == "imss"
+
+
+# --- Cuota obrera a cargo del patron (LSS art. 36) ---------------------------
+
+def test_the_worker_quota_of_a_minimum_wage_goes_to_the_employer():
+    inputs = _inputs("9451.20")
+    inputs.worker_imss_paid_by_employer = D("235.54")
+
+    result = service.calculate(inputs, _params())
+
+    assert _amounts(result)["imss_obrero_patron"] == D("235.54")
+    assert result["total"] == D("3029.04")
+
+
+def test_without_that_quota_there_is_no_line_for_it():
+    result = service.calculate(_inputs("9451.20"), _params())
+
+    assert "imss_obrero_patron" not in _amounts(result)
+    assert result["total"] == D("2793.50")
+
+
+def test_the_contribution_base_is_the_sbc_of_the_employer_cost():
+    base = service.contribution_base(_params(), D("9451.20"), "mensual", 0)
+
+    assert base == service.calculate(_inputs("9451.20"), _params())["sbc_daily"]
+    assert base == D("330.58")

@@ -232,6 +232,11 @@ Según el texto de la Ley de Hacienda para el Estado de SLP que pude leer (arts.
 
 ### 7.3 Hallazgos del código actual (fuera de alcance; no los toqué)
 
+> **Estado (fase 5, 25-09-2026):**
+> - Los puntos 1 a 4 están corregidos: el subsidio y la UMA se leen con vigencia (2025 y 2026, migración 013), el IMSS se calcula sobre el SBC y el caso de salario mínimo ya existe.
+> - El 5 (jornada) pasa a la fase 6.
+> - El 6 sigue pendiente de confirmar con un contador.
+
 1. **Monto del subsidio.** `ISR_SUBSIDIO_MONTO = 536.22` ([payroll_controller.py:31](../server/src/controllers/payroll_controller.py)). De febrero a diciembre de 2026 son $535.65; en enero, $536.21. El código resta $0.57 de más al mes a quien tiene subsidio.
 2. **Valores sin fecha de vigencia.** La UMA y el subsidio están fijos en el código, mientras que el costo patronal los lee de la BD con vigencia. Cada año habrá que cambiar el código, y los cálculos de enero usan la UMA equivocada.
 3. **Base del IMSS obrero.** Se calcula sobre el sueldo del periodo (`imss_calc.calculate(gross_salary)`), no sobre el salario base de cotización integrado que ya calcula el costo patronal. Esto puede dejar la retención corta.

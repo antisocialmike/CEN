@@ -164,9 +164,9 @@ quincena empieza el dia 1 o el 16; la segunda de un mes de 31 dias paga
 **La tarifa de ISR cambia con la periodicidad**, no basta con dividir el
 resultado mensual. La tabla se escala por los dias que el SAT asigna a
 cada periodicidad (30.4 mensual, 15.2 quincenal, 7 semanal), igual que
-el subsidio, el tope de 25 UMA del IMSS y la exencion semanal de horas
-extra. El efecto es que un mismo sueldo anual paga el mismo impuesto sin
-importar cada cuando se cobre.
+el subsidio y la exencion semanal de horas extra. El efecto es que un
+mismo sueldo anual paga el mismo impuesto sin importar cada cuando se
+cobre. El IMSS no se escala: se cotiza por los dias del periodo.
 
 Una restriccion de exclusion en la base impide que dos recibos del mismo
 empleado cubran dias solapados, asi que no se puede pagar dos veces el
@@ -188,13 +188,29 @@ y separadas en percepciones y deducciones:
 | Deduccion | De donde sale |
 | --- | --- |
 | ISR | Tarifa mensual sobre la base gravable |
-| IMSS | Cuotas obrero sobre el sueldo, topadas a 25 UMA |
+| IMSS | Cuota obrera sobre el Salario Base de Cotizacion por los dias del periodo, topada a 25 UMA |
 | Prestamo e Infonavit | Importes libres |
 
 El ISR no se calcula sobre el total percibido sino sobre la **base
 gravable**, que descuenta las partes exentas: aguinaldo hasta 30 UMA,
 prima vacacional hasta 15 UMA y la mitad de las horas extra con tope de
 5 UMA por semana.
+
+El IMSS del trabajador se calcula sobre el **Salario Base de Cotizacion**:
+el salario diario por el factor de integracion (aguinaldo y prima
+vacacional de ley segun la antiguedad), entre el salario minimo y 25 UMA.
+Es el mismo SBC que usa el costo patronal, asi que trabajador y empresa
+cotizan sobre la misma base.
+
+**Lo que cambia cada anio no esta en el codigo.** La UMA, el salario
+minimo, el subsidio para el empleo y la tarifa del ISR se leen de la base
+con su vigencia (migraciones 012 y 013), segun la fecha en que empieza el
+periodo. Hay parametros de 2025 y 2026; un periodo sin parametros vigentes
+no se calcula y la API dice cual falta.
+
+A quien en el periodo solo cobra el **salario minimo** no se le retiene
+ISR (LISR art. 96), y su cuota del IMSS la paga el patron (LSS art. 36):
+aparece en el costo patronal, no en el recibo.
 
 ### Lo que este modelo simplifica
 
@@ -206,9 +222,14 @@ fiscal certificado. En concreto:
 - El aguinaldo y la prima vacacional se gravan sumandose a la base del
   periodo, no con el procedimiento opcional del articulo 174 del Reglamento
   de la LISR.
-- El IMSS se calcula sobre el sueldo del periodo, sin el factor de
-  integracion que convierte el salario diario en Salario Base de
-  Cotizacion.
+- El SBC solo integra el salario fijo, el aguinaldo y la prima vacacional
+  minimos de ley; las percepciones variables (horas extra, bonos) no.
+- El salario minimo es el general: no se distingue la Zona Libre de la
+  Frontera Norte.
+- El limite del subsidio para el empleo se compara contra la base gravable
+  del periodo; el decreto habla de "ingresos". Conviene confirmarlo con un
+  contador.
+- El salario por hora de las horas extra supone una jornada de 8 horas.
 - La exencion de horas extra usa cuatro semanas por mes como
   aproximacion, y no distingue a quien percibe el salario minimo, que
   por ley tiene la exencion completa.

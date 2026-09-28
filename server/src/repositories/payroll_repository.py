@@ -200,6 +200,11 @@ SELECT_STATE_PAYROLL_TAX = (
     "WHERE c.id = %s AND s.valid_from <= %s "
     "AND (s.valid_to IS NULL OR s.valid_to >= %s);"
 )
+SELECT_ISR_BRACKETS = (
+    "SELECT lower_limit, upper_limit, fixed_fee, rate FROM isr_tariff_brackets "
+    "WHERE valid_from <= %s AND (valid_to IS NULL OR valid_to >= %s) "
+    "ORDER BY lower_limit;"
+)
 SELECT_RISK_PREMIUM = (
     "SELECT rate FROM company_risk_premiums WHERE company_id = %s "
     "AND valid_from <= %s AND (valid_to IS NULL OR valid_to >= %s);"
@@ -488,6 +493,10 @@ class PayrollRepository:
             "isn_rate": dict(isn)["rate"] if isn else None,
             "risk_rate": dict(risk)["rate"] if risk else None,
         }
+
+    def isr_brackets(self, on_date) -> list:
+        """La tarifa mensual del ISR vigente en `on_date`, del tramo mas bajo al mas alto."""
+        return self._fetch_all(SELECT_ISR_BRACKETS, (on_date, on_date))
 
     def _lock_member(
         self, cursor, employee_id: int, company_id: int
