@@ -16,6 +16,7 @@ import PasswordResetVerifyPage from "./pages/PasswordResetVerifyPage";
 import SignupPage from "./pages/SignupPage";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const AdminSummaryPage = lazy(() => import("./pages/AdminSummaryPage"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage"));
 const EmployeeDashboardPage = lazy(() => import("./pages/EmployeeDashboardPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
@@ -60,7 +61,8 @@ export default function App() {
               <Route element={<ProtectedRoute allowedRole="admin" />}>
                 <Route element={<AdminCompanyGate />}>
                   <Route element={<RutaDePanel />}>
-                    <Route path="/admin" element={<AdminDashboardPage />} />
+                    <Route path="/admin" element={<AdminSummaryPage />} />
+                    <Route path="/admin/nomina" element={<AdminDashboardPage />} />
                     <Route path="/admin/usuarios" element={<EmployeesPage />} />
                   </Route>
                   <Route element={<AdminCompanyReadyPage />}>

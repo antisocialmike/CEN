@@ -1,5 +1,5 @@
 
-const PANEL_ADMIN = ["/admin", "/admin/usuarios"];
+const PANEL_ADMIN = ["/admin", "/admin/nomina", "/admin/usuarios"];
 const PANEL_SUPERADMIN = ["/superadmin", "/superadmin/empresas"];
 const PANEL_DUENO = ["/dueno", "/dueno/empresas"];
 

@@ -200,6 +200,29 @@ def test_the_receipts_history_stays_in_the_chosen_company(mock_page, admin_of):
     mock_page.assert_called_once_with(COMPANY_A, 20, 0)
 
 
+@patch("server.src.routes.admin_routes.analytics_repository")
+def test_an_admin_of_a_cannot_see_the_summary_of_b(repository, admin_of):
+    admin_of(COMPANY_A)
+
+    response = client.get("/admin/summary", headers=_headers(company=COMPANY_B))
+
+    assert response.status_code == 404
+    repository.admin_summary.assert_not_called()
+
+
+@patch("server.src.routes.admin_routes.analytics_repository")
+def test_the_summary_is_of_the_chosen_company(repository, admin_of):
+    admin_of(COMPANY_A, COMPANY_B)
+    repository.admin_summary.return_value = {
+        "pending": [], "regimes": [], "last_month": None, "movements": [],
+    }
+
+    response = client.get("/admin/summary", headers=_headers(company=COMPANY_B))
+
+    assert response.status_code == 200
+    assert repository.admin_summary.call_args[0][0] == COMPANY_B
+
+
 def test_an_admin_of_a_and_b_without_header_is_asked_to_choose(admin_of):
     admin_of(COMPANY_A, COMPANY_B)
 

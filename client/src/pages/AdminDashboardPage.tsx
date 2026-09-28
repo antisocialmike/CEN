@@ -8,7 +8,7 @@ import SubmitButton from "../components/SubmitButton";
 import PayrollResultCard from "../components/PayrollResultCard";
 import Skeleton from "../components/Skeleton";
 import Paginacion from "../components/Paginacion";
-import { Receipt, UsersThree, Wallet } from "@phosphor-icons/react";
+import { ArrowLeft, Receipt, UsersThree, Wallet } from "@phosphor-icons/react";
 import {
   calculatePayroll,
   countActiveConcepts,
@@ -204,21 +204,11 @@ export default function AdminDashboardPage() {
             </p>
           </div>
         </div>
-        <div className="dashboard-panel-actions">
-          <button
-            className="btn btn-line"
-            onClick={() => navigate("/admin/usuarios")}
-          >
-            <UsersThree weight="bold" />
-            Usuarios
-          </button>
-          <button
-            className="btn btn-line"
-            onClick={() => navigate("/admin/nuevo-usuario")}
-          >
-            Dar de alta usuario
-          </button>
-        </div>
+        {/* Usuarios y el alta estan en el resumen, que es la entrada del panel. */}
+        <button className="btn btn-line" onClick={() => navigate("/admin")}>
+          <ArrowLeft weight="bold" />
+          Volver al panel
+        </button>
       </div>
 
       <AnimatePresence mode="wait">

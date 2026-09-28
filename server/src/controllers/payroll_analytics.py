@@ -172,3 +172,33 @@ def build_employee_summary(raw: dict, year: int) -> dict:
         "year_to_date": {"year": year, **raw["year_totals"]},
         "recent": list(reversed(recent)),
     }
+
+
+def build_admin_summary(raw: dict, month: date) -> dict:
+    """El resumen de la empresa activa para su admin.
+
+    `pending` son quienes estan en la nomina y no tienen ningun recibo que
+    empiece en `month`. Los dos tipos de nomina salen siempre, aunque sea en
+    cero, para que la pantalla no tenga que adivinar cuales faltan."""
+    pending = raw["pending"]
+    regimes = {row["tipo_regimen"]: row["people"] for row in raw["regimes"]}
+    last_month = raw["last_month"]
+    if last_month is not None and last_month["month"] is None:
+        last_month = None
+    return {
+        "month": month,
+        "on_payroll": sum(regimes.values()),
+        "pending": {
+            "total": pending[0]["total"] if pending else 0,
+            "people": [
+                {key: row[key] for key in ("id", "name", "tipo_regimen")}
+                for row in pending
+            ],
+        },
+        "last_month": last_month,
+        "movements": raw["movements"],
+        "regimes": [
+            {"tipo_regimen": key, "people": regimes.get(key, 0)}
+            for key in ("02", "09")
+        ],
+    }

@@ -148,8 +148,9 @@ describe("transicion entre los paneles y cambiar contraseña", () => {
 });
 
 describe("clave de transicion entre rutas del mismo armazon", () => {
-  it("las dos rutas del panel de administracion comparten clave", () => {
+  it("las rutas del panel de administracion comparten clave", () => {
     expect(claveDeTransicion("/admin")).toBe(claveDeTransicion("/admin/usuarios"));
+    expect(claveDeTransicion("/admin")).toBe(claveDeTransicion("/admin/nomina"));
   });
 
   it("dar de alta no la comparte: es otra forma de pagina", () => {

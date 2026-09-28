@@ -2,6 +2,7 @@ from datetime import date
 from typing import Optional
 
 from ..config.database import db_cursor
+from .payroll_repository import EMPLOYEES_OF_COMPANY
 
 # Todas las consultas de un tablero leen la misma foto de la base: sin esto,
 # un recibo guardado a media consulta podria aparecer en la serie mensual y
@@ -186,6 +187,51 @@ EMPLOYEE_RECENT_RECEIPTS = (
     "ORDER BY r.period_start DESC, r.updated_at DESC, r.id DESC LIMIT %s;"
 )
 EMPLOYEE_RECENT_PERIODS = 12
+# El resumen del admin. Las personas son las mismas que ve en "Usuarios" y en
+# la calculadora: los de la empresa y sus admins con asignacion activa. En la
+# nomina esta quien sigue activo y tiene salario.
+ON_PAYROLL = (
+    EMPLOYEES_OF_COMPANY + "AND e.is_active AND e.base_salary IS NOT NULL "
+)
+# COUNT(*) OVER () da el total antes del LIMIT: la lista se recorta, la cifra no.
+ADMIN_PENDING = (
+    "SELECT e.id, e.name, e.tipo_regimen, COUNT(*) OVER () AS total "
+    + ON_PAYROLL
+    + "AND NOT EXISTS (SELECT 1 FROM payroll_receipts r "
+    "WHERE r.employee_id = e.id AND r.company_id = %s "
+    "AND r.period_start >= %s AND r.period_start < %s) "
+    "ORDER BY e.name ASC, e.id ASC LIMIT %s;"
+)
+ADMIN_REGIMES = (
+    "SELECT e.tipo_regimen, COUNT(*) AS people "
+    + ON_PAYROLL
+    + "GROUP BY e.tipo_regimen ORDER BY e.tipo_regimen;"
+)
+ADMIN_LAST_MONTH = (
+    "WITH latest AS (SELECT date_trunc('month', MAX(period_start)) AS month "
+    "FROM payroll_receipts WHERE company_id = %s) "
+    "SELECT latest.month::date AS month, "
+    "COALESCE(SUM(r.total_perceptions), 0) AS gross_payroll, "
+    "COALESCE(SUM(r.net_salary), 0) AS net_paid, "
+    "COALESCE(SUM(r.isr_deduction), 0) AS isr_withheld, "
+    "COALESCE(SUM(r.imss_deduction), 0) AS imss_withheld, "
+    "COUNT(r.id) AS receipts, "
+    "COUNT(DISTINCT r.employee_id) AS paid_people "
+    "FROM latest LEFT JOIN payroll_receipts r ON r.company_id = %s "
+    "AND date_trunc('month', r.period_start) = latest.month "
+    "GROUP BY latest.month;"
+)
+ADMIN_MOVEMENTS = (
+    "SELECT e.id, e.name, 'alta' AS kind, e.created_at AS happened_at "
+    + EMPLOYEES_OF_COMPANY
+    + "UNION ALL "
+    "SELECT e.id, e.name, 'baja' AS kind, e.deactivated_at AS happened_at "
+    + EMPLOYEES_OF_COMPANY
+    + "AND e.deactivated_at IS NOT NULL "
+    "ORDER BY happened_at DESC, id DESC LIMIT %s;"
+)
+ADMIN_PENDING_SHOWN = 8
+ADMIN_MOVEMENTS_SHOWN = 5
 SELECT_OWNER_COMPANY_IDS = (
     "SELECT company_id FROM company_owners WHERE owner_id = %s "
     "ORDER BY company_id;"
@@ -262,6 +308,31 @@ class AnalyticsRepository:
             )
             recent = [dict(row) for row in cursor.fetchall()]
         return {"year_totals": year_totals, "recent": recent}
+
+    def admin_summary(
+        self, company_id: int, month_start: date, next_month_start: date
+    ) -> dict:
+        company = (company_id, company_id)
+        with db_cursor() as cursor:
+            cursor.execute(CONSISTENT_SNAPSHOT)
+
+            def many(query: str, params: tuple) -> list:
+                cursor.execute(query, params)
+                return [dict(row) for row in cursor.fetchall()]
+
+            cursor.execute(ADMIN_LAST_MONTH, company)
+            last_month = cursor.fetchone()
+            return {
+                "pending": many(ADMIN_PENDING, company + (
+                    company_id, month_start, next_month_start,
+                    ADMIN_PENDING_SHOWN,
+                )),
+                "regimes": many(ADMIN_REGIMES, company),
+                "last_month": dict(last_month) if last_month else None,
+                "movements": many(
+                    ADMIN_MOVEMENTS, company + company + (ADMIN_MOVEMENTS_SHOWN,)
+                ),
+            }
 
 
 analytics_repository = AnalyticsRepository()
