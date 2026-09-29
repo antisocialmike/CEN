@@ -5,8 +5,6 @@ from decimal import Decimal
 import psycopg2
 import pytest
 from fastapi.testclient import TestClient
-from psycopg2.extensions import make_dsn
-from psycopg2.extras import RealDictCursor
 
 from server.src.main import app
 from server.src.middlewares.auth_middleware import (
@@ -14,11 +12,8 @@ from server.src.middlewares.auth_middleware import (
     hash_password,
 )
 from server.src.repositories.company_repository import company_repository
-from server.src.repositories.payroll_repository import (
-    MIGRATIONS_DIR,
-    payroll_repository,
-)
-from server.tests.integration.conftest import TEST_DATABASE_URL, unique_email
+from server.src.repositories.payroll_repository import payroll_repository
+from server.tests.integration.conftest import database_before, unique_email
 
 client = TestClient(app)
 
@@ -148,28 +143,9 @@ def test_the_history_of_another_company_is_not_visible(companies):
     assert response.status_code == 404
 
 
-def _fresh_database():
-    name = "cen_relleno_" + uuid.uuid4().hex[:12]
-    server = psycopg2.connect(TEST_DATABASE_URL)
-    server.autocommit = True
-    with server.cursor() as cursor:
-        cursor.execute('CREATE DATABASE "{}"'.format(name))
-    return server, name
-
-
 def test_the_migration_starts_the_history_with_the_current_salaries():
-    server, name = _fresh_database()
-    try:
-        connection = psycopg2.connect(
-            make_dsn(TEST_DATABASE_URL, dbname=name),
-            cursor_factory=RealDictCursor,
-        )
-        migrations = sorted(MIGRATIONS_DIR.glob("*.sql"))
-        before = [path for path in migrations if path.name < "017"]
-        target = next(path for path in migrations if path.name.startswith("017"))
+    with database_before("017") as (connection, migration):
         with connection, connection.cursor() as cursor:
-            for path in before:
-                cursor.execute(path.read_text(encoding="utf-8"))
             cursor.execute(
                 "INSERT INTO employees (name, email, role, base_salary, "
                 "password_hash, company_id, hire_date) VALUES "
@@ -185,17 +161,12 @@ def test_the_migration_starts_the_history_with_the_current_salaries():
                 "INSERT INTO company_admins (admin_id, company_id) "
                 "VALUES (%s, 1), (%s, 1);", (luis, pablo),
             )
-            cursor.execute(target.read_text(encoding="utf-8"))
+            cursor.execute(migration)
             cursor.execute(
                 "SELECT employee_id, company_id, base_salary, valid_from "
                 "FROM salary_history ORDER BY employee_id;"
             )
             rows = [dict(row) for row in cursor.fetchall()]
-        connection.close()
-    finally:
-        with server.cursor() as cursor:
-            cursor.execute('DROP DATABASE IF EXISTS "{}" WITH (FORCE)'.format(name))
-        server.close()
 
     assert rows == [
         {"employee_id": ana, "company_id": 1,

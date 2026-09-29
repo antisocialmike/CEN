@@ -143,7 +143,7 @@ RECEIPT_ITEMS_JSON = (
 # Los recibos de una sola persona, en el mismo orden que el historial de la
 # empresa: del periodo mas nuevo al mas viejo, con el id de desempate.
 SELECT_EMPLOYEE_RECEIPTS_PAGE = (
-    "SELECT r.id, r.employee_id, r.period_start, r.period_end, "
+    "SELECT r.id, r.employee_id, r.period_start, r.period_end, "  # nosec B608
     "r.gross_salary, r.isr_deduction, "
     "r.imss_deduction, r.net_salary, r.total_perceptions, "
     "r.total_deductions, r.taxable_base, r.periodicity, r.paid_days, "
@@ -163,7 +163,7 @@ COUNT_EMPLOYEE_RECEIPTS = (
 # El id desempata: sin el, dos recibos iguales en periodo y hora podrian
 # cambiar de lugar entre una pagina y la siguiente.
 SELECT_RECEIPTS_PAGE = (
-    "SELECT r.id, r.employee_id, e.name AS employee_name, "
+    "SELECT r.id, r.employee_id, e.name AS employee_name, "  # nosec B608
     "r.period_start, r.period_end, r.periodicity, r.paid_days, "
     "r.gross_salary, r.isr_deduction, r.imss_deduction, r.net_salary, "
     "r.total_perceptions, r.total_deductions, r.taxable_base, "
@@ -179,7 +179,7 @@ COUNT_RECEIPTS = (
     "SELECT COUNT(*) AS total FROM payroll_receipts r WHERE r.company_id = %s;"
 )
 SELECT_RECEIPT_BY_ID = (
-    "SELECT r.id, r.employee_id, e.name AS employee_name, "
+    "SELECT r.id, r.employee_id, e.name AS employee_name, "  # nosec B608
     "e.email AS employee_email, r.company_id, "
     "r.period_start, r.period_end, "
     "r.gross_salary, r.isr_deduction, "
@@ -298,7 +298,7 @@ class PayrollRepository:
         )
 
     def get_employee_by_email(self, email: str) -> Optional[dict]:
-        return self._fetch_one(SELECT_EMPLOYEE_BY_EMAIL, (email,))
+        return self._fetch_one(SELECT_EMPLOYEE_BY_EMAIL, (email.strip().lower(),))
 
     def update_employee(
         self, employee_id: int, employee_data: dict, company_id: int,

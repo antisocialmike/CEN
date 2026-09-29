@@ -4,6 +4,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from .email_address import EmailAddress
 from .fiscal_ids import (
     birth_dates_match,
     validate_curp,
@@ -115,7 +116,7 @@ class SalaryChange(BaseModel):
 
 class EmployeeCreateRequest(FiscalIds):
     name: str = Field(min_length=1, max_length=150)
-    email: str = Field(min_length=3, max_length=150)
+    email: EmailAddress = Field(min_length=3, max_length=150)
     role: EmployeeRole
     base_salary: float = Field(ge=0)
     password: str = Field(min_length=8, max_length=72)
@@ -133,7 +134,7 @@ class PasswordResetResponse(BaseModel):
 
 class EmployeeUpdateRequest(FiscalIds):
     name: str = Field(min_length=1, max_length=150)
-    email: str = Field(min_length=3, max_length=150)
+    email: EmailAddress = Field(min_length=3, max_length=150)
     role: EmployeeRole
     base_salary: Optional[float] = Field(default=None, ge=0)
     tipo_regimen: TipoRegimen = "02"

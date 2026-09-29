@@ -201,9 +201,9 @@ ON_PAYROLL = (
 )
 # COUNT(*) OVER () da el total antes del LIMIT: la lista se recorta, la cifra no.
 ADMIN_PENDING = (
-    "SELECT e.id, e.name, e.tipo_regimen, COUNT(*) OVER () AS total "
+    "SELECT e.id, e.name, e.tipo_regimen, COUNT(*) OVER () AS total "  # nosec B608
     + ON_PAYROLL
-    + "AND NOT EXISTS (SELECT 1 FROM payroll_receipts r "
+    + "AND NOT EXISTS (SELECT 1 FROM payroll_receipts r "  # nosec B608
     "WHERE r.employee_id = e.id AND r.company_id = %s "
     "AND r.period_start >= %s AND r.period_start < %s) "
     "ORDER BY e.name ASC, e.id ASC LIMIT %s;"

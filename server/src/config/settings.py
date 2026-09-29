@@ -36,6 +36,7 @@ LOGIN_LOCK_MINUTES = int(os.getenv("LOGIN_LOCK_MINUTES", "15"))
 TEMPORARY_PASSWORD_LENGTH = int(os.getenv("TEMPORARY_PASSWORD_LENGTH", "12"))
 
 AUTH_RATE_WINDOW_SECONDS = int(os.getenv("AUTH_RATE_WINDOW_SECONDS", "900"))
+TRUSTED_PROXY_HOPS = int(os.getenv("TRUSTED_PROXY_HOPS", "0"))
 LOGIN_RATE_LIMIT = int(os.getenv("LOGIN_RATE_LIMIT", "60"))
 PASSWORD_RESET_REQUEST_RATE_LIMIT = int(
     os.getenv("PASSWORD_RESET_REQUEST_RATE_LIMIT", "5")
@@ -45,16 +46,16 @@ PASSWORD_RESET_VERIFY_RATE_LIMIT = int(
 )
 
 ADMIN_NAME = os.getenv("ADMIN_NAME", "Administrador")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@cen.com")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@cen.com").strip().lower()
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin1234")
 ADMIN_BASE_SALARY = float(os.getenv("ADMIN_BASE_SALARY", "20000"))
 
 SUPERADMIN_NAME = os.getenv("SUPERADMIN_NAME", "Superadministrador")
-SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL", "")
+SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL", "").strip().lower()
 SUPERADMIN_PASSWORD = os.getenv("SUPERADMIN_PASSWORD", "")
 
 OWNER_NAME = os.getenv("OWNER_NAME", "Dueño")
-OWNER_EMAIL = os.getenv("OWNER_EMAIL", "")
+OWNER_EMAIL = os.getenv("OWNER_EMAIL", "").strip().lower()
 OWNER_PASSWORD = os.getenv("OWNER_PASSWORD", "")
 
 BOOTSTRAP_MIN_PASSWORD_LENGTH = 12

@@ -43,7 +43,8 @@
 - Docker y Docker Compose: contenerizacion de la base de datos, la API y
   el cliente.
 - nginx (imagen sin privilegios): sirve el cliente compilado, con historia
-  de rutas para React Router y cache inmutable en los assets con hash.
+  de rutas para React Router, cache inmutable en los assets con hash y una
+  Content-Security-Policy sin scripts en linea salvo el del tema.
 - GitHub Actions: integracion continua sobre servidor y cliente en
   paralelo (lint, tipos, pruebas, build y analisis de seguridad en cada
   push y pull request).

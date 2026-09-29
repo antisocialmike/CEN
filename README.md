@@ -77,11 +77,28 @@ publicas de `/auth`, contado en la tabla `auth_rate_limits` en ventanas de
 `AUTH_RATE_WINDOW_SECONDS` (15 minutos por omision): `LOGIN_RATE_LIMIT`
 inicios de sesion (60), `PASSWORD_RESET_REQUEST_RATE_LIMIT` solicitudes de
 codigo (5) y `PASSWORD_RESET_VERIFY_RATE_LIMIT` canjes (10). Al pasarse
-responde `429` con `Retry-After`. La direccion la resuelve uvicorn: detras
-de un proxy, como en Render, hay que definir `FORWARDED_ALLOW_IPS` para que
-lea `X-Forwarded-For`; si no, todos comparten la del proxy y el limite los
-frena a todos juntos. Es una segunda barrera, no la principal: esa cabecera
-la puede falsear el cliente si el proxy no la reescribe.
+responde `429` con `Retry-After`.
+
+**Detras de un proxy** la direccion que ve la API es la del proxy, la misma
+para todos, y el limite frenaria a toda la plataforma junta. Para eso esta
+`TRUSTED_PROXY_HOPS`: cuantos proxies de confianza hay delante de la API. La
+direccion se toma de `X-Forwarded-For` contando esos saltos desde la
+derecha, que es donde cada proxy agrega la IP de quien se le conecto; lo
+que el cliente escriba a la izquierda no cuenta. Si el valor no es una IP
+valida, o faltan saltos, se usa la de la conexion.
+
+- En Docker Compose y en local la API se expone directo: `0`, el valor por
+  omision.
+- En Render: `1`. Render agrega la IP real al final de la cabecera y no
+  borra lo que mande el cliente.
+- No uses `FORWARDED_ALLOW_IPS=*` de uvicorn: toma la primera IP de la
+  lista, la que puede inventar el cliente.
+
+**Correos.** Se guardan y se buscan en minusculas y sin espacios, asi que
+`Ana@CEN.com` y `ana@cen.com` son la misma cuenta. La migracion 018 paso a
+minusculas los que ya existian, salvo que dos cuentas quedaran con el mismo
+correo: esas se dejan como estan para que alguien decida cual se queda, y a
+partir de ahi la base rechaza cualquier correo nuevo con mayusculas.
 
 **Sesiones.** El token no basta por si solo: en cada peticion la API
 consulta la cuenta y lo rechaza con `401` si ya no esta activa, si su rol
@@ -451,5 +468,19 @@ Cliente:
 
 Y despues, sobre ambos:
 
-1. Analisis estatico de seguridad con Bandit.
-2. Despliegue, solo en `main`.
+1. Analisis estatico de seguridad con Bandit. Cinco consultas llevan
+   `# nosec B608`: se arman uniendo fragmentos de SQL constantes, sin nada
+   que venga del usuario, y bandit las confunde con una inyeccion. Si se
+   quitan esas marcas, la CI vuelve a fallar.
+2. Despliegue, solo en `main`: dispara el deploy hook de Render, que hoy
+   solo tiene la API.
+
+**Cabeceras del cliente.** El nginx de la imagen del cliente manda una
+Content-Security-Policy: scripts solo del propio sitio mas el script en
+linea de `index.html`, autorizado por su hash; fuentes e imagenes del
+propio sitio; estilos del propio sitio y en linea, porque la cifra animada
+de `@number-flow/react` inyecta los suyos; y conexiones solo al propio sitio
+y al origen de
+`VITE_API_BASE_URL`, que el Dockerfile escribe en `nginx.conf` al
+construir. Si cambias ese script en linea, cambia su hash:
+`client/src/csp.test.ts` falla y dice cual poner.

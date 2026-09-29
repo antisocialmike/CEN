@@ -4,6 +4,8 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from .email_address import EmailAddress
+
 EntidadFederativa = Literal[
     "AGU", "BCN", "BCS", "CAM", "CHP", "CHH", "CMX", "COA",
     "COL", "DUR", "GUA", "GRO", "HID", "JAL", "MEX", "MIC",
@@ -43,7 +45,7 @@ class Owner(BaseModel):
 
 class OwnerCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=150)
-    email: str = Field(min_length=3, max_length=150)
+    email: EmailAddress = Field(min_length=3, max_length=150)
 
 
 class OwnerUpdateRequest(OwnerCreateRequest):
@@ -145,11 +147,11 @@ class CompanyOwnerAssignRequest(BaseModel):
 
 class AdminInviteRequest(BaseModel):
     name: str = Field(min_length=1, max_length=150)
-    email: str = Field(min_length=3, max_length=150)
+    email: EmailAddress = Field(min_length=3, max_length=150)
 
 
 class AdminAssignRequest(BaseModel):
-    email: str = Field(min_length=3, max_length=150)
+    email: EmailAddress = Field(min_length=3, max_length=150)
 
 
 class AdminInvitedResponse(BaseModel):

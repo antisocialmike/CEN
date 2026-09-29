@@ -2,11 +2,13 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from .email_address import EmailAddress
+
 UserRole = Literal["superadmin", "owner", "admin", "employee"]
 
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailAddress
     password: str
 
 
@@ -30,10 +32,10 @@ class PasswordChangeResponse(BaseModel):
 
 
 class PasswordResetRequest(BaseModel):
-    email: str
+    email: EmailAddress
 
 
 class PasswordResetVerify(BaseModel):
-    email: str
+    email: EmailAddress
     code: str = Field(pattern=r"^[0-9]{6}$")
     new_password: str = Field(min_length=8, max_length=72)
