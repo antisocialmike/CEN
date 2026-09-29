@@ -1,8 +1,15 @@
 from calendar import monthrange
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from .fiscal_ids import (
+    birth_dates_match,
+    validate_curp,
+    validate_nss,
+    validate_rfc,
+)
 
 EmployeeRole = Literal["admin", "employee"]
 Periodicity = Literal["mensual", "quincenal", "semanal"]
@@ -65,9 +72,48 @@ class Employee(BaseModel):
     tipo_regimen: TipoRegimen = "02"
     tipo_jornada: TipoJornada = "01"
     hire_date: Optional[date] = None
+    rfc: Optional[str] = None
+    curp: Optional[str] = None
+    nss: Optional[str] = None
 
 
-class EmployeeCreateRequest(BaseModel):
+class FiscalIds(BaseModel):
+    rfc: Optional[str] = None
+    curp: Optional[str] = None
+    nss: Optional[str] = None
+
+    @field_validator("rfc")
+    @classmethod
+    def _valid_rfc(cls, value: Optional[str]) -> Optional[str]:
+        return validate_rfc(value)
+
+    @field_validator("curp")
+    @classmethod
+    def _valid_curp(cls, value: Optional[str]) -> Optional[str]:
+        return validate_curp(value)
+
+    @field_validator("nss")
+    @classmethod
+    def _valid_nss(cls, value: Optional[str]) -> Optional[str]:
+        return validate_nss(value)
+
+    @model_validator(mode="after")
+    def _same_birth_date(self) -> "FiscalIds":
+        if not birth_dates_match(self.rfc, self.curp):
+            raise ValueError(
+                "El RFC y la CURP no tienen la misma fecha de nacimiento"
+            )
+        return self
+
+
+class SalaryChange(BaseModel):
+    base_salary: float
+    valid_from: date
+    recorded_at: datetime
+    recorded_by: Optional[str] = None
+
+
+class EmployeeCreateRequest(FiscalIds):
     name: str = Field(min_length=1, max_length=150)
     email: str = Field(min_length=3, max_length=150)
     role: EmployeeRole
@@ -85,7 +131,7 @@ class PasswordResetResponse(BaseModel):
     temporary_password: str
 
 
-class EmployeeUpdateRequest(BaseModel):
+class EmployeeUpdateRequest(FiscalIds):
     name: str = Field(min_length=1, max_length=150)
     email: str = Field(min_length=3, max_length=150)
     role: EmployeeRole
@@ -93,6 +139,7 @@ class EmployeeUpdateRequest(BaseModel):
     tipo_regimen: TipoRegimen = "02"
     tipo_jornada: TipoJornada = "01"
     hire_date: Optional[date] = None
+    salary_valid_from: Optional[date] = None
 
     @model_validator(mode="after")
     def _employees_have_a_salary(self) -> "EmployeeUpdateRequest":

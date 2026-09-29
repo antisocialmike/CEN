@@ -611,3 +611,147 @@ def test_update_without_hire_date_keeps_the_saved_one(mock_update):
     )
 
     assert mock_update.call_args[0][1]["hire_date"] is None
+
+
+CURP_ANA = "HEGG560427MVZRRL04"
+RFC_ANA = "HEGG560427AB1"
+NSS_ANA = "92988084494"
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.create_employee")
+def test_create_employee_with_fiscal_ids_normalized(mock_create_employee):
+    mock_create_employee.return_value = 10
+
+    response = client.post(
+        "/employees",
+        json=_new_employee(
+            rfc=" hegg560427ab1", curp="hegg560427mvzrrl04",
+            nss="92-98-80-8449-4",
+        ),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    data = mock_create_employee.call_args[0][0]
+    assert (data["rfc"], data["curp"], data["nss"]) == (RFC_ANA, CURP_ANA, NSS_ANA)
+    assert response.json()["curp"] == CURP_ANA
+
+
+@pytest.mark.parametrize("field, value, message", [
+    ("curp", "HEGG560427MVZRRL05", "digito verificador de la CURP"),
+    ("nss", "92988084495", "digito verificador del NSS"),
+    ("rfc", "HEGG5604271", "13 caracteres"),
+])
+@patch("server.src.routes.employee_routes.payroll_repository.create_employee")
+def test_invalid_fiscal_ids_are_rejected_with_the_reason(
+    mock_create_employee, field, value, message
+):
+    response = client.post(
+        "/employees",
+        json=_new_employee(**{field: value}),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
+    assert message in response.json()["detail"][0]["msg"]
+    mock_create_employee.assert_not_called()
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.create_employee")
+def test_rfc_and_curp_must_share_the_birth_date(mock_create_employee):
+    response = client.post(
+        "/employees",
+        json=_new_employee(rfc="HEGG560428AB1", curp=CURP_ANA),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 422
+    assert "misma fecha de nacimiento" in response.json()["detail"][0]["msg"]
+
+
+class _CurpTaken(psycopg2_errors.UniqueViolation):
+    @property
+    def diag(self):
+        return type("Diag", (), {"constraint_name": "employees_company_curp_key"})()
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.create_employee")
+def test_a_curp_already_in_the_company_is_a_conflict(mock_create_employee):
+    mock_create_employee.side_effect = _CurpTaken()
+
+    response = client.post(
+        "/employees",
+        json=_new_employee(curp=CURP_ANA),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Esa CURP ya la tiene otra persona de la empresa"
+    )
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.update_employee")
+def test_update_sends_the_fiscal_ids_and_when_the_salary_applies(mock_update):
+    mock_update.return_value = {
+        "id": 3, "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 21000, "is_active": True, "curp": CURP_ANA,
+    }
+
+    response = client.put(
+        "/employees/3",
+        json={
+            "name": "Ana", "email": "ana@cen.com", "role": "employee",
+            "base_salary": 21000, "curp": CURP_ANA,
+            "salary_valid_from": "2026-10-01",
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    data = mock_update.call_args[0][1]
+    assert data["curp"] == CURP_ANA
+    assert data["rfc"] is None
+    assert data["salary_valid_from"] == date(2026, 10, 1)
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.salary_history")
+def test_salary_history_of_a_person(mock_history):
+    mock_history.return_value = [
+        {"base_salary": 21000, "valid_from": date(2026, 10, 1),
+         "recorded_at": "2026-09-28T10:00:00+00:00", "recorded_by": "Admin"},
+        {"base_salary": 19000, "valid_from": date(2020, 1, 15),
+         "recorded_at": "2026-09-28T09:00:00+00:00", "recorded_by": None},
+    ]
+
+    response = client.get(
+        "/employees/3/salary-history",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert [row["valid_from"] for row in response.json()] == [
+        "2026-10-01", "2020-01-15"
+    ]
+    assert mock_history.call_args[0] == (3, ADMIN_COMPANY_ID)
+
+
+@patch("server.src.routes.employee_routes.payroll_repository.salary_history")
+def test_salary_history_of_someone_from_another_company(mock_history):
+    mock_history.return_value = None
+
+    response = client.get(
+        "/employees/3/salary-history",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 404
+
+
+def test_salary_history_is_only_for_admins():
+    response = client.get(
+        "/employees/3/salary-history",
+        headers={"Authorization": f"Bearer {_employee_token()}"}
+    )
+
+    assert response.status_code == 403

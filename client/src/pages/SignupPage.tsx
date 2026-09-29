@@ -21,7 +21,7 @@ import {
   TipoRegimen
 } from "../services/employeeService";
 import { EmployeeRole } from "../services/authSession";
-import { getStatusCode } from "../services/apiError";
+import { getErrorDetail, getStatusCode, getValidationMessage } from "../services/apiError";
 import { currentDate } from "../services/format";
 
 const emptyForm = {
@@ -32,8 +32,13 @@ const emptyForm = {
   password: "",
   tipoRegimen: "02" as TipoRegimen,
   tipoJornada: "01" as TipoJornada,
-  hireDate: ""
+  hireDate: "",
+  rfc: "",
+  curp: "",
+  nss: ""
 };
+
+const EMAIL_TAKEN = "El correo ya esta registrado";
 
 function newForm(): typeof emptyForm {
   return { ...emptyForm, hireDate: currentDate() };
@@ -65,15 +70,24 @@ export default function SignupPage() {
         password: form.password,
         tipoRegimen: form.tipoRegimen,
         tipoJornada: form.tipoJornada,
-        hireDate: form.hireDate
+        hireDate: form.hireDate,
+        rfc: form.rfc,
+        curp: form.curp,
+        nss: form.tipoRegimen === "02" ? form.nss : ""
       });
       setSuccessMessage(
         `${created.name} ya puede entrar con ${created.email}. Comparte con esa persona su contraseña temporal.`
       );
       setForm(newForm());
     } catch (error) {
-      if (getStatusCode(error) === 409) {
+      const status = getStatusCode(error);
+      const detail = getErrorDetail(error);
+      if (status === 409 && detail && detail !== EMAIL_TAKEN) {
+        setErrorMessage(detail);
+      } else if (status === 409) {
         setErrorMessage("Ese correo ya está registrado. Usa otro o busca a la persona en la lista.");
+      } else if (status === 422 && getValidationMessage(error)) {
+        setErrorMessage(getValidationMessage(error) ?? null);
       } else {
         setErrorMessage("No se pudo dar de alta al usuario. Revisa los datos e inténtalo de nuevo.");
       }
@@ -180,6 +194,39 @@ export default function SignupPage() {
             hint="De aquí sale su antigüedad: los días de vacaciones y el salario base de cotización."
             required
           />
+          <FormField
+            id="rfc"
+            label="RFC"
+            type="text"
+            value={form.rfc}
+            onChange={(value) => updateField("rfc", value.toUpperCase())}
+            autoComplete="off"
+            maxLength={13}
+            placeholder="GODE561231GR8"
+            hint="Con homoclave. Si aún no los tienes, el RFC, la CURP y el NSS se pueden completar después."
+          />
+          <FormField
+            id="curp"
+            label="CURP"
+            type="text"
+            value={form.curp}
+            onChange={(value) => updateField("curp", value.toUpperCase())}
+            autoComplete="off"
+            maxLength={18}
+          />
+          {form.tipoRegimen === "02" && (
+            <FormField
+              id="nss"
+              label="NSS"
+              type="text"
+              value={form.nss}
+              onChange={(value) => updateField("nss", value)}
+              autoComplete="off"
+              inputMode="numeric"
+              maxLength={11}
+              hint="Número de seguridad social del IMSS, 11 dígitos."
+            />
+          )}
           <FormField
             id="baseSalary"
             label="Salario base mensual"

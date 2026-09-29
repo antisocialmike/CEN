@@ -13,6 +13,7 @@ from ..models.payroll_model import (
     EmployeeCreateRequest,
     EmployeeUpdateRequest,
     PasswordResetResponse,
+    SalaryChange,
 )
 from ..models.pagination_model import (
     DEFAULT_PAGE_SIZE,
@@ -68,6 +69,9 @@ def create_employee(
         "tipo_regimen": request.tipo_regimen,
         "tipo_jornada": request.tipo_jornada,
         "hire_date": hire_date,
+        "rfc": request.rfc,
+        "curp": request.curp,
+        "nss": request.nss,
         "password_hash": hash_password(request.password),
     }, user["company_id"], user.get("employee_id"))
     return Employee(
@@ -79,6 +83,9 @@ def create_employee(
         tipo_regimen=request.tipo_regimen,
         tipo_jornada=request.tipo_jornada,
         hire_date=hire_date,
+        rfc=request.rfc,
+        curp=request.curp,
+        nss=request.nss,
     )
 
 
@@ -103,6 +110,10 @@ def update_employee(
             "tipo_regimen": request.tipo_regimen,
             "tipo_jornada": request.tipo_jornada,
             "hire_date": request.hire_date,
+            "rfc": request.rfc,
+            "curp": request.curp,
+            "nss": request.nss,
+            "salary_valid_from": request.salary_valid_from,
         }, user["company_id"], user.get("employee_id"))
     except SharedAdminError:
         raise SHARED_ADMIN
@@ -110,6 +121,17 @@ def update_employee(
         raise EMPLOYEE_NOT_FOUND
 
     return employee
+
+
+@router.get("/{employee_id}/salary-history", response_model=List[SalaryChange])
+def get_salary_history(
+    employee_id: int,
+    user: dict = Depends(require_admin_company),
+):
+    history = payroll_repository.salary_history(employee_id, user["company_id"])
+    if history is None:
+        raise EMPLOYEE_NOT_FOUND
+    return history
 
 
 @router.post("/{employee_id}/deactivate", response_model=Employee)

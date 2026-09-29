@@ -41,6 +41,47 @@ beforeEach(() => {
   });
 });
 
+describe("datos fiscales en el alta", () => {
+  it("los manda en mayusculas y sin NSS para un asimilado", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await llenar(user);
+    await user.type(screen.getByLabelText("RFC"), "hegg560427ab1");
+    await user.type(screen.getByLabelText("CURP"), "hegg560427mvzrrl04");
+    await user.type(screen.getByLabelText("NSS"), "92988084494");
+    await user.selectOptions(screen.getByLabelText("Tipo de nómina"), "09");
+    expect(screen.queryByLabelText("NSS")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Dar de alta" }));
+
+    await waitFor(() => {
+      expect(createEmployee).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rfc: "HEGG560427AB1",
+          curp: "HEGG560427MVZRRL04",
+          nss: ""
+        })
+      );
+    });
+  });
+
+  it("dice por que se rechazo un dato", async () => {
+    vi.mocked(createEmployee).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: { detail: [{ msg: "Value error, El NSS lleva 11 digitos" }] }
+      }
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await llenar(user);
+    await user.click(screen.getByRole("button", { name: "Dar de alta" }));
+
+    expect(await screen.findByText("El NSS lleva 11 digitos")).toBeInTheDocument();
+  });
+});
+
 describe("fecha de ingreso en el alta", () => {
   it("arranca en hoy y viaja al alta", async () => {
     const user = userEvent.setup();

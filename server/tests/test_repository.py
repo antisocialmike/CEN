@@ -63,8 +63,11 @@ def _queries(cursor) -> list:
     return [str(call[0][0]) for call in cursor.execute.call_args_list]
 
 
-def _member(is_shared=False, role="employee"):
-    return {"id": 3, "role": role, "is_shared": is_shared}
+def _member(is_shared=False, role="employee", base_salary=19000):
+    return {
+        "id": 3, "role": role, "is_shared": is_shared,
+        "base_salary": base_salary,
+    }
 
 
 def _saved_row(**overrides):
@@ -376,7 +379,7 @@ def test_create_employee_forces_the_first_password_change(repository, cursor):
         "password_hash": "hashed"
     }, COMPANY)
 
-    assert "TRUE, %s) RETURNING id" in cursor.execute.call_args[0][0]
+    assert "TRUE, %s) RETURNING id" in cursor.execute.call_args_list[0][0][0]
 
 
 def test_create_employee_links_the_employee_to_the_company(
@@ -392,7 +395,7 @@ def test_create_employee_links_the_employee_to_the_company(
         "password_hash": "hashed"
     }, COMPANY)
 
-    assert cursor.execute.call_args[0][1][-1] == COMPANY
+    assert cursor.execute.call_args_list[0][0][1][-1] == COMPANY
     assert not any("company_admins" in q for q in _queries(cursor))
 
 
@@ -407,10 +410,11 @@ def test_create_admin_assigns_it_to_the_company(repository, cursor):
         "password_hash": "hashed"
     }, COMPANY, actor_id=7)
 
-    insert, assign = cursor.execute.call_args_list
+    insert, assign, salary = cursor.execute.call_args_list
     assert insert[0][1][-1] is None
     assert "INSERT INTO company_admins" in assign[0][0]
     assert assign[0][1] == (11, COMPANY, 7)
+    assert "INSERT INTO salary_history" in salary[0][0]
 
 
 def test_create_superadmin_belongs_to_no_company(repository, cursor):
@@ -445,7 +449,8 @@ def test_update_employee_returns_the_saved_row(repository, cursor):
     assert result is not None
     assert result["base_salary"] == 19000
     assert cursor.execute.call_args_list[1][0][1] == (
-        "Ana", "ana@cen.com", "employee", 19000, "02", "01", None, COMPANY, 3
+        "Ana", "ana@cen.com", "employee", 19000, "02", "01",
+        None, None, None, None, COMPANY, 3,
     )
 
 
@@ -470,9 +475,99 @@ def test_create_employee_starts_today_without_a_hire_date(repository, cursor):
         "base_salary": 19000, "password_hash": "hash",
     }, COMPANY)
 
-    query, params = cursor.execute.call_args[0]
+    query, params = cursor.execute.call_args_list[0][0]
     assert "COALESCE(%s, CURRENT_DATE)" in query
     assert params[6] is None
+
+
+def test_create_employee_starts_the_salary_history_on_the_hire_date(
+    repository, cursor
+):
+    cursor.fetchone.return_value = {"id": 10, "hire_date": date(2020, 1, 15)}
+
+    repository.create_employee({
+        "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 19000, "password_hash": "hash",
+        "rfc": "HEGG560427AB1", "curp": "HEGG560427MVZRRL04",
+        "nss": "92988084494",
+    }, COMPANY, actor_id=7)
+
+    insert, salary = cursor.execute.call_args_list
+    assert insert[0][1][7:10] == (
+        "HEGG560427AB1", "HEGG560427MVZRRL04", "92988084494"
+    )
+    assert "INSERT INTO salary_history" in salary[0][0]
+    assert salary[0][1] == (10, COMPANY, 19000, date(2020, 1, 15), 7)
+
+
+def test_an_admin_without_salary_has_no_salary_history(repository, cursor):
+    cursor.fetchone.return_value = {"id": 11}
+
+    repository.create_employee({
+        "name": "Luis", "email": "luis@cen.com", "role": "admin",
+        "base_salary": None, "password_hash": "hash",
+    }, COMPANY, actor_id=7)
+
+    assert not any("salary_history" in q for q in _queries(cursor))
+
+
+def test_a_new_salary_is_recorded_from_the_date_it_applies(repository, cursor):
+    cursor.fetchone.side_effect = [_member(base_salary=19000), _saved_row()]
+
+    repository.update_employee(3, {
+        "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 21000, "salary_valid_from": date(2026, 10, 1),
+    }, COMPANY, actor_id=7)
+
+    [salary] = [
+        call for call in cursor.execute.call_args_list
+        if "INSERT INTO salary_history" in call[0][0]
+    ]
+    assert salary[0][1] == (3, COMPANY, 21000, date(2026, 10, 1), 7)
+
+
+def test_the_same_salary_is_not_recorded_again(repository, cursor):
+    cursor.fetchone.side_effect = [_member(base_salary=19000), _saved_row()]
+
+    repository.update_employee(3, {
+        "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 19000.0,
+    }, COMPANY)
+
+    assert not any("salary_history" in q for q in _queries(cursor))
+
+
+def test_the_fiscal_ids_are_kept_when_they_do_not_come(repository, cursor):
+    cursor.fetchone.side_effect = [_member(), _saved_row()]
+
+    repository.update_employee(3, {
+        "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 19000,
+    }, COMPANY)
+
+    update = _queries(cursor)[1]
+    for column in ("rfc", "curp", "nss"):
+        assert "{0} = COALESCE(%s, {0})".format(column) in update
+
+
+def test_salary_history_of_someone_outside_the_company(repository, cursor):
+    cursor.fetchone.return_value = None
+
+    assert repository.salary_history(3, COMPANY) is None
+    assert len(_queries(cursor)) == 1
+
+
+def test_salary_history_newest_first(repository, cursor):
+    cursor.fetchone.return_value = {"id": 3}
+    cursor.fetchall.return_value = [
+        {"base_salary": 21000, "valid_from": date(2026, 10, 1)},
+        {"base_salary": 19000, "valid_from": date(2020, 1, 15)},
+    ]
+
+    history = repository.salary_history(3, COMPANY)
+
+    assert [row["base_salary"] for row in history] == [21000, 19000]
+    assert "ORDER BY h.valid_from DESC" in _queries(cursor)[1]
 
 
 def test_update_employee_to_admin_assigns_the_company(repository, cursor):

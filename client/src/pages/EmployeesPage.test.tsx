@@ -6,10 +6,12 @@ import EmployeesPage from "./EmployeesPage";
 import {
   activateEmployee,
   deactivateEmployee,
+  getSalaryHistory,
   listEmployeesPage,
   resetEmployeePassword,
   updateEmployee
 } from "../services/employeeService";
+import { currentDate } from "../services/format";
 
 // Las etiquetas y isAssimilated son las de verdad; solo se simulan las llamadas.
 vi.mock("../services/employeeService", async (importOriginal) => ({
@@ -18,7 +20,8 @@ vi.mock("../services/employeeService", async (importOriginal) => ({
   updateEmployee: vi.fn(),
   deactivateEmployee: vi.fn(),
   activateEmployee: vi.fn(),
-  resetEmployeePassword: vi.fn()
+  resetEmployeePassword: vi.fn(),
+  getSalaryHistory: vi.fn()
 }));
 
 const ana = {
@@ -68,6 +71,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   vi.mocked(listEmployeesPage).mockResolvedValue(pagina([ana, luis]));
+  vi.mocked(getSalaryHistory).mockResolvedValue([]);
 });
 
 describe("listado", () => {
@@ -138,7 +142,11 @@ describe("edicion", () => {
         baseSalary: 21000,
         tipoRegimen: "02",
         tipoJornada: "01",
-        hireDate: "2019-06-03"
+        hireDate: "2019-06-03",
+        rfc: "",
+        curp: "",
+        nss: "",
+        salaryValidFrom: currentDate()
       });
     });
     expect(await screen.findByText(/Se guardaron los cambios/)).toBeInTheDocument();
@@ -229,7 +237,11 @@ describe("administradores sin salario", () => {
         baseSalary: null,
         tipoRegimen: "02",
         tipoJornada: "01",
-        hireDate: null
+        hireDate: null,
+        rfc: "",
+        curp: "",
+        nss: "",
+        salaryValidFrom: null
       });
     });
   });
@@ -508,5 +520,95 @@ describe("tipo de nomina y jornada", () => {
         tipoJornada: "02"
       }));
     });
+  });
+});
+
+describe("datos fiscales e historial de salario", () => {
+  const completa = {
+    ...ana,
+    rfc: "HEGG560427AB1",
+    curp: "HEGG560427MVZRRL04",
+    nss: "92988084494"
+  };
+
+  it("avisa en la lista a quien le faltan datos fiscales", async () => {
+    vi.mocked(listEmployeesPage).mockResolvedValue(pagina([ana, completa]));
+    renderPage();
+
+    expect(await screen.findAllByText("Faltan datos fiscales")).toHaveLength(1);
+  });
+
+  it("muestra el historial de salario al editar", async () => {
+    vi.mocked(getSalaryHistory).mockResolvedValue([
+      { base_salary: 21000, valid_from: "2026-10-01", recorded_at: "2026-09-28T10:00:00Z", recorded_by: "Admin" },
+      { base_salary: 18000, valid_from: "2019-06-03", recorded_at: "2026-09-28T09:00:00Z", recorded_by: null }
+    ]);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Editar"))[0]);
+
+    expect(getSalaryHistory).toHaveBeenCalledWith(3);
+    expect(await screen.findByText("Desde 1 de octubre de 2026")).toBeInTheDocument();
+    expect(screen.getByText("Desde 3 de junio de 2019")).toBeInTheDocument();
+  });
+
+  it("pide desde cuando vale un salario nuevo y lo envia", async () => {
+    vi.mocked(updateEmployee).mockResolvedValue({ ...ana, base_salary: 21000 });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Editar"))[0]);
+    expect(screen.queryByLabelText("Salario vigente desde")).not.toBeInTheDocument();
+    const salary = screen.getByLabelText(/Salario base mensual/);
+    await user.clear(salary);
+    await user.type(salary, "21000");
+    fireEvent.change(screen.getByLabelText("Salario vigente desde"), {
+      target: { value: "2026-10-01" }
+    });
+    await user.click(screen.getByText("Guardar cambios"));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => {
+      expect(updateEmployee).toHaveBeenCalledWith(
+        3,
+        expect.objectContaining({ baseSalary: 21000, salaryValidFrom: "2026-10-01" })
+      );
+    });
+  });
+
+  it("muestra por que el servidor rechazo la CURP", async () => {
+    vi.mocked(updateEmployee).mockRejectedValue({
+      response: {
+        status: 422,
+        data: { detail: [{ msg: "Value error, El digito verificador de la CURP no corresponde" }] }
+      }
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Editar"))[0]);
+    await user.type(screen.getByLabelText("CURP"), "hegg560427mvzrrl05");
+    expect(screen.getByLabelText("CURP")).toHaveValue("HEGG560427MVZRRL05");
+    await user.click(screen.getByText("Guardar cambios"));
+
+    expect(
+      await screen.findByText("El digito verificador de la CURP no corresponde")
+    ).toBeInTheDocument();
+  });
+
+  it("muestra el conflicto de una CURP repetida en la empresa", async () => {
+    vi.mocked(updateEmployee).mockRejectedValue({
+      response: { status: 409, data: { detail: "Esa CURP ya la tiene otra persona de la empresa" } }
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click((await screen.findAllByText("Editar"))[0]);
+    await user.click(screen.getByText("Guardar cambios"));
+
+    expect(
+      await screen.findByText("Esa CURP ya la tiene otra persona de la empresa")
+    ).toBeInTheDocument();
   });
 });

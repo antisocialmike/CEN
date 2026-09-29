@@ -241,6 +241,35 @@ corregirla desde la pantalla de usuarios para quien entro antes.
 a centavos con la mitad hacia arriba, igual que el costo patronal. Con
 punto flotante, 235.695 quedaba en 235.69; ahora queda en 235.70.
 
+## Datos fiscales e historial de salario
+
+Cada persona puede llevar su **RFC**, su **CURP** y su **NSS** (migracion
+017). Son opcionales, para no frenar un alta, y la lista de usuarios marca
+con "Faltan datos fiscales" a quien cobra nomina y no los tiene completos
+(al asimilado no se le pide NSS, porque no cotiza al IMSS). Cuando llegan
+se validan de verdad y no solo por longitud:
+
+- RFC de persona fisica: 13 caracteres, con una fecha de nacimiento que
+  exista.
+- CURP: el formato de RENAPO, la clave de un estado real y su digito
+  verificador.
+- NSS: 11 digitos y su digito verificador (pesos 1-2-1-2 sobre los
+  primeros diez).
+- El RFC y la CURP deben tener la misma fecha de nacimiento.
+
+Se guardan en mayusculas y sin espacios ni guiones, y no se pueden repetir
+dentro de una misma empresa: la misma persona si puede estar en otra. La
+base repite las comprobaciones de formato, asi que un dato malo no entra ni
+saltandose la API.
+
+El **historial de salario** (`salary_history`) guarda cada salario base
+de cada persona en cada empresa, con la fecha desde la que vale y quien lo
+registro. El alta abre el historial en la fecha de ingreso; cambiar el
+salario agrega un renglon con la fecha "vigente desde" que elige el admin
+(hoy, si no elige). La migracion lo inicio con el salario que cada quien
+tenia en ese momento. Por ahora es un registro: el calculo sigue tomando el
+bruto que se captura en la calculadora.
+
 **Lo que cambia cada anio no esta en el codigo.** La UMA, el salario
 minimo, el subsidio para el empleo y la tarifa del ISR se leen de la base
 con su vigencia (migraciones 012 y 013), segun la fecha en que empieza el
@@ -291,9 +320,8 @@ datos que estan en la base y no con los que trae el navegador.
 Es un **comprobante interno**: lleva impreso que no es un CFDI y que no
 tiene validez fiscal ante el SAT. Emitir un CFDI de nomina exige un RFC
 activo, e.firma, un Certificado de Sello Digital y un contrato con un PAC,
-ademas de datos que este sistema no captura (RFC y CURP del empleado, NSS,
-regimen fiscal, tipo de contrato y jornada, y el desglose por claves de
-catalogo del SAT). El folio y el periodo de cada recibo son unicos, que es
+ademas de datos que este sistema todavia no captura (regimen fiscal del
+empleado, tipo de contrato y el desglose por claves de catalogo del SAT). El folio y el periodo de cada recibo son unicos, que es
 lo que permitiria amarrarlos a un UUID fiscal si algun dia se agrega esa
 capa.
 
@@ -329,9 +357,15 @@ capa.
   indica en `created`. Cada recibo guarda quien lo proceso.
 - `GET /employees` y `POST /employees`: lista y da de alta empleados.
   Requieren rol `admin`. El alta acepta `hire_date`; sin ella, la persona
-  ingresa hoy.
-- `PUT /employees/{id}`: corrige nombre, correo, rol, salario base y fecha
-  de ingreso. Sin `hire_date` se conserva la que ya tenia.
+  ingresa hoy. Tambien acepta `rfc`, `curp` y `nss`; si alguno no es
+  valido responde `422` con el motivo, y si ya lo tiene otra persona de la
+  empresa, `409`.
+- `PUT /employees/{id}`: corrige nombre, correo, rol, salario base, fecha
+  de ingreso y datos fiscales. Lo que no llega (`hire_date`, `rfc`, `curp`,
+  `nss`) se conserva. Si el salario cambia, `salary_valid_from` dice desde
+  cuando vale.
+- `GET /employees/{id}/salary-history`: el historial de salario de esa
+  persona en la empresa activa, del mas reciente al mas viejo.
 - `POST /employees/{id}/deactivate` y `.../activate`: baja y alta logica.
   Dar de baja conserva los recibos, impide iniciar sesion y bloquea el
   calculo de nomina de esa persona. Un administrador no puede quitarse a

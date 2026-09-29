@@ -15,8 +15,11 @@ import {
   activateEmployee,
   deactivateEmployee,
   EmployeeCreated,
+  getSalaryHistory,
   isAssimilated,
   listEmployeesPage,
+  missingFiscalData,
+  SalaryChange,
   TIPO_JORNADA_LABELS,
   TIPO_REGIMEN_LABELS,
   TipoJornada,
@@ -25,8 +28,8 @@ import {
   updateEmployee
 } from "../services/employeeService";
 import { getEmployeeId, EmployeeRole } from "../services/authSession";
-import { getStatusCode } from "../services/apiError";
-import { formatCurrency } from "../services/format";
+import { getErrorDetail, getStatusCode, getValidationMessage } from "../services/apiError";
+import { currentDate, formatCurrency, formatDate } from "../services/format";
 import { useListaPaginada } from "../routes/listaPaginada";
 
 interface EditForm {
@@ -37,6 +40,10 @@ interface EditForm {
   tipoRegimen: TipoRegimen;
   tipoJornada: TipoJornada;
   hireDate: string;
+  rfc: string;
+  curp: string;
+  nss: string;
+  salaryValidFrom: string;
 }
 
 interface IssuedPassword {
@@ -60,6 +67,8 @@ export default function EmployeesPage() {
   const [confirmingToggleId, setConfirmingToggleId] = useState<number | null>(null);
   const [pendingEditSave, setPendingEditSave] = useState(false);
   const [issuedPassword, setIssuedPassword] = useState<IssuedPassword | null>(null);
+  const [salaryHistory, setSalaryHistory] = useState<SalaryChange[] | null>(null);
+  const [salaryHistoryFailed, setSalaryHistoryFailed] = useState(false);
   const confirmResetRef = useRef<HTMLButtonElement>(null);
   const ownEmployeeId = getEmployeeId();
   // El fallo al cargar no se borra al intentar otra accion: la lista sigue sin llegar.
@@ -72,6 +81,21 @@ export default function EmployeesPage() {
     if (confirmingResetId !== null) confirmResetRef.current?.focus();
   }, [confirmingResetId]);
 
+  useEffect(() => {
+    if (editingId === null) return;
+    let current = true;
+    getSalaryHistory(editingId)
+      .then((history) => {
+        if (current) setSalaryHistory(history);
+      })
+      .catch(() => {
+        if (current) setSalaryHistoryFailed(true);
+      });
+    return () => {
+      current = false;
+    };
+  }, [editingId]);
+
   function replaceEmployee(updated: EmployeeCreated) {
     lista.actualizar((current) =>
       current.map((item) => (item.id === updated.id ? updated : item))
@@ -82,6 +106,8 @@ export default function EmployeesPage() {
     setErrorMessage(null);
     setSuccessMessage(null);
     setConfirmingResetId(null);
+    setSalaryHistory(null);
+    setSalaryHistoryFailed(false);
     setEditingId(employee.id);
     setForm({
       name: employee.name,
@@ -90,7 +116,11 @@ export default function EmployeesPage() {
       baseSalary: employee.base_salary === null ? "" : String(employee.base_salary),
       tipoRegimen: employee.tipo_regimen ?? "02",
       tipoJornada: employee.tipo_jornada ?? "01",
-      hireDate: employee.hire_date ?? ""
+      hireDate: employee.hire_date ?? "",
+      rfc: employee.rfc ?? "",
+      curp: employee.curp ?? "",
+      nss: employee.nss ?? "",
+      salaryValidFrom: currentDate()
     });
   }
 
@@ -135,15 +165,24 @@ export default function EmployeesPage() {
         baseSalary: newSalary,
         tipoRegimen: form.tipoRegimen,
         tipoJornada: form.tipoJornada,
-        hireDate: form.hireDate || null
+        hireDate: form.hireDate || null,
+        rfc: form.rfc,
+        curp: form.curp,
+        nss: form.tipoRegimen === "02" ? form.nss : "",
+        salaryValidFrom: salaryChanged ? form.salaryValidFrom || null : null
       });
       replaceEmployee(updated);
       setSuccessMessage("Se guardaron los cambios de " + updated.name + ".");
       cancelEditing();
     } catch (error) {
       const status = getStatusCode(error);
-      if (status === 409) {
+      const detail = getErrorDetail(error);
+      if (status === 409 && detail && detail !== "El correo ya esta registrado") {
+        setErrorMessage(detail);
+      } else if (status === 409) {
         setErrorMessage("Ese correo ya lo usa otra persona. Elige uno distinto.");
+      } else if (status === 422 && getValidationMessage(error)) {
+        setErrorMessage(getValidationMessage(error) ?? null);
       } else if (status === 400) {
         setErrorMessage("No puedes quitarte a ti mismo el rol de administrador.");
       } else if (status === 404) {
@@ -367,6 +406,68 @@ export default function EmployeesPage() {
                     value={form.hireDate}
                     onChange={(value) => setForm({ ...form, hireDate: value })}
                   />
+                  {form.baseSalary !== "" && Number(form.baseSalary) !== employee.base_salary && (
+                    <FormField
+                      id={"salaryValidFrom-" + employee.id}
+                      label="Salario vigente desde"
+                      type="date"
+                      value={form.salaryValidFrom}
+                      onChange={(value) => setForm({ ...form, salaryValidFrom: value })}
+                      hint="Queda en su historial de salario con esta fecha."
+                      required
+                    />
+                  )}
+                  <FormField
+                    id={"rfc-" + employee.id}
+                    label="RFC"
+                    type="text"
+                    value={form.rfc}
+                    onChange={(value) => setForm({ ...form, rfc: value.toUpperCase() })}
+                    maxLength={13}
+                  />
+                  <FormField
+                    id={"curp-" + employee.id}
+                    label="CURP"
+                    type="text"
+                    value={form.curp}
+                    onChange={(value) => setForm({ ...form, curp: value.toUpperCase() })}
+                    maxLength={18}
+                  />
+                  {form.tipoRegimen === "02" && (
+                    <FormField
+                      id={"nss-" + employee.id}
+                      label="NSS"
+                      type="text"
+                      value={form.nss}
+                      onChange={(value) => setForm({ ...form, nss: value })}
+                      inputMode="numeric"
+                      maxLength={11}
+                    />
+                  )}
+                  <div aria-live="polite">
+                    <div className="payroll-result-row is-group">
+                      <span>Historial de salario</span>
+                      <span />
+                    </div>
+                    {salaryHistory === null && !salaryHistoryFailed && (
+                      <p className="form-field-hint">Cargando…</p>
+                    )}
+                    {salaryHistoryFailed && (
+                      <p className="form-field-hint">No se pudo cargar el historial.</p>
+                    )}
+                    {salaryHistory !== null && salaryHistory.length === 0 && (
+                      <p className="form-field-hint">Sin cambios registrados.</p>
+                    )}
+                    {salaryHistory?.map((change) => (
+                      <div
+                        className="payroll-result-row is-item"
+                        key={change.valid_from + change.recorded_at}
+                      >
+                        <span>Desde {formatDate(change.valid_from)}</span>
+                        <span>{formatCurrency(change.base_salary)}</span>
+                      </div>
+                    ))}
+                  </div>
                   {pendingEditSave && (
                     <div className="action-confirm" role="alert">
                       <p className="action-confirm-message">Se guardarán cambios importantes.</p>
@@ -416,6 +517,11 @@ export default function EmployeesPage() {
                       {isAssimilated(employee) && (
                         <span className="employee-tag is-role">Asimilado</span>
                       )}
+                      {employee.is_active &&
+                        employee.base_salary !== null &&
+                        missingFiscalData(employee) && (
+                          <span className="employee-tag">Faltan datos fiscales</span>
+                        )}
                     </p>
                     <p className="employee-row-meta">
                       {employee.email} ·{" "}

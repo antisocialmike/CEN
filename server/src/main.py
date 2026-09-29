@@ -44,12 +44,19 @@ async def database_unavailable(request: Request, exc: OperationalError):
     )
 
 
+DUPLICATED_DETAILS = {
+    "companies_rfc_key": "El RFC ya esta registrado",
+    "employees_company_rfc_key": "Ese RFC ya lo tiene otra persona de la empresa",
+    "employees_company_curp_key": "Esa CURP ya la tiene otra persona de la empresa",
+    "employees_company_nss_key": "Ese NSS ya lo tiene otra persona de la empresa",
+}
+
+
 @app.exception_handler(UniqueViolation)
 async def duplicated_record(request: Request, exc: UniqueViolation):
-    if exc.diag.constraint_name == "companies_rfc_key":
-        detail = "El RFC ya esta registrado"
-    else:
-        detail = "El correo ya esta registrado"
+    detail = DUPLICATED_DETAILS.get(
+        exc.diag.constraint_name, "El correo ya esta registrado"
+    )
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={"detail": detail},

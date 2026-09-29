@@ -1,9 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import httpClient from "./httpClient";
-import { createEmployee, isOnPayroll, updateEmployee } from "./employeeService";
+import {
+  createEmployee,
+  getSalaryHistory,
+  isOnPayroll,
+  missingFiscalData,
+  updateEmployee
+} from "./employeeService";
 
 vi.mock("./httpClient", () => ({
-  default: { post: vi.fn(async () => ({ data: {} })), put: vi.fn(async () => ({ data: {} })) }
+  default: {
+    post: vi.fn(async () => ({ data: {} })),
+    put: vi.fn(async () => ({ data: {} })),
+    get: vi.fn(async () => ({ data: [] }))
+  }
 }));
 
 const base = {
@@ -39,12 +49,20 @@ describe("fecha de ingreso hacia la API", () => {
       password: "clave1234",
       tipoRegimen: "02",
       tipoJornada: "01",
-      hireDate: "2019-06-03"
+      hireDate: "2019-06-03",
+      rfc: "",
+      curp: "HEGG560427MVZRRL04",
+      nss: ""
     });
 
     expect(httpClient.post).toHaveBeenCalledWith(
       "/employees",
-      expect.objectContaining({ hire_date: "2019-06-03" })
+      expect.objectContaining({
+        hire_date: "2019-06-03",
+        curp: "HEGG560427MVZRRL04",
+        rfc: null,
+        nss: null
+      })
     );
   });
 
@@ -56,12 +74,52 @@ describe("fecha de ingreso hacia la API", () => {
       baseSalary: 18000,
       tipoRegimen: "02",
       tipoJornada: "01",
-      hireDate: null
+      hireDate: null,
+      rfc: "",
+      curp: "",
+      nss: "",
+      salaryValidFrom: "2026-10-01"
     });
 
     expect(httpClient.put).toHaveBeenCalledWith(
       "/employees/3",
-      expect.objectContaining({ hire_date: null })
+      expect.objectContaining({
+        hire_date: null,
+        rfc: null,
+        salary_valid_from: "2026-10-01"
+      })
     );
+  });
+});
+
+describe("historial de salario", () => {
+  it("lo pide para la persona", async () => {
+    await getSalaryHistory(3);
+
+    expect(httpClient.get).toHaveBeenCalledWith("/employees/3/salary-history");
+  });
+});
+
+describe("missingFiscalData", () => {
+  const completo = {
+    ...base,
+    base_salary: 18000,
+    is_active: true,
+    rfc: "HEGG560427AB1",
+    curp: "HEGG560427MVZRRL04",
+    nss: "92988084494"
+  };
+
+  it("no avisa cuando estan los tres", () => {
+    expect(missingFiscalData(completo)).toBe(false);
+  });
+
+  it("avisa si falta la CURP", () => {
+    expect(missingFiscalData({ ...completo, curp: null })).toBe(true);
+  });
+
+  it("a un asimilado no le pide NSS", () => {
+    expect(missingFiscalData({ ...completo, tipo_regimen: "09", nss: null })).toBe(false);
+    expect(missingFiscalData({ ...completo, nss: null })).toBe(true);
   });
 });

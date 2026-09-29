@@ -26,6 +26,9 @@ export interface NewEmployeeInput {
   tipoRegimen: TipoRegimen;
   tipoJornada: TipoJornada;
   hireDate: string;
+  rfc: string;
+  curp: string;
+  nss: string;
 }
 
 export interface EmployeeCreated {
@@ -39,6 +42,20 @@ export interface EmployeeCreated {
   tipo_regimen: TipoRegimen;
   tipo_jornada: TipoJornada;
   hire_date?: string | null;
+  rfc?: string | null;
+  curp?: string | null;
+  nss?: string | null;
+}
+
+export function missingFiscalData(employee: EmployeeCreated): boolean {
+  return !employee.rfc || !employee.curp || (!isAssimilated(employee) && !employee.nss);
+}
+
+export interface SalaryChange {
+  base_salary: number;
+  valid_from: string;
+  recorded_at: string;
+  recorded_by: string | null;
 }
 
 // Sin relacion laboral: no cotiza al IMSS ni tiene prestaciones de la LFT.
@@ -60,6 +77,10 @@ export interface EmployeeUpdateInput {
   tipoRegimen: TipoRegimen;
   tipoJornada: TipoJornada;
   hireDate: string | null;
+  rfc: string;
+  curp: string;
+  nss: string;
+  salaryValidFrom: string | null;
 }
 
 export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeCreated> {
@@ -71,7 +92,10 @@ export async function createEmployee(input: NewEmployeeInput): Promise<EmployeeC
     password: input.password,
     tipo_regimen: input.tipoRegimen,
     tipo_jornada: input.tipoJornada,
-    hire_date: input.hireDate
+    hire_date: input.hireDate,
+    rfc: input.rfc || null,
+    curp: input.curp || null,
+    nss: input.nss || null
   });
   return response.data;
 }
@@ -99,8 +123,17 @@ export async function updateEmployee(
     base_salary: input.baseSalary,
     tipo_regimen: input.tipoRegimen,
     tipo_jornada: input.tipoJornada,
-    hire_date: input.hireDate
+    hire_date: input.hireDate,
+    rfc: input.rfc || null,
+    curp: input.curp || null,
+    nss: input.nss || null,
+    salary_valid_from: input.salaryValidFrom
   });
+  return response.data;
+}
+
+export async function getSalaryHistory(id: number): Promise<SalaryChange[]> {
+  const response = await httpClient.get<SalaryChange[]>(`/employees/${id}/salary-history`);
   return response.data;
 }
 
