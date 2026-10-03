@@ -177,7 +177,7 @@ export default function EmployeesPage() {
     } catch (error) {
       const status = getStatusCode(error);
       const detail = getErrorDetail(error);
-      if (status === 409 && detail && detail !== "El correo ya esta registrado") {
+      if (status === 409 && detail && detail !== "El correo ya está registrado") {
         setErrorMessage(detail);
       } else if (status === 409) {
         setErrorMessage("Ese correo ya lo usa otra persona. Elige uno distinto.");
@@ -259,9 +259,6 @@ export default function EmployeesPage() {
     <div className="dashboard-panel">
       <div className="dashboard-panel-header">
         <div className="dashboard-panel-heading">
-          <span className="panel-icon-badge" aria-hidden="true">
-            <UsersThree weight="bold" />
-          </span>
           <div>
             <h1>Usuarios</h1>
             <p className="dashboard-panel-subtitle">

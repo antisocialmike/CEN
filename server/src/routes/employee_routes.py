@@ -22,7 +22,9 @@ from ..models.pagination_model import (
     page_offset,
 )
 from ..repositories.payroll_repository import (
+    AlreadyEmployedError,
     SharedAdminError,
+    SharedPersonError,
     payroll_repository,
 )
 
@@ -34,8 +36,36 @@ EMPLOYEE_NOT_FOUND = HTTPException(
 )
 SHARED_ADMIN = HTTPException(
     status_code=status.HTTP_409_CONFLICT,
-    detail="Esta persona tambien administra otras empresas, asi que su "
-    "cuenta no se puede cambiar desde aqui",
+    detail="Esta persona también administra otras empresas, así que su "
+    "cuenta no se puede cambiar desde aquí",
+)
+SHARED_PERSON = HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail="Esta persona también trabaja en otra empresa: aquí puedes cambiar "
+    "su salario, tipo de nómina, jornada y fecha de ingreso, pero no su "
+    "nombre, correo, rol ni datos fiscales",
+)
+SHARED_PASSWORD = HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail="Esta persona también trabaja en otra empresa: puede recuperar su "
+    "contraseña desde el inicio de sesión",
+)
+EMAIL_TAKEN = HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail="El correo ya está registrado",
+)
+CURP_TO_LINK = HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail="Ese correo ya tiene cuenta en CEN. Para agregar a esa persona a tu "
+    "empresa, captura su CURP tal como la tiene registrada",
+)
+ALREADY_HERE = HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail="Esa persona ya está en tu empresa",
+)
+ALREADY_LEFT = HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail="Esa persona ya estuvo en tu empresa: reactívala desde Usuarios",
 )
 
 
@@ -61,6 +91,10 @@ def create_employee(
     user: dict = Depends(require_admin_company),
 ):
     hire_date = request.hire_date or date.today()
+    existing = payroll_repository.get_employee_by_email(request.email)
+    if existing is not None:
+        return _hire_existing(existing, request, hire_date, user)
+
     employee_id = payroll_repository.create_employee({
         "name": request.name,
         "email": request.email,
@@ -87,6 +121,25 @@ def create_employee(
         curp=request.curp,
         nss=request.nss,
     )
+
+
+def _hire_existing(
+    existing: dict, request: EmployeeCreateRequest, hire_date: date, user: dict
+) -> Employee:
+    if existing["role"] != "employee" or request.role != "employee":
+        raise EMAIL_TAKEN
+    if request.curp is None or existing.get("curp") != request.curp:
+        raise CURP_TO_LINK
+    try:
+        row = payroll_repository.hire_existing_employee(existing["id"], {
+            "base_salary": request.base_salary,
+            "tipo_regimen": request.tipo_regimen,
+            "tipo_jornada": request.tipo_jornada,
+            "hire_date": hire_date,
+        }, user["company_id"], user.get("employee_id"))
+    except AlreadyEmployedError as error:
+        raise ALREADY_LEFT if not error.is_active else ALREADY_HERE
+    return Employee(**row, linked=True)
 
 
 @router.put("/{employee_id}", response_model=Employee)
@@ -117,6 +170,8 @@ def update_employee(
         }, user["company_id"], user.get("employee_id"))
     except SharedAdminError:
         raise SHARED_ADMIN
+    except SharedPersonError:
+        raise SHARED_PERSON
     if employee is None:
         raise EMPLOYEE_NOT_FOUND
 
@@ -187,6 +242,8 @@ def reset_employee_password(
         )
     except SharedAdminError:
         raise SHARED_ADMIN
+    except SharedPersonError:
+        raise SHARED_PASSWORD
     if employee is None:
         raise EMPLOYEE_NOT_FOUND
 

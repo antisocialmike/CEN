@@ -282,11 +282,11 @@ class PayrollService:
             else PERIODICITIES[periodicity]["dias_nominales"]
         )
         if paid_days <= 0:
-            raise ValueError("Los dias pagados deben ser mayores que cero")
+            raise ValueError("Los días pagados deben ser mayores que cero")
 
         regimen = inputs.get("tipo_regimen") or SUELDOS
         if regimen not in TIPOS_DE_REGIMEN:
-            raise ValueError("Tipo de regimen no reconocido")
+            raise ValueError("Tipo de régimen no reconocido")
         jornada = inputs.get("tipo_jornada") or DIURNA
         if jornada not in HORAS_POR_JORNADA:
             raise ValueError("Tipo de jornada no reconocido")
@@ -361,7 +361,7 @@ class PayrollService:
         ):
             raise ValueError(
                 "Un asimilado a salarios no tiene horas extra, aguinaldo, prima "
-                "vacacional ni credito Infonavit: no hay relacion laboral"
+                "vacacional ni crédito Infonavit: no hay relación laboral"
             )
 
     def _reject_negatives(self, inputs: dict) -> None:
@@ -378,7 +378,7 @@ class PayrollService:
             "housing_credit_deduction",
         ):
             if _decimal(inputs.get(field)) < 0:
-                raise ValueError("Los conceptos de nomina no pueden ser negativos")
+                raise ValueError("Los conceptos de nómina no pueden ser negativos")
 
     def _hourly_wage(
         self, gross_salary: Decimal, paid_days: Decimal, hours_per_day: Decimal
@@ -436,7 +436,7 @@ class PayrollService:
                 PayrollItem(
                     kind=PERCEPTION,
                     concept="bono",
-                    description="Bono o gratificacion",
+                    description="Bono o gratificación",
                     amount=_round(bonus),
                     taxable=_round(bonus),
                 )
@@ -500,7 +500,7 @@ class PayrollService:
         return PayrollItem(
             kind=PERCEPTION,
             concept="aguinaldo",
-            description="Aguinaldo ({} dias)".format(_quantity(days)),
+            description="Aguinaldo ({} días)".format(_quantity(days)),
             amount=amount,
             taxable=taxable,
             exempt=exempt,
@@ -526,7 +526,7 @@ class PayrollService:
         return PayrollItem(
             kind=PERCEPTION,
             concept="prima_vacacional",
-            description="Prima vacacional ({} dias de vacaciones)".format(
+            description="Prima vacacional ({} días de vacaciones)".format(
                 _quantity(days)
             ),
             amount=amount,
@@ -550,7 +550,7 @@ class PayrollService:
             isr = PayrollItem(
                 kind=DEDUCTION,
                 concept="isr",
-                description="ISR: no se retiene a quien gana el salario minimo",
+                description="ISR: no se retiene a quien gana el salario mínimo",
                 amount=CERO,
             )
         else:
@@ -567,7 +567,7 @@ class PayrollService:
             imss = PayrollItem(
                 kind=DEDUCTION,
                 concept="imss",
-                description="IMSS: lo paga el patron por ser salario minimo",
+                description="IMSS: lo paga el patrón por ser salario mínimo",
                 amount=CERO,
             )
         else:
@@ -586,7 +586,7 @@ class PayrollService:
                 PayrollItem(
                     kind=DEDUCTION,
                     concept="prestamo",
-                    description="Prestamo a la empresa",
+                    description="Préstamo a la empresa",
                     amount=_round(loan),
                 )
             )
@@ -597,7 +597,7 @@ class PayrollService:
                 PayrollItem(
                     kind=DEDUCTION,
                     concept="infonavit",
-                    description="Credito Infonavit",
+                    description="Crédito Infonavit",
                     amount=_round(housing),
                 )
             )
@@ -607,16 +607,16 @@ class PayrollService:
 
 def missing_parameter_label(name: Optional[str]) -> str:
     """Como decirle al usuario que parametro falta."""
-    return MISSING_LABELS.get(name or "", name or "un parametro")
+    return MISSING_LABELS.get(name or "", name or "un parámetro")
 
 
 MISSING_LABELS = {
     "uma_diaria": "la UMA",
-    "salario_minimo_general": "el salario minimo",
+    "salario_minimo_general": "el salario mínimo",
     "subsidio_empleo_porcentaje_uma": "el subsidio para el empleo",
     "subsidio_empleo_limite_mensual": "el subsidio para el empleo",
     "tarifa_isr": "la tarifa del ISR",
-    "lft_aguinaldo_dias": "el aguinaldo minimo de la LFT",
-    "lft_prima_vacacional": "la prima vacacional minima de la LFT",
-    "imss_tope_uma": "el tope de cotizacion del IMSS",
+    "lft_aguinaldo_dias": "el aguinaldo mínimo de la LFT",
+    "lft_prima_vacacional": "la prima vacacional mínima de la LFT",
+    "imss_tope_uma": "el tope de cotización del IMSS",
 }

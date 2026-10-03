@@ -156,7 +156,7 @@ def test_create_owner_with_a_taken_email(mock_create):
     )
 
     assert response.status_code == 409
-    assert response.json()["detail"] == "El correo ya esta registrado"
+    assert response.json()["detail"] == "El correo ya está registrado"
 
 
 @patch(REPOSITORY + ".update_owner")
@@ -302,7 +302,7 @@ def test_create_company_with_a_taken_rfc(mock_create):
     )
 
     assert response.status_code == 409
-    assert response.json()["detail"] == "El RFC ya esta registrado"
+    assert response.json()["detail"] == "El RFC ya está registrado"
 
 
 @patch(REPOSITORY + ".get_company")

@@ -8,18 +8,7 @@ import {
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
-import {
-  ArrowRight,
-  Certificate,
-  Check,
-  ClockCounterClockwise,
-  FileText,
-  Lock,
-  Scales,
-  ShieldCheck,
-  SignOut,
-  UsersThree
-} from "@phosphor-icons/react";
+import { ArrowDown, ArrowRight, SignOut } from "@phosphor-icons/react";
 import { LogoMark } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
 import NetoDelPeriodo, { type Partida } from "../components/landing/NetoDelPeriodo";
@@ -53,27 +42,22 @@ const RECIBOS = [
 
 const CONFIANZA = [
   {
-    icono: <Scales weight="bold" />,
     titulo: "Tablas vigentes, no un porcentaje",
     detalle: "El ISR sale de la tarifa por rangos y aplica el subsidio al empleo."
   },
   {
-    icono: <FileText weight="bold" />,
     titulo: "Recibo en PDF tamaño Carta",
     detalle: "Con folio y periodo únicos, listo para imprimir o archivar."
   },
   {
-    icono: <ClockCounterClockwise weight="bold" />,
     titulo: "Dar de baja no borra nada",
     detalle: "La baja es lógica: el histórico de recibos se conserva completo."
   },
   {
-    icono: <Lock weight="bold" />,
     titulo: "El permiso se verifica en el servidor",
     detalle: "Nunca en la interfaz, así que no se puede saltar desde el navegador."
   },
   {
-    icono: <Certificate weight="bold" />,
     titulo: "Es un comprobante interno, no un CFDI",
     detalle: "Cada PDF lo dice impreso. Timbrar exige un PAC y no lo hacemos."
   }
@@ -410,8 +394,9 @@ export default function LandingPage() {
                 >
                   {textoEntrar}
                 </button>
-                <a className="btn btn-line" href="#calculo">
+                <a className="rv-enlace" href="#calculo">
                   Ver el cálculo
+                  <ArrowDown weight="bold" aria-hidden="true" />
                 </a>
               </div>
             </motion.div>
@@ -458,9 +443,6 @@ export default function LandingPage() {
             <ul className="rv-confianza-lista">
               {CONFIANZA.map((punto) => (
                 <li key={punto.titulo}>
-                  <span className="rv-confianza-icono" aria-hidden="true">
-                    {punto.icono}
-                  </span>
                   <h2>{punto.titulo}</h2>
                   <p>{punto.detalle}</p>
                 </li>
@@ -483,7 +465,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-                <section className="rv-seccion rv-seccion--alt">
+                <section className="rv-seccion">
           <div className="rv-wrap rv-recibo-grid">
             <div className="rv-seccion-cabecera">
               <h2>Y esto es lo que recibe.</h2>
@@ -529,7 +511,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-                <section className="rv-seccion rv-seccion--alt" id="roles" tabIndex={-1}>
+                <section className="rv-seccion" id="roles" tabIndex={-1}>
           <div className="rv-wrap">
             <div className="rv-seccion-cabecera">
               <h2>Cada quien entra a lo suyo.</h2>
@@ -537,40 +519,22 @@ export default function LandingPage() {
 
             <div className="rv-roles">
               <article className="rv-rol">
-                <span className="rv-rol-icono" aria-hidden="true">
-                  <UsersThree weight="bold" />
-                </span>
                 <h3>Administrador</h3>
                 <p>Da de alta al equipo, calcula la nómina y ve los recibos de todos.</p>
                 <ul>
-                  <li>
-                    <Check weight="bold" /> Alta de empleados con salario base
-                  </li>
-                  <li>
-                    <Check weight="bold" /> Cálculo de ISR e IMSS por periodo
-                  </li>
-                  <li>
-                    <Check weight="bold" /> Historial completo del equipo
-                  </li>
+                  <li>Alta de empleados con salario base</li>
+                  <li>Cálculo de ISR e IMSS por periodo</li>
+                  <li>Historial completo del equipo</li>
                 </ul>
               </article>
 
               <article className="rv-rol">
-                <span className="rv-rol-icono" aria-hidden="true">
-                  <FileText weight="bold" />
-                </span>
                 <h3>Empleado</h3>
                 <p>Entra a su propio portal y encuentra sus recibos. Nada más, nada menos.</p>
                 <ul>
-                  <li>
-                    <Check weight="bold" /> Sus recibos, desde el primero
-                  </li>
-                  <li>
-                    <Check weight="bold" /> Desglose de lo que se retuvo
-                  </li>
-                  <li>
-                    <Check weight="bold" /> Sin pedirlo por correo
-                  </li>
+                  <li>Sus recibos, desde el primero</li>
+                  <li>Desglose de lo que se retuvo</li>
+                  <li>Sin pedirlo por correo</li>
                 </ul>
               </article>
             </div>
@@ -589,37 +553,30 @@ export default function LandingPage() {
             </div>
 
             <ol className="rv-flujo">
-              {FLUJO.map((paso, indice) => (
-                <li key={paso}>
-                  <span className="rv-flujo-icono" aria-hidden="true">
-                    {indice === FLUJO.length - 1 ? (
-                      <ShieldCheck weight="bold" />
-                    ) : (
-                      <Check weight="bold" />
-                    )}
-                  </span>
-                  {paso}
-                </li>
+              {FLUJO.map((paso) => (
+                <li key={paso}>{paso}</li>
               ))}
             </ol>
           </div>
         </section>
 
                 <section className="rv-cierre">
-          <div className="rv-wrap">
+          <div className="rv-wrap rv-cierre-grid">
             <h2>Tu próxima nómina, en dos minutos.</h2>
-            <p>Entra para calcular la nómina de tu equipo o para consultar tus recibos.</p>
-            <button
-              className="btn btn-rosa"
-              onClick={entrar}
-            >
-              {textoEntrar}
-              <ArrowRight weight="bold" />
-            </button>
+            <div className="rv-cierre-accion">
+              <p>Entra para calcular la nómina de tu equipo o para consultar tus recibos.</p>
+              <button
+                className="btn btn-rosa"
+                onClick={entrar}
+              >
+                {textoEntrar}
+                <ArrowRight weight="bold" />
+              </button>
+            </div>
           </div>
         </section>
 
-                <section className="rv-seccion rv-seccion--alt" id="legal" tabIndex={-1}>
+                <section className="rv-seccion" id="legal" tabIndex={-1}>
           <div className="rv-wrap rv-legal">
             <h2>Aviso de privacidad y términos</h2>
             <p className="rv-legal-intro">

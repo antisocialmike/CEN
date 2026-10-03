@@ -7,7 +7,7 @@ import ReceiptCard from "../components/ReceiptCard";
 import Skeleton from "../components/Skeleton";
 import TrendChart, { TrendPoint } from "../components/charts/TrendChart";
 import ChartTable from "../components/charts/ChartTable";
-import { CalendarBlank, CalendarPlus, Receipt, Wallet } from "@phosphor-icons/react";
+import { Receipt } from "@phosphor-icons/react";
 import {
   getMyReceiptsPage,
   getMySummary,
@@ -78,9 +78,6 @@ export default function EmployeeDashboardPage() {
     <div className="dashboard-panel">
       <div className="dashboard-panel-header">
         <div className="dashboard-panel-heading">
-          <span className="panel-icon-badge" aria-hidden="true">
-            <Receipt weight="bold" />
-          </span>
           <div>
             <h1>Mi nómina</h1>
             <p className="dashboard-panel-subtitle">
@@ -136,9 +133,6 @@ export default function EmployeeDashboardPage() {
                 animate="animate"
               >
                 <motion.div className="stat-card" variants={blockTravel}>
-                  <span className="stat-card-icon" aria-hidden="true">
-                    <Wallet weight="bold" />
-                  </span>
                   <div>
                     <p className="stat-card-label">Último neto recibido</p>
                     <p className="stat-card-value is-neto">{formatCurrency(latest.net_salary)}</p>
@@ -149,9 +143,6 @@ export default function EmployeeDashboardPage() {
                 </motion.div>
                 {nextPeriod && (
                   <motion.div className="stat-card" variants={blockTravel}>
-                    <span className="stat-card-icon" aria-hidden="true">
-                      <CalendarPlus weight="bold" />
-                    </span>
                     <div>
                       <p className="stat-card-label">Siguiente periodo (estimado)</p>
                       <p className="stat-card-value is-text">
@@ -165,9 +156,6 @@ export default function EmployeeDashboardPage() {
                   </motion.div>
                 )}
                 <motion.div className="stat-card" variants={blockTravel}>
-                  <span className="stat-card-icon" aria-hidden="true">
-                    <CalendarBlank weight="bold" />
-                  </span>
                   <div>
                     <p className="stat-card-label">Neto recibido en {year.year}</p>
                     <p className="stat-card-value">{formatCurrency(year.net_paid)}</p>

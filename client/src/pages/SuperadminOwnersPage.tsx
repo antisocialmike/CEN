@@ -175,9 +175,6 @@ export default function SuperadminOwnersPage() {
     <div className="dashboard-panel">
       <div className="dashboard-panel-header">
         <div className="dashboard-panel-heading">
-          <span className="panel-icon-badge" aria-hidden="true">
-            <UsersThree weight="bold" />
-          </span>
           <div>
             <h1>Dueños</h1>
             <p className="dashboard-panel-subtitle">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { Hourglass, SquaresFour, UserPlus, UsersThree, Wallet } from "@phosphor-icons/react";
+import { UserPlus, UsersThree, Wallet } from "@phosphor-icons/react";
 import { blockVariants, stackVariants, useStill } from "../motion/variants";
 import ErrorMessage from "../components/ErrorMessage";
 import Skeleton from "../components/Skeleton";
@@ -54,9 +54,6 @@ export default function AdminSummaryPage() {
     <div className="dashboard-panel">
       <div className="dashboard-panel-header">
         <div className="dashboard-panel-heading">
-          <span className="panel-icon-badge" aria-hidden="true">
-            <SquaresFour weight="bold" />
-          </span>
           <div>
             <h1>Resumen</h1>
             <p className="dashboard-panel-subtitle">
@@ -135,9 +132,6 @@ export default function AdminSummaryPage() {
             animate="animate"
           >
             <motion.div className="stat-card" variants={blockTravel}>
-              <span className="stat-card-icon" aria-hidden="true">
-                <Hourglass weight="bold" />
-              </span>
               <div>
                 <p className="stat-card-label">Sin recibo en {month}</p>
                 <p className="stat-card-value">{formatInteger(summary.pending.total)}</p>
@@ -147,9 +141,6 @@ export default function AdminSummaryPage() {
               </div>
             </motion.div>
             <motion.div className="stat-card" variants={blockTravel}>
-              <span className="stat-card-icon" aria-hidden="true">
-                <Wallet weight="bold" />
-              </span>
               <div>
                 <p className="stat-card-label">Neto del último mes con recibos</p>
                 <p className="stat-card-value is-neto">
@@ -163,9 +154,6 @@ export default function AdminSummaryPage() {
               </div>
             </motion.div>
             <motion.div className="stat-card" variants={blockTravel}>
-              <span className="stat-card-icon" aria-hidden="true">
-                <UsersThree weight="bold" />
-              </span>
               <div>
                 <p className="stat-card-label">En la nómina</p>
                 <p className="stat-card-value">{formatInteger(summary.on_payroll)}</p>

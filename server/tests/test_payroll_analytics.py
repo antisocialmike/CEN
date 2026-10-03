@@ -203,6 +203,39 @@ def test_no_average_when_nobody_was_paid():
     assert kpis["gross_payroll"] == 0
 
 
+def _concept(concept, description, amount):
+    return {
+        "kind": "perception", "concept": concept, "description": description,
+        "amount": Decimal(amount), "taxable": Decimal(amount),
+        "exempt": Decimal("0"),
+    }
+
+
+def test_concepts_carry_their_label_not_one_receipt_description():
+    raw = _raw(concepts=[
+        _concept("honorarios", "Honorarios asimilados a salarios del periodo", "40000"),
+        _concept("sueldo", "Sueldo del periodo", "30000"),
+        _concept("aguinaldo", "Aguinaldo (1.27 días)", "900"),
+        _concept("horas_extra", "Horas extra (2 dobles, 0 triples)", "600"),
+    ])
+
+    concepts = build_analytics(raw, MINE, PERIOD)["concepts"]
+
+    assert [c["description"] for c in concepts] == [
+        "Honorarios asimilados a salarios", "Sueldos y salarios",
+        "Aguinaldo", "Horas extra",
+    ]
+    assert concepts[2]["amount"] == Decimal("900")
+
+
+def test_an_unknown_concept_keeps_its_description():
+    raw = _raw(concepts=[_concept("vales", "Vales de despensa", "500")])
+
+    concepts = build_analytics(raw, MINE, PERIOD)["concepts"]
+
+    assert concepts[0]["description"] == "Vales de despensa"
+
+
 # --- La ruta -----------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
@@ -393,6 +426,16 @@ def test_the_comparison_adds_the_employer_cost_of_each_company(cursor):
     )
     assert "AS employer_cost" in comparison
     assert "AS total_cost" in comparison
+
+
+def test_concepts_keep_fees_apart_from_salaries(cursor):
+    _run(compare=False)
+
+    concepts = next(
+        call[0][0] for call in cursor.execute.call_args_list
+        if "FROM payroll_receipt_items i" in call[0][0]
+    )
+    assert "r.tipo_regimen = '09' THEN 'honorarios'" in concepts
 
 
 def test_the_comparison_only_runs_for_every_company(cursor):

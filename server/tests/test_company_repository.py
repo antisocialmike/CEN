@@ -80,7 +80,7 @@ def test_create_owner_forces_the_password_change(repository, cursor):
 
     assert owner_id == 5
     insert = _queries(cursor)[0]
-    assert "'owner', NULL" in insert
+    assert "'owner', %s, TRUE" in insert
     assert "must_change_password) VALUES" in insert
     actor, action, target_type, target_id, _ = _audits(cursor)[0]
     assert (actor, action, target_type, target_id) == (
@@ -262,7 +262,7 @@ def test_invite_admin_creates_the_account_and_assigns_it(repository, cursor):
 
     assert admin_id == 31
     insert, assign, _ = cursor.execute.call_args_list
-    assert "'admin', NULL" in insert[0][0]
+    assert "'admin', %s, TRUE" in insert[0][0]
     assert "must_change_password) VALUES" in insert[0][0]
     assert assign[0][1] == (31, 1, 20)
     assert _audits(cursor)[0][1] == "company.invite_admin"

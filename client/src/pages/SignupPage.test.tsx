@@ -41,6 +41,51 @@ beforeEach(() => {
   });
 });
 
+describe("alta de alguien que ya tiene cuenta", () => {
+  it("avisa que quedo en la empresa con su misma contraseña", async () => {
+    vi.mocked(createEmployee).mockResolvedValueOnce({
+      id: 3,
+      name: "Rosa Diaz",
+      email: "rosa@cen.com",
+      role: "employee",
+      base_salary: 15000,
+      is_active: true,
+      tipo_regimen: "02",
+      tipo_jornada: "01",
+      linked: true
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await llenar(user);
+    await user.click(screen.getByRole("button", { name: "Dar de alta" }));
+
+    expect(
+      await screen.findByText(/ya tenía cuenta en CEN: quedó en tu empresa/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/contraseña temporal\./)).not.toBeInTheDocument();
+  });
+
+  it("muestra que hace falta la CURP para agregarla", async () => {
+    vi.mocked(createEmployee).mockRejectedValueOnce({
+      response: {
+        status: 409,
+        data: {
+          detail:
+            "Ese correo ya tiene cuenta en CEN. Para agregar a esa persona a tu empresa, captura su CURP tal como la tiene registrada"
+        }
+      }
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await llenar(user);
+    await user.click(screen.getByRole("button", { name: "Dar de alta" }));
+
+    expect(await screen.findByText(/captura su CURP/)).toBeInTheDocument();
+  });
+});
+
 describe("datos fiscales en el alta", () => {
   it("los manda en mayusculas y sin NSS para un asimilado", async () => {
     const user = userEvent.setup();

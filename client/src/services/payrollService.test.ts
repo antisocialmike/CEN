@@ -2,8 +2,29 @@ import { describe, expect, it } from "vitest";
 import {
   countActiveConcepts,
   emptyConcepts,
+  otherDeductions,
   suggestedGrossSalary
 } from "./payrollService";
+
+describe("otherDeductions", () => {
+  it("es lo que se descuenta aparte de ISR e IMSS, como Infonavit o un préstamo", () => {
+    expect(
+      otherDeductions({ total_deductions: 2059.6, isr_deduction: 956.87, imss_deduction: 165.73 })
+    ).toBe(937);
+  });
+
+  it("da cero sin residuos de punto flotante cuando solo hay ISR e IMSS", () => {
+    expect(
+      otherDeductions({ total_deductions: 1708.47, isr_deduction: 1458.83, imss_deduction: 249.64 })
+    ).toBe(0);
+  });
+
+  it("nunca es negativo", () => {
+    expect(
+      otherDeductions({ total_deductions: 100, isr_deduction: 60, imss_deduction: 40.01 })
+    ).toBe(0);
+  });
+});
 
 describe("suggestedGrossSalary", () => {
   it("deja el salario intacto en mensual", () => {

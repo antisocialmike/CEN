@@ -185,9 +185,6 @@ export default function SuperadminCompaniesPage() {
     <div className="dashboard-panel">
       <div className="dashboard-panel-header">
         <div className="dashboard-panel-heading">
-          <span className="panel-icon-badge" aria-hidden="true">
-            <Buildings weight="bold" />
-          </span>
           <div>
             <h1>Empresas</h1>
             <p className="dashboard-panel-subtitle">

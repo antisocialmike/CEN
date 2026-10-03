@@ -19,7 +19,7 @@ NO_COMPANY = HTTPException(
 )
 COMPANY_REQUIRED = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
-    detail="Administras varias empresas: indica cual en la cabecera "
+    detail="Administras varias empresas: indica cuál en la cabecera "
     + COMPANY_HEADER,
 )
 

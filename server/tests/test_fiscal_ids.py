@@ -40,11 +40,11 @@ def test_a_valid_curp_is_kept_normalized():
 
 
 @pytest.mark.parametrize("curp, message", [
-    ("HEGG560427MVZRRL05", "digito verificador"),
+    ("HEGG560427MVZRRL05", "dígito verificador"),
     ("HEGG560427MXXRRL04", "formato"),
     ("HEGG561327MVZRRL04", "fecha de nacimiento"),
     ("HEGG560427MVZRRL0", "formato"),
-    ("BADD110313HCMLNS09", "digito verificador"),
+    ("BADD110313HCMLNS09", "dígito verificador"),
 ])
 def test_an_invalid_curp_says_why(curp, message):
     with pytest.raises(ValueError, match=message):
@@ -79,9 +79,9 @@ def test_a_valid_nss_is_kept_without_dashes():
 
 
 @pytest.mark.parametrize("nss, message", [
-    ("92988084495", "digito verificador"),
-    ("9298808449", "11 digitos"),
-    ("9298808449A", "11 digitos"),
+    ("92988084495", "dígito verificador"),
+    ("9298808449", "11 dígitos"),
+    ("9298808449A", "11 dígitos"),
 ])
 def test_an_invalid_nss_says_why(nss, message):
     with pytest.raises(ValueError, match=message):

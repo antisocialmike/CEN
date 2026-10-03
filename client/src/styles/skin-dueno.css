@@ -10,13 +10,14 @@
   --viz-percepcion: light-dark(#00836b, #12a582);
   --viz-deduccion: light-dark(#b45309, #c47a08);
 
-  /* Grupos del costo patronal: paleta categorica en este orden (violeta,
-     naranja, azul, magenta), validada sobre las tarjetas en claro y oscuro.
-     El magenta claro queda bajo 3:1: cada grafica lleva leyenda y tabla. */
-  --viz-imss: light-dark(#4a3aa7, #9085e9);
-  --viz-sar: light-dark(#eb6834, #d95926);
-  --viz-infonavit: light-dark(#2a78d6, #3987e5);
-  --viz-isn: light-dark(#e87ba4, #d55181);
+  /* Grupos del costo patronal: azul talavera, barro, azul claro y ocre.
+     Dos azules y dos calidos con luminosidad distinta dentro de cada par:
+     pasan 3:1 sobre las tarjetas y la peor pareja con daltonismo separa
+     dE 14.5 en claro y 20.1 en oscuro. Cada grafica lleva leyenda y tabla. */
+  --viz-imss: light-dark(#24476b, #5b8fc4);
+  --viz-sar: light-dark(#a4472a, #c8603c);
+  --viz-infonavit: light-dark(#4f86b5, #a5c6e3);
+  --viz-isn: light-dark(#a8792a, #dcb26a);
 }
 
 .owner-filters {
@@ -50,28 +51,34 @@
   color: var(--rv-ink-2);
 }
 
+.owner-presets {
+  gap: 2px;
+}
+
 .owner-presets label {
   display: inline-flex;
   align-items: center;
   min-height: 40px;
   padding: 0 16px;
-  border: var(--bw) solid var(--line-strong);
   border-radius: var(--r-pill);
   font-size: var(--t-small);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--ink-2);
   cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 
 .owner-presets label:hover {
-  background: var(--cal-2);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
   color: var(--ink);
 }
 
 .owner-presets label.is-selected {
-  border-color: var(--ink);
   background: var(--ink);
   color: var(--cal);
+  font-weight: 700;
 }
 
 .owner-presets input {
@@ -137,7 +144,19 @@
 
 .kpi-card {
   flex: 1;
-  border-bottom: 1px solid var(--line);
+}
+
+.kpi-card .stat-card-value {
+  font-size: clamp(22px, 1.9vw, 27px);
+}
+
+.kpi-row > div:not(:nth-child(4n + 1)) .kpi-card {
+  padding-left: var(--s-5);
+  border-left: 1px solid var(--line-soft);
+}
+
+.kpi-row > div:nth-child(n + 5) .kpi-card {
+  border-top: 1px solid var(--line-soft);
 }
 
 .kpi-delta {
@@ -156,12 +175,42 @@
 .owner-card {
   padding: var(--s-6);
   border: var(--bw) solid var(--line);
+  border-radius: var(--rv-card-radio);
   background: var(--surface);
   min-width: 0;
 }
 
 .owner-card h2 {
   font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.owner-card > .table-wrap {
+  margin-top: var(--s-4);
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
+.owner-card > .table-wrap .data-table th,
+.owner-card > .table-wrap .data-table td {
+  padding-inline: 0 var(--s-4);
+}
+
+.owner-card > .table-wrap .data-table :is(th, td):last-child {
+  padding-right: 0;
+}
+
+.owner-card > .table-wrap .data-table thead th {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+  border-bottom-color: var(--line);
+}
+
+.owner-card > .table-wrap .data-table tbody tr:hover td {
+  background: none;
 }
 
 .owner-card-note {
@@ -542,7 +591,12 @@
   .owner-card .table-wrap {
     overflow-x: auto;
     border: var(--bw) solid var(--line);
+    border-radius: var(--rv-p-radio-3);
     background: var(--surface);
+  }
+
+  .owner-card > .table-wrap .data-table :is(th, td) {
+    padding-inline: var(--s-4);
   }
 
   .owner-card .data-table {
@@ -596,6 +650,20 @@
 @media (max-width: 1100px) {
   .kpi-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpi-row > div:not(:nth-child(4n + 1)) .kpi-card {
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .kpi-row > div:nth-child(even) .kpi-card {
+    padding-left: var(--s-5);
+    border-left: 1px solid var(--line-soft);
+  }
+
+  .kpi-row > div:nth-child(n + 3) .kpi-card {
+    border-top: 1px solid var(--line-soft);
   }
 }
 

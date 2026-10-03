@@ -42,11 +42,11 @@ require_superadmin = require_role("superadmin")
 
 OWNER_NOT_FOUND = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND,
-    detail="Dueno no encontrado",
+    detail="Dueño no encontrado",
 )
 COMPANY_NOT_FOUND = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND,
-    detail="Empresa o dueno no encontrado",
+    detail="Empresa o dueño no encontrado",
 )
 
 

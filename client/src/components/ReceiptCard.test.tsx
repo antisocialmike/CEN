@@ -101,3 +101,15 @@ it("un recibo de sueldos no lo dice", () => {
 
   expect(screen.queryByText(/asimilados/)).not.toBeInTheDocument();
 });
+
+it("dice de que empresa es el recibo", () => {
+  render(<ReceiptCard receipt={{ ...receipt, company_name: "Grupo Norte" }} />);
+
+  expect(screen.getByText(/Recibo #42 · Grupo Norte ·/)).toBeInTheDocument();
+});
+
+it("sin empresa no deja un separador de sobra", () => {
+  render(<ReceiptCard receipt={receipt} />);
+
+  expect(screen.getByText(/Recibo #42 · 1/)).toBeInTheDocument();
+});

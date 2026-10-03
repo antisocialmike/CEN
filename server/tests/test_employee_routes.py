@@ -25,6 +25,15 @@ def admin_company():
         yield repository
 
 
+@pytest.fixture(autouse=True)
+def email_lookup():
+    with patch(
+        "server.src.routes.employee_routes.payroll_repository.get_employee_by_email"
+    ) as lookup:
+        lookup.return_value = None
+        yield lookup
+
+
 def _admin_token():
     return create_access_token(
         data={"sub": "admin1", "role": "admin", "employee_id": 99}
@@ -638,8 +647,8 @@ def test_create_employee_with_fiscal_ids_normalized(mock_create_employee):
 
 
 @pytest.mark.parametrize("field, value, message", [
-    ("curp", "HEGG560427MVZRRL05", "digito verificador de la CURP"),
-    ("nss", "92988084495", "digito verificador del NSS"),
+    ("curp", "HEGG560427MVZRRL05", "dígito verificador de la CURP"),
+    ("nss", "92988084495", "dígito verificador del NSS"),
     ("rfc", "HEGG5604271", "13 caracteres"),
 ])
 @patch("server.src.routes.employee_routes.payroll_repository.create_employee")
@@ -672,11 +681,11 @@ def test_rfc_and_curp_must_share_the_birth_date(mock_create_employee):
 class _CurpTaken(psycopg2_errors.UniqueViolation):
     @property
     def diag(self):
-        return type("Diag", (), {"constraint_name": "employees_company_curp_key"})()
+        return type("Diag", (), {"constraint_name": "employees_curp_key"})()
 
 
 @patch("server.src.routes.employee_routes.payroll_repository.create_employee")
-def test_a_curp_already_in_the_company_is_a_conflict(mock_create_employee):
+def test_a_curp_that_another_person_has_is_a_conflict(mock_create_employee):
     mock_create_employee.side_effect = _CurpTaken()
 
     response = client.post(
@@ -686,9 +695,7 @@ def test_a_curp_already_in_the_company_is_a_conflict(mock_create_employee):
     )
 
     assert response.status_code == 409
-    assert response.json()["detail"] == (
-        "Esa CURP ya la tiene otra persona de la empresa"
-    )
+    assert response.json()["detail"] == "Esa CURP ya la tiene otra persona"
 
 
 @patch("server.src.routes.employee_routes.payroll_repository.update_employee")
@@ -755,3 +762,136 @@ def test_salary_history_is_only_for_admins():
     )
 
     assert response.status_code == 403
+
+
+EMPLOYEES = "server.src.routes.employee_routes.payroll_repository"
+EXISTING = {"id": 3, "role": "employee", "curp": CURP_ANA, "email": "ana@cen.com"}
+
+
+def _linked_row(**overrides):
+    row = {
+        "id": 3, "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 15000, "is_active": True, "tipo_regimen": "09",
+        "tipo_jornada": "01", "hire_date": date(2024, 6, 1), "rfc": None,
+        "curp": CURP_ANA, "nss": None,
+    }
+    row.update(overrides)
+    return row
+
+
+@patch(EMPLOYEES + ".create_employee")
+@patch(EMPLOYEES + ".hire_existing_employee")
+def test_an_existing_person_is_linked_with_the_same_curp(
+    mock_hire, mock_create, email_lookup
+):
+    email_lookup.return_value = dict(EXISTING)
+    mock_hire.return_value = _linked_row()
+
+    response = client.post(
+        "/employees",
+        json=_new_employee(
+            email="ANA@cen.com", curp=CURP_ANA, base_salary=15000,
+            tipo_regimen="09", hire_date="2024-06-01",
+        ),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["linked"] is True
+    mock_create.assert_not_called()
+    employee_id, data, company_id, actor_id = mock_hire.call_args[0]
+    assert (employee_id, company_id, actor_id) == (3, ADMIN_COMPANY_ID, 99)
+    assert data == {
+        "base_salary": 15000, "tipo_regimen": "09", "tipo_jornada": "01",
+        "hire_date": date(2024, 6, 1),
+    }
+
+
+@pytest.mark.parametrize("curp", [None, "SABC560626MDFLRN01"])
+@patch(EMPLOYEES + ".hire_existing_employee")
+def test_linking_needs_the_curp_the_person_has(mock_hire, email_lookup, curp):
+    email_lookup.return_value = dict(EXISTING)
+    extra = {"curp": curp} if curp else {}
+
+    response = client.post(
+        "/employees", json=_new_employee(email="ana@cen.com", **extra),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 409
+    assert "captura su CURP" in response.json()["detail"]
+    mock_hire.assert_not_called()
+
+
+@pytest.mark.parametrize("existing_role, requested_role", [
+    ("admin", "employee"), ("owner", "employee"), ("employee", "admin"),
+])
+@patch(EMPLOYEES + ".hire_existing_employee")
+def test_only_employees_are_linked(
+    mock_hire, email_lookup, existing_role, requested_role
+):
+    email_lookup.return_value = {**EXISTING, "role": existing_role}
+
+    response = client.post(
+        "/employees",
+        json=_new_employee(email="ana@cen.com", curp=CURP_ANA, role=requested_role),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "El correo ya está registrado"
+    mock_hire.assert_not_called()
+
+
+@pytest.mark.parametrize("is_active, detail", [
+    (True, "Esa persona ya está en tu empresa"),
+    (False, "Esa persona ya estuvo en tu empresa: reactívala desde Usuarios"),
+])
+@patch(EMPLOYEES + ".hire_existing_employee")
+def test_linking_someone_already_here(mock_hire, email_lookup, is_active, detail):
+    from server.src.repositories.payroll_repository import AlreadyEmployedError
+
+    email_lookup.return_value = dict(EXISTING)
+    mock_hire.side_effect = AlreadyEmployedError(is_active)
+
+    response = client.post(
+        "/employees", json=_new_employee(email="ana@cen.com", curp=CURP_ANA),
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == detail
+
+
+@patch(EMPLOYEES + ".update_employee")
+def test_the_identity_of_someone_who_works_elsewhere_stays(mock_update):
+    from server.src.repositories.payroll_repository import SharedPersonError
+
+    mock_update.side_effect = SharedPersonError()
+
+    response = client.put(
+        "/employees/3",
+        json={
+            "name": "Otra", "email": "ana@cen.com", "role": "employee",
+            "base_salary": 18000,
+        },
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 409
+    assert "no su nombre" in response.json()["detail"]
+
+
+@patch(EMPLOYEES + ".reset_password")
+def test_the_password_of_someone_who_works_elsewhere(mock_reset):
+    from server.src.repositories.payroll_repository import SharedPersonError
+
+    mock_reset.side_effect = SharedPersonError()
+
+    response = client.post(
+        "/employees/3/reset-password",
+        headers={"Authorization": f"Bearer {_admin_token()}"}
+    )
+
+    assert response.status_code == 409
+    assert "recuperar su contraseña" in response.json()["detail"]

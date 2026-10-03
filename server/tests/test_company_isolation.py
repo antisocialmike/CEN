@@ -18,10 +18,7 @@ from server.src.middlewares.company_context import (
     ensure_owner_company,
     resolve_admin_company,
 )
-from server.src.repositories.payroll_repository import (
-    ReceiptOfAnotherCompanyError,
-    SharedAdminError,
-)
+from server.src.repositories.payroll_repository import SharedAdminError
 from server.tests.payroll_parameters import ISR_2026, PAYROLL_ONLY_RATES_2026
 
 client = TestClient(app)
@@ -232,8 +229,9 @@ def test_an_admin_of_a_and_b_without_header_is_asked_to_choose(admin_of):
     assert COMPANY_HEADER in response.json()["detail"]
 
 
+@patch(EMPLOYEES + ".get_employee_by_email", return_value=None)
 @patch(EMPLOYEES + ".create_employee")
-def test_new_people_join_the_active_company(mock_create, admin_of):
+def test_new_people_join_the_active_company(mock_create, _lookup, admin_of):
     admin_of(COMPANY_A, COMPANY_B)
     mock_create.return_value = 30
 
@@ -316,18 +314,19 @@ def test_payroll_for_somebody_outside_the_company(mock_get, admin_of):
 
 @patch(PAYROLL + ".save_payroll_receipt")
 @patch(PAYROLL + ".get_employee_by_id")
-def test_a_period_already_paid_by_another_company(
+def test_the_receipt_belongs_to_the_company_that_pays_it(
     mock_get, mock_save, admin_of
 ):
     admin_of(COMPANY_A)
     mock_get.return_value = {"id": 5, "name": "Ana", "is_active": True}
-    mock_save.side_effect = ReceiptOfAnotherCompanyError()
+    mock_save.return_value = {"id": 9, "created": True}
 
     response = client.post("/payroll/calculate", json={
         "employee_id": 5, "period_start": "2026-09-01", "gross_salary": 20000,
     }, headers=_headers())
 
-    assert response.status_code == 409
+    assert response.status_code == 200
+    assert mock_save.call_args[0][0]["company_id"] == COMPANY_A
 
 
 def _receipt(company_id: int, employee_id: int = 5) -> dict:
@@ -413,7 +412,7 @@ def test_an_employee_only_sees_their_own_summary(repository):
 
 
 @patch("server.src.routes.auth_routes.payroll_repository")
-def test_the_employee_token_carries_its_company(repository):
+def test_the_employee_token_is_not_tied_to_one_company(repository):
     from jose import jwt
 
     from server.src.config.settings import JWT_ALGORITHM, JWT_SECRET_KEY
@@ -421,7 +420,7 @@ def test_the_employee_token_carries_its_company(repository):
 
     repository.get_employee_by_email.return_value = {
         "id": 5, "email": "ana@cen.com", "role": "employee", "name": "Ana",
-        "company_id": COMPANY_B, "password_hash": hash_password("clave123"),
+        "password_hash": hash_password("clave123"),
     }
 
     response = client.post(
@@ -432,7 +431,7 @@ def test_the_employee_token_carries_its_company(repository):
         response.json()["access_token"], JWT_SECRET_KEY,
         algorithms=[JWT_ALGORITHM],
     )
-    assert claims["company_id"] == COMPANY_B
+    assert "company_id" not in claims
 
 
 @pytest.mark.parametrize("role", ["owner", "superadmin", "employee"])

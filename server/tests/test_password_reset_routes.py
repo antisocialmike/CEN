@@ -147,7 +147,7 @@ def test_verify_with_a_wrong_code_spends_the_attempt(employee, codes):
     response = _verify(code="654321")
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Codigo invalido o expirado"
+    assert response.json()["detail"] == "Código inválido o expirado"
     codes.claim_reset_attempt.assert_called_once()
     codes.reset_password_with_code.assert_not_called()
 
@@ -167,7 +167,7 @@ def test_verify_for_an_unknown_email_gives_the_same_answer(employee, codes):
     response = _verify(email="nadie@cen.com")
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Codigo invalido o expirado"
+    assert response.json()["detail"] == "Código inválido o expirado"
     codes.claim_reset_attempt.assert_not_called()
 
 

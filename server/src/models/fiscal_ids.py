@@ -57,7 +57,7 @@ def validate_rfc(value: Optional[str]) -> Optional[str]:
     match = RFC_PATTERN.match(rfc)
     if match is None:
         raise ValueError(
-            "El RFC de una persona fisica lleva 13 caracteres: cuatro letras, "
+            "El RFC de una persona física lleva 13 caracteres: cuatro letras, "
             "la fecha de nacimiento y la homoclave"
         )
     if not _is_birth_date(match.group(1)):
@@ -75,7 +75,7 @@ def validate_curp(value: Optional[str]) -> Optional[str]:
     if not _is_birth_date(match.group(1)):
         raise ValueError("La fecha de nacimiento de la CURP no existe")
     if curp_check_digit(curp[:17]) != int(curp[17]):
-        raise ValueError("El digito verificador de la CURP no corresponde")
+        raise ValueError("El dígito verificador de la CURP no corresponde")
     return curp
 
 
@@ -84,9 +84,9 @@ def validate_nss(value: Optional[str]) -> Optional[str]:
     if nss is None:
         return None
     if NSS_PATTERN.match(nss) is None:
-        raise ValueError("El NSS lleva 11 digitos")
+        raise ValueError("El NSS lleva 11 dígitos")
     if nss_check_digit(nss[:10]) != int(nss[10]):
-        raise ValueError("El digito verificador del NSS no corresponde")
+        raise ValueError("El dígito verificador del NSS no corresponde")
     return nss
 
 

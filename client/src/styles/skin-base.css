@@ -109,6 +109,8 @@
 
   --rv-font: "Satoshi", "Satoshi respaldo", ui-sans-serif, system-ui,
     -apple-system, sans-serif;
+  --rv-font-mono: "JetBrains Mono", "JetBrains Mono respaldo", ui-monospace,
+    monospace;
   --rv-track-display: -0.035em;
   --rv-track-titulo: -0.025em;
   --rv-track-etiqueta: 0.09em;
@@ -289,6 +291,18 @@
 .rv-neto[data-variante="compacta"] {
   padding: var(--rv-card-pad-compacta);
   border-radius: var(--rv-card-radio);
+}
+
+.rv-neto[data-variante="completa"] {
+  --rv-diente: 6px;
+  padding-bottom: calc(var(--rv-modulo-pad) + var(--rv-diente));
+  border-bottom: 0;
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+  mask:
+    radial-gradient(circle at 50% 100%, transparent var(--rv-diente), black calc(var(--rv-diente) + 0.5px))
+      left bottom / calc(var(--rv-diente) * 2.75) calc(var(--rv-diente) + 1px) repeat-x,
+    linear-gradient(black 0 0) top / 100% calc(100% - var(--rv-diente) - 1px) no-repeat;
 }
 
 .rv-neto-cabecera {
@@ -544,6 +558,13 @@
 .payroll-result-placeholder {
   border-radius: var(--rv-card-radio);
   border-color: var(--rv-borde);
+}
+
+@media (min-width: 721px) and (max-width: 1100px) {
+  .receipts-table th,
+  .receipts-table td {
+    padding-inline: var(--s-4);
+  }
 }
 
 .payroll-concepts-toggle,

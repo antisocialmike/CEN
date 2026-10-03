@@ -15,6 +15,19 @@ EMPTY_EMPLOYER = {
     "receipts_without_cost": 0,
 }
 
+CONCEPT_LABELS = {
+    "sueldo": "Sueldos y salarios",
+    "honorarios": "Honorarios asimilados a salarios",
+    "horas_extra": "Horas extra",
+    "aguinaldo": "Aguinaldo",
+    "prima_vacacional": "Prima vacacional",
+    "bono": "Bonos y gratificaciones",
+    "isr": "ISR retenido",
+    "imss": "IMSS retenido",
+    "prestamo": "Préstamos a la empresa",
+    "infonavit": "Crédito Infonavit",
+}
+
 EMPTY_TOTALS = {
     "gross_payroll": Decimal(0), "net_paid": Decimal(0),
     "isr_withheld": Decimal(0), "imss_withheld": Decimal(0),
@@ -108,7 +121,12 @@ def build_analytics(
             },
         },
         "monthly": raw["monthly"],
-        "concepts": raw["concepts"],
+        "concepts": [
+            {**concept, "description": CONCEPT_LABELS.get(
+                concept["concept"], concept["description"]
+            )}
+            for concept in raw["concepts"]
+        ],
         "headcount": {
             **raw["headcount"],
             "by_month": raw["headcount_by_month"],

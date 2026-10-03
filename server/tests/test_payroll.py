@@ -176,8 +176,8 @@ def test_a_quien_gana_el_salario_minimo_no_se_le_retiene_nada():
     assert result["isr_deduction"] == Decimal("0.0")
     assert result["imss_deduction"] == Decimal("0.0")
     assert result["net_salary"] == Decimal("9451.20")
-    assert "salario minimo" in conceptos["isr"]["description"]
-    assert "patron" in conceptos["imss"]["description"]
+    assert "salario mínimo" in conceptos["isr"]["description"]
+    assert "patrón" in conceptos["imss"]["description"]
 
 
 def test_su_cuota_del_imss_la_paga_el_patron():
@@ -411,7 +411,7 @@ def test_una_periodicidad_desconocida_se_rechaza():
 
 
 def test_los_dias_pagados_deben_ser_positivos():
-    with pytest.raises(ValueError, match="dias pagados"):
+    with pytest.raises(ValueError, match="días pagados"):
         _process({"gross_salary": 10000, "paid_days": 0})
 
 

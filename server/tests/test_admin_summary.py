@@ -192,11 +192,10 @@ def test_pending_are_the_people_on_payroll_without_a_receipt_this_month(cursor):
         if "NOT EXISTS" in call[0][0]
     )
     query, params = pending
-    assert "e.is_active AND e.base_salary IS NOT NULL" in query
+    assert "em.is_active AND e.is_active" in query
     assert "r.company_id = %s" in query
     assert params == (
-        COMPANY, COMPANY, COMPANY, SEPTEMBER, date(2026, 10, 1),
-        ADMIN_PENDING_SHOWN,
+        COMPANY, COMPANY, SEPTEMBER, date(2026, 10, 1), ADMIN_PENDING_SHOWN,
     )
 
 

@@ -38,7 +38,7 @@ const emptyForm = {
   nss: ""
 };
 
-const EMAIL_TAKEN = "El correo ya esta registrado";
+const EMAIL_TAKEN = "El correo ya está registrado";
 
 function newForm(): typeof emptyForm {
   return { ...emptyForm, hireDate: currentDate() };
@@ -76,7 +76,9 @@ export default function SignupPage() {
         nss: form.tipoRegimen === "02" ? form.nss : ""
       });
       setSuccessMessage(
-        `${created.name} ya puede entrar con ${created.email}. Comparte con esa persona su contraseña temporal.`
+        created.linked
+          ? `${created.name} ya tenía cuenta en CEN: quedó en tu empresa y entra con su contraseña de siempre.`
+          : `${created.name} ya puede entrar con ${created.email}. Comparte con esa persona su contraseña temporal.`
       );
       setForm(newForm());
     } catch (error) {
@@ -213,6 +215,7 @@ export default function SignupPage() {
             onChange={(value) => updateField("curp", value.toUpperCase())}
             autoComplete="off"
             maxLength={18}
+            hint="Si ya tiene cuenta en CEN por otra empresa, con su correo y su CURP queda en la tuya con la misma cuenta."
           />
           {form.tipoRegimen === "02" && (
             <FormField

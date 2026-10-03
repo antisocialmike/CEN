@@ -45,6 +45,7 @@ export interface EmployeeCreated {
   rfc?: string | null;
   curp?: string | null;
   nss?: string | null;
+  linked?: boolean;
 }
 
 export function missingFiscalData(employee: EmployeeCreated): boolean {

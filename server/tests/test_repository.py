@@ -6,8 +6,9 @@ import pytest
 from server.src.repositories.payroll_repository import (
     MIGRATIONS_DIR,
     PayrollRepository,
-    ReceiptOfAnotherCompanyError,
+    AlreadyEmployedError,
     SharedAdminError,
+    SharedPersonError,
 )
 
 
@@ -63,11 +64,24 @@ def _queries(cursor) -> list:
     return [str(call[0][0]) for call in cursor.execute.call_args_list]
 
 
-def _member(is_shared=False, role="employee", base_salary=19000):
+def _member(
+    is_shared=False, role="employee", base_salary=19000, works_elsewhere=False,
+    employment_id=40,
+):
     return {
-        "id": 3, "role": role, "is_shared": is_shared,
-        "base_salary": base_salary,
+        "id": 3, "role": role, "name": "Ana", "email": "ana@cen.com",
+        "rfc": None, "curp": "HEGG560427MVZRRL04", "nss": None,
+        "employment_id": employment_id, "base_salary": base_salary,
+        "is_shared": is_shared, "works_elsewhere": works_elsewhere,
     }
+
+
+def _employment(created=False, hire_date=date(2020, 1, 15)):
+    return {"hire_date": hire_date, "created": created}
+
+
+def _new_account(employee_id=10, hire_date=date(2020, 1, 15)):
+    return [{"id": employee_id}, _employment(True, hire_date)]
 
 
 def _saved_row(**overrides):
@@ -88,7 +102,7 @@ def test_get_employee_by_id_found(repository, cursor):
 
     assert result is not None
     assert result["name"] == "Juan"
-    assert cursor.execute.call_args[0][1] == (1, COMPANY, COMPANY)
+    assert cursor.execute.call_args[0][1] == (COMPANY, COMPANY, 1)
 
 
 def test_get_employee_by_id_not_found(repository, cursor):
@@ -118,7 +132,7 @@ def test_get_employee_by_email_not_found(repository, cursor):
 
 
 def test_create_employee_success(repository, cursor):
-    cursor.fetchone.return_value = {"id": 10}
+    cursor.fetchone.side_effect = _new_account()
 
     result = repository.create_employee({
         "name": "Juan Perez",
@@ -180,7 +194,7 @@ def test_admin_queries_only_see_the_company(repository, cursor):
     assert len(queries) == 5
     for query in queries:
         assert "role IN ('admin', 'employee')" in query
-        assert "e.company_id = %s" in query
+        assert "m.company_id = %s" in query
         assert "ca.is_active" in query
 
 
@@ -236,7 +250,7 @@ def test_page_employees_counts_the_same_people_it_lists(repository, cursor):
     ]
     for query in (count, page):
         assert "role IN ('admin', 'employee')" in query
-        assert "e.company_id = %s" in query
+        assert "m.company_id = %s" in query
         assert "ca.is_active" in query
     assert count_params == (COMPANY, COMPANY)
     assert page_params == (COMPANY, COMPANY, 20, 0)
@@ -311,19 +325,10 @@ def test_save_payroll_receipt_replaces_the_period(repository, cursor):
 
     assert result == {"id": 100, "created": False}
     upsert = _queries(cursor)[0]
-    assert "ON CONFLICT (employee_id, period_start, period_end)" in upsert
     assert (
-        "WHERE payroll_receipts.company_id = EXCLUDED.company_id" in upsert
+        "ON CONFLICT (employee_id, company_id, period_start, period_end)"
+        in upsert
     )
-
-
-def test_save_payroll_receipt_of_another_company(repository, cursor):
-    cursor.fetchone.return_value = None
-
-    with pytest.raises(ReceiptOfAnotherCompanyError):
-        repository.save_payroll_receipt(_receipt())
-
-    assert not any("payroll_receipt_items" in q for q in _queries(cursor))
 
 
 def test_get_password_hash_found(repository, cursor):
@@ -369,7 +374,7 @@ def test_login_reads_the_session_version(repository, cursor):
 
 
 def test_create_employee_forces_the_first_password_change(repository, cursor):
-    cursor.fetchone.return_value = {"id": 10}
+    cursor.fetchone.side_effect = _new_account()
 
     repository.create_employee({
         "name": "Juan Perez",
@@ -379,28 +384,33 @@ def test_create_employee_forces_the_first_password_change(repository, cursor):
         "password_hash": "hashed"
     }, COMPANY)
 
-    assert "TRUE, %s) RETURNING id" in cursor.execute.call_args_list[0][0][0]
+    assert "TRUE) RETURNING id" in cursor.execute.call_args_list[0][0][0]
 
 
 def test_create_employee_links_the_employee_to_the_company(
     repository, cursor
 ):
-    cursor.fetchone.return_value = {"id": 10}
+    cursor.fetchone.side_effect = _new_account()
 
     repository.create_employee({
         "name": "Juan Perez",
         "email": "juan@cen.com",
         "role": "employee",
         "base_salary": 12000,
+        "tipo_regimen": "09",
         "password_hash": "hashed"
     }, COMPANY)
 
-    assert cursor.execute.call_args_list[0][0][1][-1] == COMPANY
+    insert, employment, _ = cursor.execute.call_args_list
+    assert "company_id" not in insert[0][0]
+    assert "INSERT INTO employments" in employment[0][0]
+    assert employment[0][1][:2] == (10, COMPANY)
+    assert employment[0][1][3:5] == (12000, "09")
     assert not any("company_admins" in q for q in _queries(cursor))
 
 
 def test_create_admin_assigns_it_to_the_company(repository, cursor):
-    cursor.fetchone.return_value = {"id": 11}
+    cursor.fetchone.side_effect = _new_account(11)
 
     repository.create_employee({
         "name": "Luis Diaz",
@@ -410,10 +420,10 @@ def test_create_admin_assigns_it_to_the_company(repository, cursor):
         "password_hash": "hashed"
     }, COMPANY, actor_id=7)
 
-    insert, assign, salary = cursor.execute.call_args_list
-    assert insert[0][1][-1] is None
+    insert, assign, employment, salary = cursor.execute.call_args_list
     assert "INSERT INTO company_admins" in assign[0][0]
     assert assign[0][1] == (11, COMPANY, 7)
+    assert "INSERT INTO employments" in employment[0][0]
     assert "INSERT INTO salary_history" in salary[0][0]
 
 
@@ -429,7 +439,9 @@ def test_create_superadmin_belongs_to_no_company(repository, cursor):
     })
 
     assert cursor.execute.call_count == 1
-    assert cursor.execute.call_args[0][1][-1] is None
+    assert cursor.execute.call_args[0][1] == (
+        "Root", "root@cen.com", "superadmin", None, None, None, "hashed"
+    )
 
 
 def test_first_company_id(repository, cursor):
@@ -439,7 +451,7 @@ def test_first_company_id(repository, cursor):
 
 
 def test_update_employee_returns_the_saved_row(repository, cursor):
-    cursor.fetchone.side_effect = [_member(), _saved_row()]
+    cursor.fetchone.side_effect = [_member(), _employment(), _saved_row()]
 
     result = repository.update_employee(3, {
         "name": "Ana", "email": "ana@cen.com",
@@ -448,42 +460,43 @@ def test_update_employee_returns_the_saved_row(repository, cursor):
 
     assert result is not None
     assert result["base_salary"] == 19000
-    assert cursor.execute.call_args_list[1][0][1] == (
-        "Ana", "ana@cen.com", "employee", 19000, "02", "01",
-        None, None, None, None, COMPANY, 3,
+    lock, identity, employment = cursor.execute.call_args_list[:3]
+    assert identity[0][1] == (
+        "Ana", "ana@cen.com", "employee", None, None, None, 3,
     )
+    assert employment[0][1] == (3, COMPANY, None, 19000, "02", "01", None)
 
 
 def test_update_employee_keeps_the_hire_date_when_it_does_not_come(
     repository, cursor
 ):
-    cursor.fetchone.side_effect = [_member(), _saved_row()]
+    cursor.fetchone.side_effect = [_member(), _employment(), _saved_row()]
 
     repository.update_employee(3, {
         "name": "Ana", "email": "ana@cen.com",
         "role": "employee", "base_salary": 19000,
     }, COMPANY)
 
-    assert "hire_date = COALESCE(%s, hire_date)" in _queries(cursor)[1]
+    assert "hire_date = COALESCE(%s, employments.hire_date)" in _queries(cursor)[2]
 
 
 def test_create_employee_starts_today_without_a_hire_date(repository, cursor):
-    cursor.fetchone.return_value = {"id": 10}
+    cursor.fetchone.side_effect = _new_account()
 
     repository.create_employee({
         "name": "Ana", "email": "ana@cen.com", "role": "employee",
         "base_salary": 19000, "password_hash": "hash",
     }, COMPANY)
 
-    query, params = cursor.execute.call_args_list[0][0]
+    query, params = cursor.execute.call_args_list[1][0]
     assert "COALESCE(%s, CURRENT_DATE)" in query
-    assert params[6] is None
+    assert params[2] is None
 
 
 def test_create_employee_starts_the_salary_history_on_the_hire_date(
     repository, cursor
 ):
-    cursor.fetchone.return_value = {"id": 10, "hire_date": date(2020, 1, 15)}
+    cursor.fetchone.side_effect = _new_account(10, date(2020, 1, 15))
 
     repository.create_employee({
         "name": "Ana", "email": "ana@cen.com", "role": "employee",
@@ -492,8 +505,8 @@ def test_create_employee_starts_the_salary_history_on_the_hire_date(
         "nss": "92988084494",
     }, COMPANY, actor_id=7)
 
-    insert, salary = cursor.execute.call_args_list
-    assert insert[0][1][7:10] == (
+    insert, _, salary = cursor.execute.call_args_list
+    assert insert[0][1][3:6] == (
         "HEGG560427AB1", "HEGG560427MVZRRL04", "92988084494"
     )
     assert "INSERT INTO salary_history" in salary[0][0]
@@ -509,10 +522,13 @@ def test_an_admin_without_salary_has_no_salary_history(repository, cursor):
     }, COMPANY, actor_id=7)
 
     assert not any("salary_history" in q for q in _queries(cursor))
+    assert not any("employments" in q for q in _queries(cursor))
 
 
 def test_a_new_salary_is_recorded_from_the_date_it_applies(repository, cursor):
-    cursor.fetchone.side_effect = [_member(base_salary=19000), _saved_row()]
+    cursor.fetchone.side_effect = [
+        _member(base_salary=19000), _employment(), _saved_row(),
+    ]
 
     repository.update_employee(3, {
         "name": "Ana", "email": "ana@cen.com", "role": "employee",
@@ -527,7 +543,9 @@ def test_a_new_salary_is_recorded_from_the_date_it_applies(repository, cursor):
 
 
 def test_the_same_salary_is_not_recorded_again(repository, cursor):
-    cursor.fetchone.side_effect = [_member(base_salary=19000), _saved_row()]
+    cursor.fetchone.side_effect = [
+        _member(base_salary=19000), _employment(), _saved_row(),
+    ]
 
     repository.update_employee(3, {
         "name": "Ana", "email": "ana@cen.com", "role": "employee",
@@ -538,7 +556,7 @@ def test_the_same_salary_is_not_recorded_again(repository, cursor):
 
 
 def test_the_fiscal_ids_are_kept_when_they_do_not_come(repository, cursor):
-    cursor.fetchone.side_effect = [_member(), _saved_row()]
+    cursor.fetchone.side_effect = [_member(), _employment(), _saved_row()]
 
     repository.update_employee(3, {
         "name": "Ana", "email": "ana@cen.com", "role": "employee",
@@ -571,31 +589,83 @@ def test_salary_history_newest_first(repository, cursor):
 
 
 def test_update_employee_to_admin_assigns_the_company(repository, cursor):
-    cursor.fetchone.side_effect = [_member(), _saved_row(role="admin")]
+    cursor.fetchone.side_effect = [
+        _member(), _employment(), _saved_row(role="admin"),
+    ]
 
     repository.update_employee(3, {
         "name": "Ana", "email": "ana@cen.com",
         "role": "admin", "base_salary": 19000
     }, COMPANY, actor_id=7)
 
-    lock, update, assign = cursor.execute.call_args_list
+    lock, _, _, assign, _ = cursor.execute.call_args_list
     assert "FOR UPDATE OF e" in lock[0][0]
-    assert update[0][1][6] is None
     assert "INSERT INTO company_admins" in assign[0][0]
     assert assign[0][1] == (3, COMPANY, 7)
 
 
 def test_update_admin_to_employee_releases_the_assignment(repository, cursor):
-    cursor.fetchone.side_effect = [_member(role="admin"), _saved_row()]
+    cursor.fetchone.side_effect = [
+        _member(role="admin"), _employment(), _saved_row(),
+    ]
 
     repository.update_employee(3, {
         "name": "Ana", "email": "ana@cen.com",
         "role": "employee", "base_salary": 19000
     }, COMPANY)
 
-    release = cursor.execute.call_args_list[-1][0]
+    release = cursor.execute.call_args_list[-2][0]
     assert "UPDATE company_admins SET is_active = FALSE" in release[0]
     assert release[1] == (3,)
+
+
+def test_an_admin_who_stops_being_paid_leaves_the_payroll(repository, cursor):
+    cursor.fetchone.side_effect = [_member(role="admin"), _saved_row()]
+
+    repository.update_employee(3, {
+        "name": "Ana", "email": "ana@cen.com",
+        "role": "admin", "base_salary": None,
+    }, COMPANY, actor_id=7)
+
+    delete = cursor.execute.call_args_list[2][0]
+    assert delete[0].startswith("DELETE FROM employments")
+    assert delete[1] == (3, COMPANY)
+
+
+def test_someone_who_works_elsewhere_keeps_who_they_are(repository, cursor):
+    cursor.fetchone.return_value = _member(works_elsewhere=True)
+
+    with pytest.raises(SharedPersonError):
+        repository.update_employee(3, {
+            "name": "Otra Persona", "email": "ana@cen.com",
+            "role": "employee", "base_salary": 19000,
+        }, COMPANY)
+
+    assert cursor.execute.call_count == 1
+
+
+def test_someone_who_works_elsewhere_can_get_a_raise_here(repository, cursor):
+    cursor.fetchone.side_effect = [
+        _member(works_elsewhere=True), _employment(), _saved_row(),
+    ]
+
+    result = repository.update_employee(3, {
+        "name": "Ana", "email": "ana@cen.com", "role": "employee",
+        "base_salary": 21000, "curp": "HEGG560427MVZRRL04",
+    }, COMPANY)
+
+    assert result is not None
+
+
+def test_the_password_of_someone_who_works_elsewhere_is_not_reset_here(
+    repository, cursor
+):
+    cursor.fetchone.return_value = _member(works_elsewhere=True)
+
+    with pytest.raises(SharedPersonError):
+        repository.reset_password(3, "hash", COMPANY)
+
+    assert cursor.execute.call_count == 1
 
 
 def test_update_employee_for_a_missing_row(repository, cursor):
@@ -637,9 +707,63 @@ def test_set_employee_active(repository, cursor):
 
     assert result is not None
     assert result["is_active"] is False
-    query, params = cursor.execute.call_args[0]
-    assert "deactivated_at = CASE" in query
-    assert params == (False, False, 3)
+    _, employment, account, _ = cursor.execute.call_args_list
+    assert "deactivated_at = CASE" in employment[0][0]
+    assert employment[0][1] == (False, False, 40)
+    assert "EXISTS" in account[0][0]
+    assert account[0][1] == (3,)
+
+
+def test_deactivating_an_admin_closes_the_account(repository, cursor):
+    cursor.fetchone.side_effect = [
+        _member(role="admin", employment_id=None), _saved_row(is_active=False),
+    ]
+
+    repository.set_employee_active(3, False, COMPANY)
+
+    _, account, _ = cursor.execute.call_args_list
+    assert account[0] == (
+        "UPDATE employees SET is_active = %s WHERE id = %s;", (False, 3)
+    )
+
+
+def test_reactivating_opens_the_account_again(repository, cursor):
+    cursor.fetchone.side_effect = [_member(), _saved_row()]
+
+    repository.set_employee_active(3, True, COMPANY)
+
+    _, employment, account, _ = cursor.execute.call_args_list
+    assert employment[0][1] == (True, True, 40)
+    assert account[0][1] == (True, 3)
+
+
+def test_hiring_someone_who_already_has_an_account(repository, cursor):
+    cursor.fetchone.side_effect = [
+        None, _employment(True, date(2024, 6, 1)), _saved_row(),
+    ]
+
+    row = repository.hire_existing_employee(3, {
+        "base_salary": 15000, "tipo_regimen": "09",
+        "hire_date": date(2024, 6, 1),
+    }, COMPANY, actor_id=7)
+
+    queries = _queries(cursor)
+    assert "FOR UPDATE" in queries[0]
+    assert "INSERT INTO employments" in queries[2]
+    assert "INSERT INTO salary_history" in queries[3]
+    assert cursor.execute.call_args_list[4][0][1] == (True, 3)
+    assert row["id"] == 3
+
+
+@pytest.mark.parametrize("is_active", [True, False])
+def test_hiring_someone_who_is_already_here(repository, cursor, is_active):
+    cursor.fetchone.return_value = {"id": 40, "is_active": is_active}
+
+    with pytest.raises(AlreadyEmployedError) as error:
+        repository.hire_existing_employee(3, {"base_salary": 1}, COMPANY)
+
+    assert error.value.is_active is is_active
+    assert not any("INSERT" in q for q in _queries(cursor))
 
 
 def test_reset_password_of_another_company(repository, cursor):
@@ -654,7 +778,7 @@ def test_list_employees_puts_the_active_ones_first(repository, cursor):
 
     repository.list_employees(COMPANY)
 
-    assert "ORDER BY e.is_active DESC" in cursor.execute.call_args[0][0]
+    assert "ORDER BY is_active DESC" in cursor.execute.call_args[0][0]
 
 
 def test_get_receipt_by_id_joins_the_employee(repository, cursor):

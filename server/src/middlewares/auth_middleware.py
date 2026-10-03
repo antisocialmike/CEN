@@ -29,11 +29,11 @@ TEMPORARY_PASSWORD_ALPHABET = "".join(
 
 INVALID_TOKEN = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Token no valido",
+    detail="Token no válido",
 )
 PASSWORD_CHANGE_REQUIRED = HTTPException(
     status_code=status.HTTP_403_FORBIDDEN,
-    detail="Debes cambiar tu contrasena temporal antes de continuar",
+    detail="Debes cambiar tu contraseña temporal antes de continuar",
 )
 
 

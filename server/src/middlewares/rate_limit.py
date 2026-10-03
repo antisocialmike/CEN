@@ -47,7 +47,7 @@ def rate_limit(bucket: str, max_hits: int):
         if window["hits"] > max_hits:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Demasiadas solicitudes desde tu conexion. "
+                detail="Demasiadas solicitudes desde tu conexión. "
                 "Vuelve a intentarlo en {} minutos".format(
                     _minutes(window["retry_after"])
                 ),

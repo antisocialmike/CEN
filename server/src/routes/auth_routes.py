@@ -47,11 +47,11 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 INVALID_CREDENTIALS = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Credenciales invalidas",
+    detail="Credenciales inválidas",
 )
 INVALID_RESET_CODE = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
-    detail="Codigo invalido o expirado",
+    detail="Código inválido o expirado",
 )
 
 
@@ -78,7 +78,6 @@ def _issue_token(employee: dict) -> str:
         "sub": employee["email"],
         "role": employee["role"],
         "employee_id": employee["id"],
-        "company_id": employee.get("company_id"),
         "name": employee.get("name", ""),
         "ver": employee.get("token_version", 0),
     })
@@ -108,13 +107,13 @@ def login(request: LoginRequest):
     if not employee.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Esta cuenta esta desactivada",
+            detail="Esta cuenta está desactivada",
         )
 
     if employee.get("company_is_active") is False:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tu empresa esta desactivada",
+            detail="Tu empresa está desactivada",
         )
 
     payroll_repository.clear_failed_logins(employee["id"])
@@ -140,13 +139,13 @@ def change_password(
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La contrasena actual no es correcta",
+            detail="La contraseña actual no es correcta",
         )
 
     if request.new_password == request.current_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La contrasena nueva debe ser distinta de la actual",
+            detail="La contraseña nueva debe ser distinta de la actual",
         )
 
     payroll_repository.update_password(

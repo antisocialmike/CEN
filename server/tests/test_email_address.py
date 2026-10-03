@@ -50,8 +50,12 @@ def test_login_with_capital_letters_finds_the_account(mock_get_employee):
     mock_get_employee.assert_called_once_with("ana@cen.com")
 
 
+@patch(
+    "server.src.routes.employee_routes.payroll_repository.get_employee_by_email",
+    return_value=None,
+)
 @patch("server.src.routes.employee_routes.payroll_repository.create_employee")
-def test_a_new_employee_is_saved_with_the_email_in_lowercase(mock_create):
+def test_a_new_employee_is_saved_with_the_email_in_lowercase(mock_create, _lookup):
     mock_create.return_value = 10
     token = create_access_token(
         data={"sub": "admin1", "role": "admin", "employee_id": 99}

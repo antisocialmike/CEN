@@ -57,8 +57,8 @@ def next_period_start(periodicity: str, start: date) -> date:
 
 
 PERIOD_START_ERRORS = {
-    "mensual": "Un periodo mensual empieza el dia 1",
-    "quincenal": "Una quincena empieza el dia 1 o el 16",
+    "mensual": "Un periodo mensual empieza el día 1",
+    "quincenal": "Una quincena empieza el día 1 o el 16",
 }
 
 
@@ -76,6 +76,7 @@ class Employee(BaseModel):
     rfc: Optional[str] = None
     curp: Optional[str] = None
     nss: Optional[str] = None
+    linked: bool = False
 
 
 class FiscalIds(BaseModel):

@@ -40,10 +40,7 @@ from ..models.payroll_model import (
     PeriodLookupRequest,
 )
 from ..repositories.analytics_repository import analytics_repository
-from ..repositories.payroll_repository import (
-    ReceiptOfAnotherCompanyError,
-    payroll_repository,
-)
+from ..repositories.payroll_repository import payroll_repository
 
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
 payroll_service = PayrollService()
@@ -75,7 +72,7 @@ def _parameters(
                 "No se puede calcular un periodo que empieza el "
                 f"{request.period_start.isoformat()}: no hay "
                 f"{missing_parameter_label(error.name)} vigente para esa fecha. "
-                "CEN tiene los parametros de 2025 y 2026."
+                "CEN tiene los parámetros de 2025 y 2026."
             ),
         ) from error
     return payroll_params, cost_params, sbc
@@ -122,7 +119,7 @@ def calculate_payroll(
     if not employee.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se puede calcular nomina de una cuenta desactivada",
+            detail="No se puede calcular nómina de una cuenta desactivada",
         )
 
     # El regimen y la jornada son de la persona, no de la peticion.
@@ -151,21 +148,15 @@ def calculate_payroll(
 
     employer_cost = _employer_cost(request, cost_params, years, breakdown)
 
-    try:
-        saved = payroll_repository.save_payroll_receipt({
-            "employee_id": request.employee_id,
-            "company_id": user["company_id"],
-            "period_start": request.period_start,
-            "period_end": request.period_end(),
-            "processed_by": user["username"],
-            "employer_cost": employer_cost,
-            **breakdown,
-        })
-    except ReceiptOfAnotherCompanyError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Ese periodo ya tiene un recibo emitido por otra empresa",
-        )
+    saved = payroll_repository.save_payroll_receipt({
+        "employee_id": request.employee_id,
+        "company_id": user["company_id"],
+        "period_start": request.period_start,
+        "period_end": request.period_end(),
+        "processed_by": user["username"],
+        "employer_cost": employer_cost,
+        **breakdown,
+    })
     return {
         "receipt_id": saved["id"],
         "created": saved["created"],

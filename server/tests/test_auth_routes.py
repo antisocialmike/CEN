@@ -402,7 +402,7 @@ def test_login_blocks_employees_of_a_deactivated_company(mock_get_employee):
     )
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "Tu empresa esta desactivada"
+    assert response.json()["detail"] == "Tu empresa está desactivada"
 
 
 @patch("server.src.routes.auth_routes.payroll_repository.get_employee_by_email")

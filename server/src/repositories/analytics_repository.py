@@ -2,7 +2,6 @@ from datetime import date
 from typing import Optional
 
 from ..config.database import db_cursor
-from .payroll_repository import EMPLOYEES_OF_COMPANY
 
 # Todas las consultas de un tablero leen la misma foto de la base: sin esto,
 # un recibo guardado a media consulta podria aparecer en la serie mensual y
@@ -42,44 +41,47 @@ MONTHLY_PAYROLL = (
     "GROUP BY m.month ORDER BY m.month;"
 )
 CONCEPTS = (
-    "SELECT i.kind, i.concept, MIN(i.description) AS description, "
+    "SELECT i.kind, CASE WHEN i.concept = 'sueldo' AND r.tipo_regimen = '09' "
+    "THEN 'honorarios' ELSE i.concept END AS concept, "
+    "MIN(i.description) AS description, "
     "SUM(i.amount) AS amount, SUM(i.taxable) AS taxable, "
     "SUM(i.exempt) AS exempt "
     "FROM payroll_receipt_items i "
     "JOIN payroll_receipts r ON r.id = i.receipt_id "
     "WHERE r.company_id = ANY(%s) AND r.period_start BETWEEN %s AND %s "
     "AND (%s::text IS NULL OR r.periodicity = %s) "
-    "GROUP BY i.kind, i.concept ORDER BY i.kind DESC, SUM(i.amount) DESC;"
+    "GROUP BY 1, 2 ORDER BY i.kind DESC, SUM(i.amount) DESC;"
 )
 HEADCOUNT_NOW = (
-    "SELECT COUNT(*) FILTER (WHERE e.is_active) AS active, "
-    "COUNT(*) FILTER (WHERE NOT e.is_active) AS inactive "
-    "FROM employees e "
-    "WHERE e.company_id = ANY(%s) AND e.role = 'employee';"
+    "SELECT COUNT(*) FILTER (WHERE em.is_active) AS active, "
+    "COUNT(*) FILTER (WHERE NOT em.is_active) AS inactive "
+    "FROM employments em JOIN employees e ON e.id = em.employee_id "
+    "WHERE em.company_id = ANY(%s) AND e.role = 'employee';"
 )
 HEADCOUNT_BY_MONTH = (
     "SELECT m.month::date AS month, "
-    "COUNT(e.id) FILTER (WHERE date_trunc('month', e.created_at) = m.month) "
+    "COUNT(em.id) FILTER (WHERE date_trunc('month', em.created_at) = m.month) "
     "AS hires, "
-    "COUNT(e.id) FILTER ("
-    "WHERE date_trunc('month', e.deactivated_at) = m.month) AS terminations "
+    "COUNT(em.id) FILTER ("
+    "WHERE date_trunc('month', em.deactivated_at) = m.month) AS terminations "
     "FROM generate_series(date_trunc('month', %s::date), "
     "date_trunc('month', %s::date), interval '1 month') AS m(month) "
-    "LEFT JOIN employees e ON e.company_id = ANY(%s) "
-    "AND e.role = 'employee' "
-    "AND (date_trunc('month', e.created_at) = m.month "
-    "OR date_trunc('month', e.deactivated_at) = m.month) "
+    "LEFT JOIN (employments em JOIN employees e ON e.id = em.employee_id "
+    "AND e.role = 'employee') ON em.company_id = ANY(%s) "
+    "AND (date_trunc('month', em.created_at) = m.month "
+    "OR date_trunc('month', em.deactivated_at) = m.month) "
     "GROUP BY m.month ORDER BY m.month;"
 )
 TOP_SALARIES = (
-    "SELECT e.id, e.name, c.legal_name AS company_name, e.base_salary "
-    "FROM employees e JOIN companies c ON c.id = e.company_id "
-    "WHERE e.company_id = ANY(%s) AND e.role = 'employee' AND e.is_active "
-    "ORDER BY e.base_salary DESC, e.name ASC LIMIT 5;"
+    "SELECT e.id, e.name, c.legal_name AS company_name, em.base_salary "
+    "FROM employments em JOIN employees e ON e.id = em.employee_id "
+    "JOIN companies c ON c.id = em.company_id "
+    "WHERE em.company_id = ANY(%s) AND e.role = 'employee' AND em.is_active "
+    "ORDER BY em.base_salary DESC, e.name ASC LIMIT 5;"
 )
 SALARY_HISTOGRAM = (
     "SELECT b.label, b.min_salary, b.max_salary, "
-    "COUNT(e.id) AS employees "
+    "COUNT(em.id) AS employees "
     "FROM (VALUES "
     "(1, 'Hasta 10,000', 0, 10000), "
     "(2, '10,000 a 20,000', 10000, 20000), "
@@ -88,10 +90,10 @@ SALARY_HISTOGRAM = (
     "(5, '50,000 a 80,000', 50000, 80000), "
     "(6, 'Más de 80,000', 80000, NULL)"
     ") AS b(position, label, min_salary, max_salary) "
-    "LEFT JOIN employees e ON e.company_id = ANY(%s) "
-    "AND e.role = 'employee' AND e.is_active "
-    "AND e.base_salary >= b.min_salary "
-    "AND (b.max_salary IS NULL OR e.base_salary < b.max_salary) "
+    "LEFT JOIN (employments em JOIN employees e ON e.id = em.employee_id "
+    "AND e.role = 'employee') ON em.company_id = ANY(%s) AND em.is_active "
+    "AND em.base_salary >= b.min_salary "
+    "AND (b.max_salary IS NULL OR em.base_salary < b.max_salary) "
     "GROUP BY b.position, b.label, b.min_salary, b.max_salary "
     "ORDER BY b.position;"
 )
@@ -106,8 +108,9 @@ COMPANY_COMPARISON = (
     "AS total_cost, "
     "COUNT(r.id) AS receipts, "
     "COUNT(DISTINCT r.employee_id) AS paid_employees, "
-    "(SELECT COUNT(*) FROM employees e WHERE e.company_id = c.id "
-    "AND e.role = 'employee' AND e.is_active) AS active_employees "
+    "(SELECT COUNT(*) FROM employments em JOIN employees e "
+    "ON e.id = em.employee_id WHERE em.company_id = c.id "
+    "AND e.role = 'employee' AND em.is_active) AS active_employees "
     "FROM companies c "
     "LEFT JOIN payroll_receipts r ON r.company_id = c.id "
     "AND r.period_start BETWEEN %s AND %s "
@@ -188,8 +191,10 @@ EMPLOYEE_YEAR_TOTALS = (
 )
 EMPLOYEE_RECENT_RECEIPTS = (
     "SELECT r.id, r.period_start, r.period_end, r.periodicity, "
-    "r.net_salary, r.total_perceptions "
-    "FROM payroll_receipts r WHERE r.employee_id = %s "
+    "r.net_salary, r.total_perceptions, "
+    "COALESCE(c.trade_name, c.legal_name) AS company_name "
+    "FROM payroll_receipts r JOIN companies c ON c.id = r.company_id "
+    "WHERE r.employee_id = %s "
     "ORDER BY r.period_start DESC, r.updated_at DESC, r.id DESC LIMIT %s;"
 )
 EMPLOYEE_RECENT_PERIODS = 12
@@ -197,11 +202,13 @@ EMPLOYEE_RECENT_PERIODS = 12
 # la calculadora: los de la empresa y sus admins con asignacion activa. En la
 # nomina esta quien sigue activo y tiene salario.
 ON_PAYROLL = (
-    EMPLOYEES_OF_COMPANY + "AND e.is_active AND e.base_salary IS NOT NULL "
+    "FROM employments em JOIN employees e ON e.id = em.employee_id "
+    "WHERE em.company_id = %s AND em.is_active AND e.is_active "
+    "AND e.role IN ('admin', 'employee') "
 )
 # COUNT(*) OVER () da el total antes del LIMIT: la lista se recorta, la cifra no.
 ADMIN_PENDING = (
-    "SELECT e.id, e.name, e.tipo_regimen, COUNT(*) OVER () AS total "  # nosec B608
+    "SELECT e.id, e.name, em.tipo_regimen, COUNT(*) OVER () AS total "  # nosec B608
     + ON_PAYROLL
     + "AND NOT EXISTS (SELECT 1 FROM payroll_receipts r "  # nosec B608
     "WHERE r.employee_id = e.id AND r.company_id = %s "
@@ -209,9 +216,9 @@ ADMIN_PENDING = (
     "ORDER BY e.name ASC, e.id ASC LIMIT %s;"
 )
 ADMIN_REGIMES = (
-    "SELECT e.tipo_regimen, COUNT(*) AS people "
+    "SELECT em.tipo_regimen, COUNT(*) AS people "
     + ON_PAYROLL
-    + "GROUP BY e.tipo_regimen ORDER BY e.tipo_regimen;"
+    + "GROUP BY em.tipo_regimen ORDER BY em.tipo_regimen;"
 )
 ADMIN_LAST_MONTH = (
     "WITH latest AS (SELECT date_trunc('month', MAX(period_start)) AS month "
@@ -228,12 +235,13 @@ ADMIN_LAST_MONTH = (
     "GROUP BY latest.month;"
 )
 ADMIN_MOVEMENTS = (
-    "SELECT e.id, e.name, 'alta' AS kind, e.created_at AS happened_at "
-    + EMPLOYEES_OF_COMPANY
-    + "UNION ALL "
-    "SELECT e.id, e.name, 'baja' AS kind, e.deactivated_at AS happened_at "
-    + EMPLOYEES_OF_COMPANY
-    + "AND e.deactivated_at IS NOT NULL "
+    "SELECT e.id, e.name, 'alta' AS kind, em.created_at AS happened_at "
+    "FROM employments em JOIN employees e ON e.id = em.employee_id "
+    "WHERE em.company_id = %s "
+    "UNION ALL "
+    "SELECT e.id, e.name, 'baja' AS kind, em.deactivated_at AS happened_at "
+    "FROM employments em JOIN employees e ON e.id = em.employee_id "
+    "WHERE em.company_id = %s AND em.deactivated_at IS NOT NULL "
     "ORDER BY happened_at DESC, id DESC LIMIT %s;"
 )
 ADMIN_PENDING_SHOWN = 8
@@ -363,7 +371,7 @@ class AnalyticsRepository:
     def admin_summary(
         self, company_id: int, month_start: date, next_month_start: date
     ) -> dict:
-        company = (company_id, company_id)
+        company = (company_id,)
         with db_cursor() as cursor:
             cursor.execute(CONSISTENT_SNAPSHOT)
 
@@ -371,7 +379,7 @@ class AnalyticsRepository:
                 cursor.execute(query, params)
                 return [dict(row) for row in cursor.fetchall()]
 
-            cursor.execute(ADMIN_LAST_MONTH, company)
+            cursor.execute(ADMIN_LAST_MONTH, (company_id, company_id))
             last_month = cursor.fetchone()
             return {
                 "pending": many(ADMIN_PENDING, company + (

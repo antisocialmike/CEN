@@ -1,14 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import {
-  Buildings,
-  IdentificationBadge,
-  SquaresFour,
-  UserCircle,
-  UserCirclePlus,
-  UsersThree
-} from "@phosphor-icons/react";
+import { Buildings, UserCirclePlus, UsersThree } from "@phosphor-icons/react";
 import { blockVariants, stackVariants, useStill } from "../motion/variants";
 import ErrorMessage from "../components/ErrorMessage";
 import Skeleton from "../components/Skeleton";
@@ -80,25 +73,21 @@ export default function SuperadminSummaryPage() {
     ? [
         {
           label: "Empresas activas",
-          icon: Buildings,
           count: summary.companies.active,
           detail: plural(summary.companies.inactive, "inactiva", "inactivas")
         },
         {
           label: "Dueños activos",
-          icon: UserCircle,
           count: summary.users.owner.active,
           detail: plural(summary.users.owner.inactive, "inactivo", "inactivos")
         },
         {
           label: "Administradores activos",
-          icon: IdentificationBadge,
           count: summary.users.admin.active,
           detail: plural(summary.users.admin.inactive, "inactivo", "inactivos")
         },
         {
           label: "Empleados activos",
-          icon: UsersThree,
           count: summary.users.employee.active,
           detail: plural(summary.users.employee.inactive, "dado de baja", "dados de baja")
         }
@@ -109,9 +98,6 @@ export default function SuperadminSummaryPage() {
     <div className="dashboard-panel">
       <div className="dashboard-panel-header">
         <div className="dashboard-panel-heading">
-          <span className="panel-icon-badge" aria-hidden="true">
-            <SquaresFour weight="bold" />
-          </span>
           <div>
             <h1>Resumen</h1>
             <p className="dashboard-panel-subtitle">
@@ -187,9 +173,6 @@ export default function SuperadminSummaryPage() {
           >
             {cards.map((card) => (
               <motion.div key={card.label} className="stat-card" variants={blockTravel}>
-                <span className="stat-card-icon" aria-hidden="true">
-                  <card.icon weight="bold" />
-                </span>
                 <div>
                   <p className="stat-card-label">{card.label}</p>
                   <p className="stat-card-value">{formatInteger(card.count)}</p>

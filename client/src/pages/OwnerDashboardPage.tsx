@@ -24,7 +24,8 @@ import {
   isPeriodPreset,
   PERIOD_PRESETS,
   PeriodPreset,
-  resolvePreset
+  resolvePreset,
+  withoutEmptyCurrentMonth
 } from "../services/analyticsPeriods";
 import {
   formatChange,
@@ -158,7 +159,7 @@ export default function OwnerDashboardPage() {
     getAnalytics({ companyId: company, from, to })
       .then((result) => {
         if (!isMounted) return;
-        setShown({ key, analytics: result });
+        setShown({ key, analytics: withoutEmptyCurrentMonth(result, new Date()) });
         setFailedKey(null);
       })
       .catch(() => isMounted && setFailedKey(key));
@@ -195,9 +196,6 @@ export default function OwnerDashboardPage() {
     <div className="dashboard-panel owner-dashboard">
       <div className="dashboard-panel-header">
         <div className="dashboard-panel-heading">
-          <span className="panel-icon-badge" aria-hidden="true">
-            <ChartLineUp weight="bold" />
-          </span>
           <div>
             <h1>Tablero</h1>
             <p className="dashboard-panel-subtitle">

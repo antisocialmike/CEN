@@ -9,6 +9,8 @@ from psycopg2.extensions import make_dsn
 from psycopg2.extras import RealDictCursor
 
 from server.src.config import database
+from server.src.middlewares.auth_middleware import create_access_token
+from server.src.repositories.company_repository import company_repository
 from server.src.repositories.payroll_repository import (
     MIGRATIONS_DIR,
     payroll_repository,
@@ -53,6 +55,28 @@ def rate_limit_window():
 
 def unique_email(name: str) -> str:
     return "{}-{}@pruebas.cen".format(name, uuid.uuid4().hex[:8])
+
+
+def company_with_admin(superadmin: int, owner: int, password_hash: str) -> dict:
+    company = company_repository.create_company(
+        {"legal_name": "Empresa " + uuid.uuid4().hex[:6]}, owner, superadmin
+    )
+    admin = company_repository.invite_admin(company, {
+        "name": "Admin", "email": unique_email("admin"),
+        "password_hash": password_hash,
+    }, owner)
+    payroll_repository.update_password(admin, password_hash)
+    token = create_access_token(data={
+        "sub": "admin@pruebas.cen", "role": "admin", "employee_id": admin,
+        "ver": 1,
+    })
+    return {
+        "id": company,
+        "admin": admin,
+        "headers": {
+            "Authorization": "Bearer " + token, "X-Company-Id": str(company),
+        },
+    }
 
 
 @contextmanager

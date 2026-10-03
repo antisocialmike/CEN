@@ -41,7 +41,7 @@ export default function DashboardTopbar({ context }: DashboardTopbarProps) {
   }
 
   return (
-    <header className="dashboard-topbar">
+    <header className={adminCompany ? "dashboard-topbar has-company" : "dashboard-topbar"}>
       <Link className="brand-logo sm" to="/" onClick={volverALanding}>
         <LogoMark />
         <div className="brand-logo-text">

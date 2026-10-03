@@ -26,8 +26,8 @@ SELECT_OWNER = (
     OWNER_FIELDS + "WHERE e.id = %s AND e.role = 'owner' GROUP BY e.id;"
 )
 INSERT_OWNER = (
-    "INSERT INTO employees (name, email, role, base_salary, password_hash, "
-    "must_change_password) VALUES (%s, %s, 'owner', NULL, %s, TRUE) "
+    "INSERT INTO employees (name, email, role, password_hash, "
+    "must_change_password) VALUES (%s, %s, 'owner', %s, TRUE) "
     "RETURNING id;"
 )
 UPDATE_OWNER = (
@@ -120,8 +120,9 @@ SELECT_OWNER_COMPANY = (
 OWNER_COMPANY_FIELDS = (
     "SELECT c.id, c.legal_name, c.trade_name, c.rfc, c.registro_patronal, "
     "c.entidad_federativa, c.is_active, c.created_at, "
-    "(SELECT COUNT(*) FROM employees x WHERE x.company_id = c.id "
-    "AND x.role = 'employee' AND x.is_active) AS active_employees, "
+    "(SELECT COUNT(*) FROM employments x JOIN employees xe "
+    "ON xe.id = x.employee_id WHERE x.company_id = c.id "
+    "AND xe.role = 'employee' AND x.is_active) AS active_employees, "
     "(SELECT json_build_object('rate', p.rate, 'valid_from', p.valid_from) "
     "FROM company_risk_premiums p WHERE p.company_id = c.id "
     "AND p.valid_from <= CURRENT_DATE "
@@ -146,8 +147,8 @@ UPDATE_COMPANY_ACTIVE = (
     "UPDATE companies SET is_active = %s WHERE id = %s RETURNING id;"
 )
 INSERT_ADMIN = (
-    "INSERT INTO employees (name, email, role, base_salary, password_hash, "
-    "must_change_password) VALUES (%s, %s, 'admin', NULL, %s, TRUE) "
+    "INSERT INTO employees (name, email, role, password_hash, "
+    "must_change_password) VALUES (%s, %s, 'admin', %s, TRUE) "
     "RETURNING id;"
 )
 SELECT_ACTIVE_ADMIN_BY_EMAIL = (

@@ -1,3 +1,5 @@
+import type { PayrollAnalytics } from "./ownerService";
+
 export type PeriodPreset = "mes" | "trimestre" | "anio" | "12m";
 
 export const PERIOD_PRESETS: { value: PeriodPreset; label: string }[] = [
@@ -29,4 +31,23 @@ export function resolvePreset(preset: PeriodPreset, today: Date): { from: string
     "12m": new Date(year, month - 11, 1)
   };
   return { from: iso(starts[preset]), to: iso(today) };
+}
+
+export function withoutEmptyCurrentMonth(
+  analytics: PayrollAnalytics,
+  today: Date
+): PayrollAnalytics {
+  const current = iso(new Date(today.getFullYear(), today.getMonth(), 1));
+  const last = analytics.monthly[analytics.monthly.length - 1];
+  if (analytics.monthly.length < 2 || last.month !== current || last.receipts > 0) {
+    return analytics;
+  }
+  return {
+    ...analytics,
+    monthly: analytics.monthly.slice(0, -1),
+    employer_cost: {
+      ...analytics.employer_cost,
+      monthly: analytics.employer_cost.monthly.filter((month) => month.month !== current)
+    }
+  };
 }

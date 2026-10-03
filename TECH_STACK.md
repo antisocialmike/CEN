@@ -54,8 +54,11 @@
 - Patron Strategy para el calculo de ISR e IMSS, de forma que cada
   impuesto se pueda sustituir o extender de forma independiente.
 - El periodo de nomina es un rango con periodicidad, no un mes, y una
-  restriccion de exclusion de PostgreSQL impide que dos recibos del
-  mismo empleado cubran dias solapados.
+  restriccion de exclusion de PostgreSQL impide que dos recibos de la
+  misma persona en la misma empresa cubran dias solapados.
+- La cuenta de la persona (`employees`) y su relacion laboral con cada
+  empresa (`employments`) viven separadas: una persona puede cobrar en
+  varias empresas con una sola cuenta.
 - El recibo se guarda como partidas en `payroll_receipt_items`, no como
   columnas fijas: agregar un concepto nuevo no exige migrar el esquema, y
   cada partida lleva su importe gravado y exento por separado, que es lo
@@ -68,7 +71,7 @@
   herramienta externa: son archivos SQL numerados que corren una sola vez
   dentro de una transaccion. La base queda lista en cualquier entorno y no
   solo en un volumen de Docker recien creado.
-- Un recibo por empleado y periodo, garantizado por indice unico y
+- Un recibo por persona, empresa y periodo, garantizado por indice unico y
   resuelto con `INSERT ... ON CONFLICT DO UPDATE`, de forma que corregir
   una nomina reemplaza el recibo en vez de duplicarlo.
 - Autenticacion sin estado basada en JWT, con control de acceso por rol

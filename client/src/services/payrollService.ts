@@ -20,6 +20,16 @@ export function suggestedGrossSalary(
   return baseSalary;
 }
 
+export function otherDeductions(
+  receipt: Pick<PayrollReceipt, "total_deductions" | "isr_deduction" | "imss_deduction">
+): number {
+  const cents =
+    Math.round(receipt.total_deductions * 100) -
+    Math.round(receipt.isr_deduction * 100) -
+    Math.round(receipt.imss_deduction * 100);
+  return Math.max(cents, 0) / 100;
+}
+
 export function countActiveConcepts(concepts: PayrollConcepts): number {
   return Object.values(concepts).filter((value) => Number(value) > 0).length;
 }
@@ -97,6 +107,7 @@ export interface PayrollReceipt {
   processed_by: string;
   created_at: string;
   updated_at?: string;
+  company_name?: string;
 }
 
 export async function calculatePayroll(

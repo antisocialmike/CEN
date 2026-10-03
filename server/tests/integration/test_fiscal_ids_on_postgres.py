@@ -1,4 +1,3 @@
-import uuid
 from datetime import date
 from decimal import Decimal
 
@@ -7,13 +6,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from server.src.main import app
-from server.src.middlewares.auth_middleware import (
-    create_access_token,
-    hash_password,
-)
+from server.src.middlewares.auth_middleware import hash_password
 from server.src.repositories.company_repository import company_repository
 from server.src.repositories.payroll_repository import payroll_repository
-from server.tests.integration.conftest import database_before, unique_email
+from server.tests.integration.conftest import (
+    company_with_admin,
+    database_before,
+    unique_email,
+)
 
 client = TestClient(app)
 
@@ -21,27 +21,6 @@ PASSWORD_HASH = hash_password("clave-de-prueba")
 CURP_ANA = "HEGG560427MVZRRL04"
 RFC_ANA = "HEGG560427AB1"
 NSS_ANA = "92988084494"
-
-
-def _company(superadmin: int, owner: int) -> dict:
-    company = company_repository.create_company(
-        {"legal_name": "Empresa " + uuid.uuid4().hex[:6]}, owner, superadmin
-    )
-    admin = company_repository.invite_admin(company, {
-        "name": "Admin", "email": unique_email("admin"),
-        "password_hash": PASSWORD_HASH,
-    }, owner)
-    payroll_repository.update_password(admin, PASSWORD_HASH)
-    token = create_access_token(data={
-        "sub": "admin@pruebas.cen", "role": "admin", "employee_id": admin,
-        "ver": 1,
-    })
-    return {
-        "id": company,
-        "headers": {
-            "Authorization": "Bearer " + token, "X-Company-Id": str(company),
-        },
-    }
 
 
 @pytest.fixture(scope="module")
@@ -54,7 +33,10 @@ def companies():
         "name": "Laura", "email": unique_email("duena"),
         "password_hash": PASSWORD_HASH,
     }, superadmin)
-    return _company(superadmin, owner), _company(superadmin, owner)
+    return (
+        company_with_admin(superadmin, owner, PASSWORD_HASH),
+        company_with_admin(superadmin, owner, PASSWORD_HASH),
+    )
 
 
 def _hire(company: dict, **extra):
@@ -81,23 +63,17 @@ def test_fiscal_ids_are_saved_normalized(companies):
     )
 
 
-def test_the_same_curp_twice_in_a_company_is_a_conflict(companies):
-    first, _ = companies
+def test_two_people_cannot_share_a_curp_even_in_different_companies(
+    companies
+):
+    first, second = companies
     curp = "SABC560626MDFLRN01"
     assert _hire(first, curp=curp).status_code == 200
 
-    response = _hire(first, curp=curp)
+    response = _hire(second, curp=curp)
 
     assert response.status_code == 409
-    assert "CURP" in response.json()["detail"]
-
-
-def test_the_same_person_can_work_in_another_company(companies):
-    first, second = companies
-    nss = "12345678903"
-    assert _hire(first, nss=nss).status_code == 200
-
-    assert _hire(second, nss=nss).status_code == 200
+    assert response.json()["detail"] == "Esa CURP ya la tiene otra persona"
 
 
 def test_the_database_rejects_a_malformed_curp():

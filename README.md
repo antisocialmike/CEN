@@ -214,9 +214,10 @@ el subsidio y la exencion semanal de horas extra. El efecto es que un
 mismo sueldo anual paga el mismo impuesto sin importar cada cuando se
 cobre. El IMSS no se escala: se cotiza por los dias del periodo.
 
-Una restriccion de exclusion en la base impide que dos recibos del mismo
-empleado cubran dias solapados, asi que no se puede pagar dos veces el
-mismo dia ni por error ni por descuido.
+Una restriccion de exclusion en la base impide que dos recibos de la misma
+persona en la misma empresa cubran dias solapados, asi que no se puede
+pagar dos veces el mismo dia ni por error ni por descuido. Dos empresas
+distintas si pueden pagarle el mismo periodo: cada una su propio recibo.
 
 ## Conceptos de nomina
 
@@ -248,8 +249,8 @@ vacacional de ley segun la antiguedad), entre el salario minimo y 25 UMA.
 Es el mismo SBC que usa el costo patronal, asi que trabajador y empresa
 cotizan sobre la misma base.
 
-La **antiguedad** se cuenta desde la fecha de ingreso de la persona
-(`employees.hire_date`, migracion 016), no desde que se creo su cuenta en
+La **antiguedad** se cuenta desde la fecha de ingreso de la persona a esa
+empresa (`employments.hire_date`), no desde que se creo su cuenta en
 CEN. Las cuentas que ya existian toman como fecha de ingreso la de su alta,
 que la migracion 011 ya habia recorrido al primer periodo cobrado; conviene
 corregirla desde la pantalla de usuarios para quien entro antes.
@@ -274,8 +275,8 @@ se validan de verdad y no solo por longitud:
   primeros diez).
 - El RFC y la CURP deben tener la misma fecha de nacimiento.
 
-Se guardan en mayusculas y sin espacios ni guiones, y no se pueden repetir
-dentro de una misma empresa: la misma persona si puede estar en otra. La
+Se guardan en mayusculas y sin espacios ni guiones, y son de la persona,
+no de la empresa: dos cuentas no pueden tener el mismo RFC, CURP o NSS. La
 base repite las comprobaciones de formato, asi que un dato malo no entra ni
 saltandose la API.
 
@@ -286,6 +287,34 @@ salario agrega un renglon con la fecha "vigente desde" que elige el admin
 (hoy, si no elige). La migracion lo inicio con el salario que cada quien
 tenia en ese momento. Por ahora es un registro: el calculo sigue tomando el
 bruto que se captura en la calculadora.
+
+## Una persona, varias empresas
+
+La cuenta (`employees`) es la persona: su nombre, correo, contrasena, rol y
+datos fiscales. Lo laboral vive aparte, en `employments`, un renglon por
+cada empresa en la que trabaja: fecha de ingreso, salario, tipo de nomina,
+jornada y si sigue activa (migracion 019). Asi una misma persona puede
+cobrar en dos empresas, cada una con sus condiciones, y ver todos sus
+recibos con una sola cuenta; cada recibo dice de que empresa es.
+
+- **Para agregar a alguien que ya tiene cuenta** por otra empresa, el admin
+  lo da de alta con su correo y su CURP. Solo se vincula si la CURP
+  coincide con la que ya tiene registrada: saber el correo no basta. La
+  persona sigue entrando con su contrasena de siempre; la temporal que
+  capture el admin se ignora. Solo se vinculan cuentas de empleado.
+- **Mientras trabaje en otra empresa**, desde esta se cambian su salario,
+  tipo de nomina, jornada y fecha de ingreso, pero no su nombre, correo,
+  rol ni datos fiscales, ni se le restablece la contrasena: puede
+  recuperarla ella misma desde el inicio de sesion.
+- **Dar de baja** es por empresa. La cuenta solo se cierra cuando ya no
+  queda activa en ninguna; reactivarla en cualquiera la vuelve a abrir.
+- Un admin que cobra nomina tiene su renglon laboral en cada empresa que
+  administra; si se le quita el salario, deja de estar en la nomina de esa
+  empresa sin perder sus recibos ni su historial.
+
+Lo que no cambia: cada cuenta sigue teniendo un solo rol. Un dueno que
+ademas cobre nomina, o alguien que sea admin en una empresa y empleado en
+otra, necesita dos cuentas.
 
 **Lo que cambia cada anio no esta en el codigo.** La UMA, el salario
 minimo, el subsidio para el empleo y la tarifa del ISR se leen de la base
@@ -369,28 +398,32 @@ capa.
   `housing_credit_deduction`). El servidor deduce el fin del periodo y
   los dias pagados. Calcula ISR e IMSS, persiste el recibo con sus
   partidas y lo devuelve.
-  Requiere un token con rol `admin`. Solo existe un recibo por empleado y
-  periodo: recalcular el mismo mes reemplaza el anterior y la respuesta lo
-  indica en `created`. Cada recibo guarda quien lo proceso.
+  Requiere un token con rol `admin`. Solo existe un recibo por persona,
+  empresa y periodo: recalcular el mismo mes reemplaza el anterior y la
+  respuesta lo indica en `created`. Cada recibo guarda quien lo proceso.
 - `GET /employees` y `POST /employees`: lista y da de alta empleados.
   Requieren rol `admin`. El alta acepta `hire_date`; sin ella, la persona
   ingresa hoy. Tambien acepta `rfc`, `curp` y `nss`; si alguno no es
-  valido responde `422` con el motivo, y si ya lo tiene otra persona de la
-  empresa, `409`.
+  valido responde `422` con el motivo, y si ya lo tiene otra persona,
+  `409`. Si el correo ya es de una cuenta de empleado y la `curp` coincide,
+  la vincula a la empresa y responde con `linked: true`.
 - `PUT /employees/{id}`: corrige nombre, correo, rol, salario base, fecha
   de ingreso y datos fiscales. Lo que no llega (`hire_date`, `rfc`, `curp`,
   `nss`) se conserva. Si el salario cambia, `salary_valid_from` dice desde
-  cuando vale.
+  cuando vale. Si la persona tambien trabaja en otra empresa, cambiar su
+  nombre, correo, rol o datos fiscales responde `409`.
 - `GET /employees/{id}/salary-history`: el historial de salario de esa
   persona en la empresa activa, del mas reciente al mas viejo.
-- `POST /employees/{id}/deactivate` y `.../activate`: baja y alta logica.
-  Dar de baja conserva los recibos, impide iniciar sesion y bloquea el
-  calculo de nomina de esa persona. Un administrador no puede quitarse a
+- `POST /employees/{id}/deactivate` y `.../activate`: baja y alta logica
+  en la empresa activa. Dar de baja conserva los recibos y bloquea el
+  calculo de nomina de esa persona en esa empresa; si ya no queda activa en
+  ninguna, tampoco puede iniciar sesion. Un administrador no puede quitarse a
   si mismo el rol ni desactivar su propia cuenta, para que nadie se quede
   fuera del sistema.
 - `GET /payroll/receipts`: historial de recibos de la empresa activa,
   paginado y con el nombre del empleado. Requiere rol `admin`.
-- `GET /payroll/my-receipts`: recibos del empleado dueno del token, paginados
+- `GET /payroll/my-receipts`: recibos del empleado dueno del token, de todas
+  las empresas en las que ha cobrado, con `company_name`, paginados
   (`page`, `page_size`).
 - `GET /superadmin/summary`: tablero de la plataforma, solo con conteos:
   empresas y personas por rol (activas e inactivas), empresas sin dueno

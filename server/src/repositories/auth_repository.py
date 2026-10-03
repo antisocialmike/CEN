@@ -4,9 +4,11 @@ from ..config.database import db_cursor
 
 SELECT_SESSION_STATE = (
     "SELECT (e.role = %s) AS same_role, e.is_active, e.must_change_password, "
-    "e.token_version, c.is_active AS company_is_active "
-    "FROM employees e LEFT JOIN companies c ON c.id = e.company_id "
-    "WHERE e.id = %s;"
+    "e.token_version, CASE WHEN e.role = 'employee' THEN EXISTS ("
+    "SELECT 1 FROM employments m JOIN companies c ON c.id = m.company_id "
+    "WHERE m.employee_id = e.id AND m.is_active AND c.is_active) "
+    "END AS company_is_active "
+    "FROM employees e WHERE e.id = %s;"
 )
 
 HIT_RATE_LIMIT = (

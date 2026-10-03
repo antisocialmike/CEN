@@ -45,17 +45,17 @@ async def database_unavailable(request: Request, exc: OperationalError):
 
 
 DUPLICATED_DETAILS = {
-    "companies_rfc_key": "El RFC ya esta registrado",
-    "employees_company_rfc_key": "Ese RFC ya lo tiene otra persona de la empresa",
-    "employees_company_curp_key": "Esa CURP ya la tiene otra persona de la empresa",
-    "employees_company_nss_key": "Ese NSS ya lo tiene otra persona de la empresa",
+    "companies_rfc_key": "El RFC ya está registrado",
+    "employees_rfc_key": "Ese RFC ya lo tiene otra persona",
+    "employees_curp_key": "Esa CURP ya la tiene otra persona",
+    "employees_nss_key": "Ese NSS ya lo tiene otra persona",
 }
 
 
 @app.exception_handler(UniqueViolation)
 async def duplicated_record(request: Request, exc: UniqueViolation):
     detail = DUPLICATED_DETAILS.get(
-        exc.diag.constraint_name, "El correo ya esta registrado"
+        exc.diag.constraint_name, "El correo ya está registrado"
     )
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
@@ -68,7 +68,7 @@ async def overlapping_period(request: Request, exc: ExclusionViolation):
     if exc.diag.constraint_name == "company_risk_premiums_no_overlap":
         detail = "Ya hay una prima de riesgo registrada desde esa fecha"
     else:
-        detail = "Ese empleado ya tiene un recibo que cubre esos dias"
+        detail = "Ese empleado ya tiene un recibo que cubre esos días"
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content={"detail": detail},

@@ -14,24 +14,32 @@ CREATE_MIGRATIONS_TABLE = (
 SELECT_APPLIED_MIGRATIONS = "SELECT filename FROM schema_migrations;"
 INSERT_MIGRATION = "INSERT INTO schema_migrations (filename) VALUES (%s);"
 
-# Una persona pertenece a la empresa si es su empleado o si la administra con
-# una asignacion activa. Los duenos y el superadmin nunca entran aqui.
-SELECT_EMPLOYEE_BY_ID = (
-    "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active, "
-    "e.tipo_regimen, e.tipo_jornada, e.hire_date, e.rfc, e.curp, e.nss, "
-    "e.created_at "
-    "FROM employees e WHERE e.id = %s "
-    "AND e.role IN ('admin', 'employee') AND (e.company_id = %s OR EXISTS ("
-    "SELECT 1 FROM company_admins ca WHERE ca.admin_id = e.id "
-    "AND ca.company_id = %s AND ca.is_active));"
+# Una persona pertenece a la empresa si trabaja en ella o si la administra
+# con una asignacion activa. Los duenos y el superadmin nunca entran aqui.
+MEMBER_FIELDS = (
+    "SELECT e.id, e.name, e.email, e.role, m.base_salary, "
+    "(e.is_active AND COALESCE(m.is_active, TRUE)) AS is_active, "
+    "COALESCE(m.tipo_regimen, '02') AS tipo_regimen, "
+    "COALESCE(m.tipo_jornada, '01') AS tipo_jornada, m.hire_date, "
+    "e.rfc, e.curp, e.nss "
 )
+EMPLOYEES_OF_COMPANY = (
+    "FROM employees e LEFT JOIN employments m "
+    "ON m.employee_id = e.id AND m.company_id = %s "
+    "WHERE e.role IN ('admin', 'employee') AND (m.id IS NOT NULL OR EXISTS ("
+    "SELECT 1 FROM company_admins ca WHERE ca.admin_id = e.id "
+    "AND ca.company_id = %s AND ca.is_active)) "
+)
+SELECT_EMPLOYEE_BY_ID = MEMBER_FIELDS + EMPLOYEES_OF_COMPANY + "AND e.id = %s;"
 SELECT_EMPLOYEE_BY_EMAIL = (
-    "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.password_hash, "
+    "SELECT e.id, e.name, e.email, e.role, e.password_hash, e.curp, "
     "e.must_change_password, e.is_active, e.failed_login_attempts, "
-    "e.locked_until, e.company_id, e.token_version, "
-    "c.is_active AS company_is_active "
-    "FROM employees e LEFT JOIN companies c ON c.id = e.company_id "
-    "WHERE e.email = %s;"
+    "e.locked_until, e.token_version, "
+    "CASE WHEN e.role = 'employee' THEN EXISTS ("
+    "SELECT 1 FROM employments m JOIN companies c ON c.id = m.company_id "
+    "WHERE m.employee_id = e.id AND m.is_active AND c.is_active) "
+    "END AS company_is_active "
+    "FROM employees e WHERE e.email = %s;"
 )
 REGISTER_FAILED_LOGIN = (
     "UPDATE employees SET failed_login_attempts = failed_login_attempts + 1, "
@@ -49,8 +57,7 @@ RESET_PASSWORD = (
     "UPDATE employees SET password_hash = %s, must_change_password = TRUE, "
     "failed_login_attempts = 0, locked_until = NULL, "
     "token_version = token_version + 1 WHERE id = %s "
-    "RETURNING id, name, email, role, base_salary, is_active, "
-    "tipo_regimen, tipo_jornada, hire_date, rfc, curp, nss;"
+    "RETURNING id, name, email;"
 )
 SELECT_PASSWORD_HASH = (
     "SELECT password_hash FROM employees WHERE id = %s;"
@@ -59,42 +66,53 @@ UPDATE_PASSWORD = (
     "UPDATE employees SET password_hash = %s, must_change_password = FALSE, "
     "token_version = token_version + 1 WHERE id = %s;"
 )
-EMPLOYEES_OF_COMPANY = (
-    "FROM employees e WHERE e.role IN ('admin', 'employee') "
-    "AND (e.company_id = %s OR EXISTS ("
-    "SELECT 1 FROM company_admins ca WHERE ca.admin_id = e.id "
-    "AND ca.company_id = %s AND ca.is_active)) "
-)
 # El id desempata a los homonimos para que la paginacion no los baraje.
-EMPLOYEES_ORDER = "ORDER BY e.is_active DESC, e.name ASC, e.id ASC"
-SELECT_EMPLOYEES = (
-    "SELECT e.id, e.name, e.email, e.role, e.base_salary, e.is_active, "
-    "e.tipo_regimen, e.tipo_jornada, e.hire_date, e.rfc, e.curp, e.nss "
-    + EMPLOYEES_OF_COMPANY
-    + EMPLOYEES_ORDER
-)
+EMPLOYEES_ORDER = "ORDER BY is_active DESC, e.name ASC, e.id ASC"
+SELECT_EMPLOYEES = MEMBER_FIELDS + EMPLOYEES_OF_COMPANY + EMPLOYEES_ORDER
 SELECT_ALL_EMPLOYEES = SELECT_EMPLOYEES + ";"
 SELECT_EMPLOYEES_PAGE = SELECT_EMPLOYEES + " LIMIT %s OFFSET %s;"
 COUNT_EMPLOYEES = "SELECT COUNT(*) AS total " + EMPLOYEES_OF_COMPANY + ";"
 # Bloquea a la persona mientras se modifica y dice si tambien administra
-# otras empresas: en ese caso la cuenta no es solo de esta empresa.
+# otras empresas o trabaja en ellas: en ese caso la cuenta no es solo de esta.
 LOCK_MEMBER = (
-    "SELECT e.id, e.role, e.base_salary, EXISTS ("
+    "SELECT e.id, e.role, e.name, e.email, e.rfc, e.curp, e.nss, "
+    "m.id AS employment_id, m.base_salary, EXISTS ("
     "SELECT 1 FROM company_admins other WHERE other.admin_id = e.id "
-    "AND other.company_id <> %s AND other.is_active) AS is_shared "
-    "FROM employees e WHERE e.id = %s "
-    "AND e.role IN ('admin', 'employee') AND (e.company_id = %s OR EXISTS ("
+    "AND other.company_id <> %s AND other.is_active) AS is_shared, EXISTS ("
+    "SELECT 1 FROM employments elsewhere WHERE elsewhere.employee_id = e.id "
+    "AND elsewhere.company_id <> %s) AS works_elsewhere "
+    "FROM employees e LEFT JOIN employments m "
+    "ON m.employee_id = e.id AND m.company_id = %s "
+    "WHERE e.id = %s AND e.role IN ('admin', 'employee') "
+    "AND (m.id IS NOT NULL OR EXISTS ("
     "SELECT 1 FROM company_admins ca WHERE ca.admin_id = e.id "
     "AND ca.company_id = %s AND ca.is_active)) FOR UPDATE OF e;"
 )
-UPDATE_EMPLOYEE = (
+LOCK_PERSON_BY_ID = (
+    "SELECT id FROM employees WHERE id = %s FOR UPDATE;"
+)
+UPDATE_IDENTITY = (
     "UPDATE employees SET name = %s, email = %s, role = %s, "
-    "base_salary = %s, tipo_regimen = %s, tipo_jornada = %s, "
-    "hire_date = COALESCE(%s, hire_date), rfc = COALESCE(%s, rfc), "
-    "curp = COALESCE(%s, curp), nss = COALESCE(%s, nss), "
-    "company_id = %s WHERE id = %s "
-    "RETURNING id, name, email, role, base_salary, is_active, "
-    "tipo_regimen, tipo_jornada, hire_date, rfc, curp, nss;"
+    "rfc = COALESCE(%s, rfc), curp = COALESCE(%s, curp), "
+    "nss = COALESCE(%s, nss) WHERE id = %s;"
+)
+UPSERT_EMPLOYMENT = (
+    "INSERT INTO employments (employee_id, company_id, hire_date, "
+    "base_salary, tipo_regimen, tipo_jornada) "
+    "VALUES (%s, %s, COALESCE(%s, CURRENT_DATE), %s, %s, %s) "
+    "ON CONFLICT (employee_id, company_id) DO UPDATE SET "
+    "hire_date = COALESCE(%s, employments.hire_date), "
+    "base_salary = EXCLUDED.base_salary, "
+    "tipo_regimen = EXCLUDED.tipo_regimen, "
+    "tipo_jornada = EXCLUDED.tipo_jornada "
+    "RETURNING hire_date, (xmax = 0) AS created;"
+)
+DELETE_EMPLOYMENT = (
+    "DELETE FROM employments WHERE employee_id = %s AND company_id = %s;"
+)
+SELECT_EMPLOYMENT = (
+    "SELECT id, is_active FROM employments "
+    "WHERE employee_id = %s AND company_id = %s;"
 )
 ASSIGN_ADMIN = (
     "INSERT INTO company_admins (admin_id, company_id, assigned_by) "
@@ -106,19 +124,21 @@ RELEASE_ADMIN = (
 )
 # La fecha de baja solo se toca al cambiar de estado: dar de baja dos veces
 # no mueve la primera, y reactivar la borra.
-UPDATE_EMPLOYEE_ACTIVE = (
-    "UPDATE employees SET is_active = %s, deactivated_at = CASE "
+UPDATE_EMPLOYMENT_ACTIVE = (
+    "UPDATE employments SET is_active = %s, deactivated_at = CASE "
     "WHEN %s THEN NULL WHEN is_active THEN NOW() ELSE deactivated_at END "
-    "WHERE id = %s "
-    "RETURNING id, name, email, role, base_salary, is_active, "
-    "tipo_regimen, tipo_jornada, hire_date, rfc, curp, nss;"
+    "WHERE id = %s;"
+)
+UPDATE_ACCOUNT_ACTIVE = "UPDATE employees SET is_active = %s WHERE id = %s;"
+SYNC_ACCOUNT_WITH_EMPLOYMENTS = (
+    "UPDATE employees e SET is_active = EXISTS ("
+    "SELECT 1 FROM employments m WHERE m.employee_id = e.id AND m.is_active) "
+    "WHERE e.id = %s;"
 )
 INSERT_EMPLOYEE = (
-    "INSERT INTO employees (name, email, role, base_salary, tipo_regimen, "
-    "tipo_jornada, hire_date, rfc, curp, nss, password_hash, "
-    "must_change_password, company_id) VALUES (%s, %s, %s, %s, %s, %s, "
-    "COALESCE(%s, CURRENT_DATE), %s, %s, %s, %s, TRUE, %s) "
-    "RETURNING id, hire_date;"
+    "INSERT INTO employees (name, email, role, rfc, curp, nss, password_hash, "
+    "must_change_password) VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE) "
+    "RETURNING id;"
 )
 INSERT_SALARY_CHANGE = (
     "INSERT INTO salary_history (employee_id, company_id, base_salary, "
@@ -148,11 +168,11 @@ SELECT_EMPLOYEE_RECEIPTS_PAGE = (
     "r.imss_deduction, r.net_salary, r.total_perceptions, "
     "r.total_deductions, r.taxable_base, r.periodicity, r.paid_days, "
     "r.tipo_regimen, r.processed_by, r.created_at, "
-    "r.updated_at, "
+    "r.updated_at, COALESCE(c.trade_name, c.legal_name) AS company_name, "
     + RECEIPT_ITEMS_JSON
-    + "FROM payroll_receipts r "
+    + "FROM payroll_receipts r JOIN companies c ON c.id = r.company_id "
     "LEFT JOIN payroll_receipt_items i ON i.receipt_id = r.id "
-    "WHERE r.employee_id = %s GROUP BY r.id "
+    "WHERE r.employee_id = %s GROUP BY r.id, c.id "
     "ORDER BY r.period_start DESC, r.updated_at DESC, r.id DESC "
     "LIMIT %s OFFSET %s;"
 )
@@ -204,7 +224,8 @@ UPSERT_RECEIPT = (
     "net_salary, total_perceptions, total_deductions, taxable_base, "
     "tipo_regimen, processed_by, company_id) "
     "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
-    "ON CONFLICT (employee_id, period_start, period_end) DO UPDATE SET "
+    "ON CONFLICT (employee_id, company_id, period_start, period_end) "
+    "DO UPDATE SET "
     "periodicity = EXCLUDED.periodicity, "
     "paid_days = EXCLUDED.paid_days, "
     "gross_salary = EXCLUDED.gross_salary, "
@@ -217,7 +238,6 @@ UPSERT_RECEIPT = (
     "tipo_regimen = EXCLUDED.tipo_regimen, "
     "processed_by = EXCLUDED.processed_by, "
     "updated_at = NOW() "
-    "WHERE payroll_receipts.company_id = EXCLUDED.company_id "
     "RETURNING id, (xmax = 0) AS created;"
 )
 # Parametros del costo patronal vigentes en una fecha.
@@ -271,8 +291,27 @@ class SharedAdminError(Exception):
     pass
 
 
-class ReceiptOfAnotherCompanyError(Exception):
+class SharedPersonError(Exception):
     pass
+
+
+class AlreadyEmployedError(Exception):
+    def __init__(self, is_active: bool):
+        super().__init__("La persona ya trabaja en la empresa")
+        self.is_active = is_active
+
+
+IDENTITY_FIELDS = ("name", "email", "role")
+FISCAL_FIELDS = ("rfc", "curp", "nss")
+
+
+def _changes_identity(member: dict, employee_data: dict) -> bool:
+    if any(employee_data[f] != member[f] for f in IDENTITY_FIELDS):
+        return True
+    return any(
+        employee_data.get(f) is not None and employee_data.get(f) != member[f]
+        for f in FISCAL_FIELDS
+    )
 
 
 class PayrollRepository:
@@ -294,7 +333,7 @@ class PayrollRepository:
         self, employee_id: int, company_id: int
     ) -> Optional[dict]:
         return self._fetch_one(
-            SELECT_EMPLOYEE_BY_ID, (employee_id, company_id, company_id)
+            SELECT_EMPLOYEE_BY_ID, (company_id, company_id, employee_id)
         )
 
     def get_employee_by_email(self, email: str) -> Optional[dict]:
@@ -309,48 +348,50 @@ class PayrollRepository:
             member = self._lock_member(cursor, employee_id, company_id)
             if member is None:
                 return None
-            cursor.execute(UPDATE_EMPLOYEE, (
+            if member["works_elsewhere"] and _changes_identity(
+                member, employee_data
+            ):
+                raise SharedPersonError()
+            cursor.execute(UPDATE_IDENTITY, (
                 employee_data["name"],
                 employee_data["email"],
                 role,
-                employee_data["base_salary"],
-                employee_data.get("tipo_regimen", "02"),
-                employee_data.get("tipo_jornada", "01"),
-                employee_data.get("hire_date"),
                 employee_data.get("rfc"),
                 employee_data.get("curp"),
                 employee_data.get("nss"),
-                company_id if role == "employee" else None,
                 employee_id,
             ))
-            updated = dict(cursor.fetchone())
-            new_salary = employee_data["base_salary"]
-            if new_salary is not None and (
-                member.get("base_salary") is None
-                or Decimal(str(member["base_salary"])) != Decimal(str(new_salary))
-            ):
-                cursor.execute(INSERT_SALARY_CHANGE, (
-                    employee_id, company_id, new_salary,
-                    employee_data.get("salary_valid_from"), actor_id,
-                ))
+            if employee_data["base_salary"] is None:
+                cursor.execute(DELETE_EMPLOYMENT, (employee_id, company_id))
+            else:
+                self._save_employment(
+                    cursor, employee_id, company_id, employee_data,
+                    member.get("base_salary"), actor_id,
+                )
             if role == "admin":
                 cursor.execute(
                     ASSIGN_ADMIN, (employee_id, company_id, actor_id)
                 )
             else:
                 cursor.execute(RELEASE_ADMIN, (employee_id,))
-            return updated
+            return self._member_row(cursor, employee_id, company_id)
 
     def set_employee_active(
         self, employee_id: int, is_active: bool, company_id: int
     ) -> Optional[dict]:
         with db_cursor() as cursor:
-            if self._lock_member(cursor, employee_id, company_id) is None:
+            member = self._lock_member(cursor, employee_id, company_id)
+            if member is None:
                 return None
-            cursor.execute(
-                UPDATE_EMPLOYEE_ACTIVE, (is_active, is_active, employee_id)
-            )
-            return dict(cursor.fetchone())
+            if member["employment_id"] is not None:
+                cursor.execute(UPDATE_EMPLOYMENT_ACTIVE, (
+                    is_active, is_active, member["employment_id"],
+                ))
+            if is_active or member["role"] == "admin":
+                cursor.execute(UPDATE_ACCOUNT_ACTIVE, (is_active, employee_id))
+            else:
+                cursor.execute(SYNC_ACCOUNT_WITH_EMPLOYMENTS, (employee_id,))
+            return self._member_row(cursor, employee_id, company_id)
 
     def get_password_hash(self, employee_id: int) -> Optional[str]:
         row = self._fetch_one(SELECT_PASSWORD_HASH, (employee_id,))
@@ -371,8 +412,11 @@ class PayrollRepository:
         self, employee_id: int, password_hash: str, company_id: int
     ) -> Optional[dict]:
         with db_cursor() as cursor:
-            if self._lock_member(cursor, employee_id, company_id) is None:
+            member = self._lock_member(cursor, employee_id, company_id)
+            if member is None:
                 return None
+            if member["works_elsewhere"]:
+                raise SharedPersonError()
             cursor.execute(RESET_PASSWORD, (password_hash, employee_id))
             return dict(cursor.fetchone())
 
@@ -399,38 +443,82 @@ class PayrollRepository:
                 employee_data["name"],
                 employee_data["email"],
                 role,
-                employee_data["base_salary"],
-                employee_data.get("tipo_regimen", "02"),
-                employee_data.get("tipo_jornada", "01"),
-                employee_data.get("hire_date"),
                 employee_data.get("rfc"),
                 employee_data.get("curp"),
                 employee_data.get("nss"),
                 employee_data["password_hash"],
-                company_id if role == "employee" else None,
             ))
             row = cursor.fetchone()
             if not row:
                 raise RuntimeError("No se pudo obtener el ID del empleado.")
-            created = dict(row)
-            employee_id = int(created["id"])
+            employee_id = int(dict(row)["id"])
             if role == "admin" and company_id is not None:
                 cursor.execute(
                     ASSIGN_ADMIN, (employee_id, company_id, actor_id)
                 )
             if company_id is not None and employee_data["base_salary"] is not None:
-                cursor.execute(INSERT_SALARY_CHANGE, (
-                    employee_id, company_id, employee_data["base_salary"],
-                    created.get("hire_date"), actor_id,
-                ))
+                self._save_employment(
+                    cursor, employee_id, company_id, employee_data, None,
+                    actor_id,
+                )
             return employee_id
+
+    def hire_existing_employee(
+        self, employee_id: int, employment_data: dict, company_id: int,
+        actor_id: Optional[int] = None,
+    ) -> dict:
+        with db_cursor() as cursor:
+            cursor.execute(LOCK_PERSON_BY_ID, (employee_id,))
+            cursor.execute(SELECT_EMPLOYMENT, (employee_id, company_id))
+            current = cursor.fetchone()
+            if current is not None:
+                raise AlreadyEmployedError(bool(dict(current)["is_active"]))
+            self._save_employment(
+                cursor, employee_id, company_id, employment_data, None,
+                actor_id,
+            )
+            cursor.execute(UPDATE_ACCOUNT_ACTIVE, (True, employee_id))
+            return self._member_row(cursor, employee_id, company_id)
+
+    def _save_employment(
+        self, cursor, employee_id: int, company_id: int, data: dict,
+        previous_salary, actor_id: Optional[int],
+    ) -> None:
+        hire_date = data.get("hire_date")
+        cursor.execute(UPSERT_EMPLOYMENT, (
+            employee_id,
+            company_id,
+            hire_date,
+            data["base_salary"],
+            data.get("tipo_regimen", "02"),
+            data.get("tipo_jornada", "01"),
+            hire_date,
+        ))
+        saved = dict(cursor.fetchone())
+        if saved["created"]:
+            valid_from = saved["hire_date"]
+        elif previous_salary is not None and Decimal(str(previous_salary)) == Decimal(
+            str(data["base_salary"])
+        ):
+            return
+        else:
+            valid_from = data.get("salary_valid_from")
+        cursor.execute(INSERT_SALARY_CHANGE, (
+            employee_id, company_id, data["base_salary"], valid_from, actor_id,
+        ))
+
+    def _member_row(self, cursor, employee_id: int, company_id: int) -> dict:
+        cursor.execute(
+            SELECT_EMPLOYEE_BY_ID, (company_id, company_id, employee_id)
+        )
+        return dict(cursor.fetchone())
 
     def salary_history(
         self, employee_id: int, company_id: int
     ) -> Optional[list]:
         with db_cursor() as cursor:
             cursor.execute(
-                SELECT_EMPLOYEE_BY_ID, (employee_id, company_id, company_id)
+                SELECT_EMPLOYEE_BY_ID, (company_id, company_id, employee_id)
             )
             if cursor.fetchone() is None:
                 return None
@@ -487,11 +575,7 @@ class PayrollRepository:
                     receipt_data["company_id"],
                 ),
             )
-            row = cursor.fetchone()
-            if not row:
-                raise ReceiptOfAnotherCompanyError()
-
-            saved = dict(row)
+            saved = dict(cursor.fetchone())
             receipt_id = int(saved["id"])
 
             cursor.execute(DELETE_RECEIPT_ITEMS, (receipt_id,))
@@ -574,9 +658,9 @@ class PayrollRepository:
     def _lock_member(
         self, cursor, employee_id: int, company_id: int
     ) -> Optional[dict]:
-        cursor.execute(
-            LOCK_MEMBER, (company_id, employee_id, company_id, company_id)
-        )
+        cursor.execute(LOCK_MEMBER, (
+            company_id, company_id, company_id, employee_id, company_id,
+        ))
         row = cursor.fetchone()
         if row is None:
             return None

@@ -8,7 +8,7 @@ import SubmitButton from "../components/SubmitButton";
 import PayrollResultCard from "../components/PayrollResultCard";
 import Skeleton from "../components/Skeleton";
 import Paginacion from "../components/Paginacion";
-import { ArrowLeft, Receipt, UsersThree, Wallet } from "@phosphor-icons/react";
+import { ArrowLeft, Receipt, UsersThree } from "@phosphor-icons/react";
 import {
   calculatePayroll,
   countActiveConcepts,
@@ -20,6 +20,7 @@ import {
   PERIODICITY_LABELS,
   ExistingReceipt,
   lookupReceipt,
+  otherDeductions,
   suggestedGrossSalary
 } from "../services/payrollService";
 import {
@@ -193,9 +194,6 @@ export default function AdminDashboardPage() {
     <div className="dashboard-panel">
       <div className="dashboard-panel-header">
         <div className="dashboard-panel-heading">
-          <span className="panel-icon-badge" aria-hidden="true">
-            <Wallet weight="bold" />
-          </span>
           <div>
             <h1>Calcular nómina</h1>
             <p className="dashboard-panel-subtitle">
@@ -529,8 +527,25 @@ export default function AdminDashboardPage() {
                 <PayrollResultCard key="result" result={result} />
               ) : (
                 <div className="payroll-result-placeholder" key="placeholder">
-                  <Wallet weight="bold" />
-                  <p>
+                  <div aria-hidden="true">
+                    <p className="payroll-result-heading">
+                      <span>Desglose del periodo</span>
+                      <small>Recibo # —</small>
+                    </p>
+                    <div className="payroll-result-row is-group">
+                      <span>Percepciones</span>
+                      <span>—</span>
+                    </div>
+                    <div className="payroll-result-row is-group">
+                      <span>Deducciones</span>
+                      <span>—</span>
+                    </div>
+                    <div className="payroll-result-row total">
+                      <span>Neto a pagar</span>
+                      <span>$ —</span>
+                    </div>
+                  </div>
+                  <p className="payroll-result-footer">
                     El desglose de ISR, IMSS y neto a pagar aparecerá aquí en cuanto calcules
                     la nómina.
                   </p>
@@ -564,7 +579,7 @@ export default function AdminDashboardPage() {
 
           {receipts !== null && receipts.length > 0 && (
             <div className="table-wrap" ref={inicioDeRecibos}>
-              <table className="data-table">
+              <table className="data-table receipts-table">
                 <caption className="visually-hidden">Recibos de nómina emitidos</caption>
                 <thead>
                   <tr>
@@ -580,6 +595,9 @@ export default function AdminDashboardPage() {
                       IMSS
                     </th>
                     <th scope="col" className="num">
+                      Otras
+                    </th>
+                    <th scope="col" className="num">
                       Neto
                     </th>
                   </tr>
@@ -592,13 +610,18 @@ export default function AdminDashboardPage() {
                       </td>
                       <td data-label="Fecha">{formatDateShort(receipt.created_at)}</td>
                       <td className="num" data-label="Bruto">
-                        {formatCurrency(receipt.gross_salary)}
+                        {formatCurrency(receipt.total_perceptions)}
                       </td>
                       <td className="num" data-label="ISR">
                         − {formatCurrency(receipt.isr_deduction)}
                       </td>
                       <td className="num" data-label="IMSS">
                         − {formatCurrency(receipt.imss_deduction)}
+                      </td>
+                      <td className="num" data-label="Otras deducciones">
+                        {otherDeductions(receipt) > 0
+                          ? `− ${formatCurrency(otherDeductions(receipt))}`
+                          : "—"}
                       </td>
                       <td className="num net" data-label="Neto">
                         {formatCurrency(receipt.net_salary)}
