@@ -322,6 +322,8 @@
 }
 
 .rv-neto-folio {
+  font-family: var(--rv-font-mono);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 

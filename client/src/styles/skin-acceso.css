@@ -67,6 +67,8 @@
   margin: var(--rv-p-espacio-3) 0 0;
   font-size: 13px;
   color: var(--rv-ink-3);
+  text-align: start;
+  text-wrap: pretty;
 }
 
 .rv-escaparate {
